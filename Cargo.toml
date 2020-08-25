@@ -1,0 +1,21 @@
+[package]
+name = "scapegoat"
+version = "0.0.0"
+authors = ["Tiemoko Ballo"]
+edition = "2018"
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/tnballo/scapegoat"
+repository = "https://github.com/tnballo/scapegoat"
+documentation = "https://docs.rs/scapegoat"
+description = "A safe scapegoat tree implementation. Work in progress, do not use yet!"
+include = [
+    "**/*.rs",
+    "**/*.md",
+    "Cargo.toml",
+    "LICENSE",
+]
+
+[dev-dependencies]
+rand = { version = "0.7.3", features = ["small_rng"] }
+ruut = "0.6.1"
