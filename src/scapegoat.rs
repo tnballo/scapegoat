@@ -342,10 +342,13 @@ impl<K: Ord, V> SGTree<K, V> {
     fn priv_remove(&mut self, ngh: NodeGetHelper) -> Option<Node<K, V>> {
         match ngh.node_idx {
             Some(node_idx) => {
-                let removed_node = self.arena.hard_remove(node_idx);
-                self.curr_size -= 1;
+                let node_to_remove = self.arena.hard_get(node_idx);
 
-                let new_child = match (removed_node.left_idx, removed_node.right_idx) {
+                // Copy out child indexes to reduce scope of above immutable borrow
+                let node_to_remove_left_idx = node_to_remove.left_idx;
+                let mut node_to_remove_right_idx = node_to_remove.right_idx;
+
+                let new_child = match (node_to_remove_left_idx, node_to_remove_right_idx) {
                     // No children
                     (None, None) => None,
                     // Left child only
@@ -356,7 +359,6 @@ impl<K: Ord, V> SGTree<K, V> {
                     // 1. Iterative search for min node in right subtree
                     // 2. Unlink min node from it's parent (has either no children or a right child)
                     // 3. Re-link min node to removed node's children
-                    // 4. Remove requested node
                     (Some(_), Some(right_idx)) => {
                         let mut min_idx = right_idx;
                         let mut min_parent_idx = node_idx;
@@ -373,13 +375,21 @@ impl<K: Ord, V> SGTree<K, V> {
                                     match min_node.right_idx {
                                         Some(_) => {
                                             let unlink_new_child = min_node.right_idx;
-                                            let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
-                                            min_parent_node.left_idx = unlink_new_child;
+                                            if min_parent_idx == node_idx {
+                                                node_to_remove_right_idx = unlink_new_child;
+                                            } else {
+                                                let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
+                                                min_parent_node.left_idx = unlink_new_child;
+                                            }
                                             break;
                                         },
                                         None => {
-                                            let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
-                                            min_parent_node.left_idx = None;
+                                            if min_parent_idx == node_idx {
+                                                node_to_remove_right_idx = None;
+                                            } else {
+                                                let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
+                                                min_parent_node.left_idx = None;
+                                            }
                                             break;
                                         },
                                     }
@@ -389,8 +399,8 @@ impl<K: Ord, V> SGTree<K, V> {
 
                         // Re-link min node to removed node's children
                         let min_node = self.arena.hard_get_mut(min_idx);
-                        min_node.right_idx = removed_node.right_idx;
-                        min_node.left_idx = removed_node.left_idx;
+                        min_node.right_idx = node_to_remove_right_idx;
+                        min_node.left_idx = node_to_remove_left_idx;
 
                         // Return as new child
                         Some(min_idx)
@@ -411,6 +421,10 @@ impl<K: Ord, V> SGTree<K, V> {
                         self.root_idx = new_child;
                     }
                 }
+
+                // Perform removal
+                let removed_node = self.arena.hard_remove(node_idx);
+                self.curr_size -= 1;
 
                 // Update min/max
                 if node_idx == self.min_idx {
