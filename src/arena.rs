@@ -33,7 +33,7 @@ impl<K: Ord, V> NodeArena<K, V> {
         }
     }
 
-    /// Remove node at given index from area, dynamically shrinking if necessary.
+    /// Remove node at given index from area.
     pub fn remove(&mut self, idx: usize) -> Option<Node<K,V>> {
         debug_assert!(idx < self.arena.len(), "API misuse: requested removal past last index!");
         if idx < self.arena.len() {
@@ -43,17 +43,14 @@ impl<K: Ord, V> NodeArena<K, V> {
             let len = self.arena.len();
             self.arena.swap(idx, len - 1);
 
-            let free_cnt = self.arena.iter().filter(|&i| i.is_none()).count();
-            if free_cnt > (self.arena.len() / 2) {
-                // TODO: impl shrink logic
-                //self.shrink();
-            }
-
             // Retrieve node
             return match self.arena.pop() {
                 Some(opt_node) => match opt_node {
                     Some(node) => Some(node),
-                    None => None
+                    None => {
+                        debug_assert!(false, "Internal invariant failed: removal popped an empty node!");
+                        None
+                    }
                 }
                 None => None,
             }
@@ -62,7 +59,7 @@ impl<K: Ord, V> NodeArena<K, V> {
         None
     }
 
-    /// Remove node at a known-good index (simpler callsite and error handling) from area, dynamically shrinking if necessary.
+    /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
     pub fn hard_remove(&mut self, idx: usize) -> Node<K,V> {
         match self.remove(idx) {
@@ -113,19 +110,5 @@ impl<K: Ord, V> NodeArena<K, V> {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
         }
-    }
-
-    // Private API -----------------------------------------------------------------------------------------------------
-
-    /// TODO: desc
-    fn shrink(&mut self) {
-        // TODO: first make all non-empty contiguous and re-point the node pointers
-        // Probably need to use vec.iter().position()
-
-        /*
-        self.arena.retain(|n| n.is_some());
-        self.arena.shrink_to_fit();
-        self.free_list.clear();
-        */
     }
 }

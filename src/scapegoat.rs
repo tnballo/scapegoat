@@ -192,7 +192,7 @@ impl<K: Ord, V> SGTree<K, V> {
                 let mut is_right_child = false;
                 loop {
                     let node = self.arena.hard_get(curr_idx);
-                    match &node.key.cmp(key) {
+                    match key.cmp(&node.key) {
                         Ordering::Less => {
                             match node.left_idx {
                                 Some(lt_idx) => {

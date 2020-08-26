@@ -31,8 +31,14 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
     (sgt, keys)
 }
 
+// Pretty print tree
+pub fn pretty_print<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) {
+    let sgt_lisp = stg_to_lisp_str(&sgt);
+    println!("{}", ruut::prettify(sgt_lisp, ruut::InputFormat::LispLike, "unused".to_string(), "unused".to_string(), None).unwrap());
+}
+
 // Convert tree to a Lisp-like string.
-pub fn stg_to_lisp_str<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) -> String {
+fn stg_to_lisp_str<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) -> String {
     match sgt.root_idx {
         Some(idx) => sgt_to_lisp_str_helper(sgt, idx),
         None => String::from("()")
@@ -109,16 +115,99 @@ fn test_iter() {
 }
 
 #[test]
+fn test_two_child_removal_case_1() {
+    let keys = vec![1, 2, 3];
+    let mut sgt = SGTree::new();
+    let to_remove = 3;
+
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+    }
+
+    println!("\nBefore two child removal case 1:\n");
+    pretty_print(&sgt);
+
+    sgt.remove(&to_remove);
+
+    println!("\nAfter two child removal case 1 (removed {}):\n", to_remove);
+    pretty_print(&sgt);
+
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2]);
+}
+
+#[test]
+fn test_two_child_removal_case_2() {
+    let keys = vec![2, 1, 4, 3];
+    let mut sgt = SGTree::new();
+    let to_remove = 3;
+
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+    }
+
+    println!("\nBefore two child removal case 2:\n");
+    pretty_print(&sgt);
+
+    sgt.remove(&to_remove);
+
+    println!("\nAfter two child removal case 2 (removed {}):\n", to_remove);
+    pretty_print(&sgt);
+
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4]);
+}
+
+#[test]
+fn test_two_child_removal_case_3() {
+    let keys = vec![2, 1, 5, 4, 3];
+    let mut sgt = SGTree::new();
+    let to_remove = 3;
+
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+    }
+
+    println!("\nBefore two child removal case 3:\n");
+    pretty_print(&sgt);
+
+    sgt.remove(&to_remove);
+
+    println!("\nAfter two child removal case 3 (removed {}):\n", to_remove);
+    pretty_print(&sgt);
+
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4, 5]);
+}
+
+#[test]
+fn test_two_child_removal_case_4() {
+    let keys = vec![2, 1, 4, 5];
+    let mut sgt = SGTree::new();
+    let to_remove = 5;
+
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+    }
+
+    println!("\nBefore two child removal case 4:\n");
+    pretty_print(&sgt);
+
+    sgt.remove(&to_remove);
+
+    println!("\nAfter two child removal case 4 (removed {}):\n", to_remove);
+    pretty_print(&sgt);
+
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4]);
+}
+
+#[test]
 fn test_rand_remove() {
 
     let (mut sgt, mut keys) = get_test_tree_and_keys();
     let mut rng = SmallRng::from_entropy();
 
-    let sgt_lisp = stg_to_lisp_str(&sgt);
     println!("\nAfter {} insertions, {} rebalance(s):\n", keys.len(), sgt.rebal_cnt());
-    println!("{}", ruut::prettify(sgt_lisp, ruut::InputFormat::LispLike, "unused".to_string(), "unused".to_string(), None).unwrap());
+    pretty_print(&sgt);
 
-        // Remove half of keys at random
+    // Remove half of keys at random
     let mut keys_to_remove = Vec::new();
     for _ in 0..=(keys.len() / 2) {
         keys_to_remove.push(keys.remove(rng.gen_range(0, keys.len())));
@@ -130,7 +219,6 @@ fn test_rand_remove() {
         assert_eq!(*k, removed_key);
     }
 
-    let sgt_lisp = stg_to_lisp_str(&sgt);
     println!("\nAfter {} insertions, {} rebalance(s):\n", keys_to_remove.len(), sgt.rebal_cnt());
-    println!("{}", ruut::prettify(sgt_lisp, ruut::InputFormat::LispLike, "unused".to_string(), "unused".to_string(), None).unwrap());
+    pretty_print(&sgt);
 }
