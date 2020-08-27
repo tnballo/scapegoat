@@ -8,6 +8,8 @@ use ruut;
 use rand::{Rng, SeedableRng};
 use rand::rngs::SmallRng;
 
+// TODO: convert Vec usage to BTreeSet as appropriate
+
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
 // Build a small tree for testing
@@ -96,6 +98,41 @@ fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
         dedup_child_idxs.dedup();
         assert!(dedup_child_idxs.len() == child_idxs.len(), "Internal invariant failed: node with multiple parents present!");
     }
+}
+
+// Inserts random keys, and randomly removes one of them
+fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
+
+    let mut sgt = SGTree::new();
+    let mut shadow_keys = BTreeSet::new();
+    let mut rng = SmallRng::from_entropy();
+    let mut removal_cnt = 0;
+
+    for _ in 0..iter_cnt {
+
+        // Rand value insert
+        let rand_key: usize = rng.gen();
+        sgt.insert(rand_key, "n/a");
+        shadow_keys.insert(rand_key);
+
+        // Randomly scheduled removal
+        // Even though it's the key we just inserted, the tree likely rebalanced so the key could be anywhere
+        if (rand_key % 10) == 0 {
+            assert!(shadow_keys.remove(&rand_key));
+            assert!(sgt.contains_key(&rand_key));
+            sgt.remove(&rand_key);
+            removal_cnt += 1;
+        }
+
+        // Verify internal state
+        if check_invars {
+            assert_logical_invariants(&sgt);
+        }
+    }
+
+    let rebal_cnt = sgt.rebal_cnt();
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<BTreeSet<usize>>(), shadow_keys);
+    println!("Fuzz summary: {} iterations, {} removals, {} rebalances.", iter_cnt, removal_cnt, rebal_cnt);
 }
 
 // Tests ---------------------------------------------------------------------------------------------------------------
@@ -237,4 +274,14 @@ fn test_rand_remove() {
 
     println!("\nAfter {} insertions, {} rebalance(s):\n", keys_to_remove.len(), sgt.rebal_cnt());
     pretty_print(&sgt);
+}
+
+#[test]
+fn test_logical_fuzz_fast() {
+    logical_fuzz(5000, false);
+}
+
+#[test]
+fn test_logical_fuzz_slow() {
+    logical_fuzz(2500, true);
 }
