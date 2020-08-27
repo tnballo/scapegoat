@@ -367,8 +367,8 @@ impl<K: Ord, V> SGTree<K, V> {
                             match min_node.left_idx {
                                 // Continue search for min node
                                 Some(lt_idx) => {
-                                    min_idx = lt_idx;
                                     min_parent_idx = min_idx;
+                                    min_idx = lt_idx;
                                 },
                                 // Min node found, unlink it
                                 None => {
@@ -534,15 +534,15 @@ impl<K: Ord, V> SGTree<K, V> {
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx {
-                let node = self.arena.hard_get(left_idx);
-                subtree_node_idx_pairs.push((node, left_idx));
-                subtree_worklist.push(node);
+                let left_child_node = self.arena.hard_get(left_idx);
+                subtree_node_idx_pairs.push((left_child_node, left_idx));
+                subtree_worklist.push(left_child_node);
             }
 
             if let Some(right_idx) = node.right_idx {
-                let node = self.arena.hard_get(right_idx);
-                subtree_node_idx_pairs.push((node, right_idx));
-                subtree_worklist.push(node);
+                let right_child_node = self.arena.hard_get(right_idx);
+                subtree_node_idx_pairs.push((right_child_node, right_idx));
+                subtree_worklist.push(right_child_node);
             }
         }
 

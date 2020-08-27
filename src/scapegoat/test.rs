@@ -19,6 +19,7 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
 
     for k in &keys {
         sgt.insert(*k, "n/a");
+        assert_logical_invariants(&sgt);
     }
 
     assert!(!sgt.is_empty());
@@ -62,6 +63,38 @@ fn sgt_to_lisp_str_helper<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>, idx: usize
             sgt_to_lisp_str_helper(sgt, left_idx),
             sgt_to_lisp_str_helper(sgt, right_idx)
         )
+    }
+}
+
+// Verify three logical invariants for the tree:
+// 1. A right child node's key is always greater than it's parent's key
+// 2. A left child node's key is always less than it's parent's key
+// 3. Every node has at most 1 parent
+fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
+    if let Some(root_idx) = sgt.root_idx {
+        let mut child_idxs = vec![root_idx]; // Count as "child" to make sure there's no other ref to this index
+        let mut subtree_worklist = vec![sgt.arena.hard_get(root_idx)];
+
+        while let Some(node) = subtree_worklist.pop() {
+            if let Some(left_idx) = node.left_idx {
+                let left_child_node = sgt.arena.hard_get(left_idx);
+                assert!(left_child_node.key < node.key, "Internal invariant failed: left child >= parent!");
+                child_idxs.push(left_idx);
+                subtree_worklist.push(left_child_node);
+            }
+
+            if let Some(right_idx) = node.right_idx {
+                let right_child_node = sgt.arena.hard_get(right_idx);
+                assert!(right_child_node.key > node.key, "Internal invariant failed: right child <= parent!");
+                child_idxs.push(right_idx);
+                subtree_worklist.push(right_child_node);
+            }
+        }
+
+        let mut dedup_child_idxs = child_idxs.clone();
+        dedup_child_idxs.sort();
+        dedup_child_idxs.dedup();
+        assert!(dedup_child_idxs.len() == child_idxs.len(), "Internal invariant failed: node with multiple parents present!");
     }
 }
 
@@ -116,9 +149,9 @@ fn test_iter() {
 
 #[test]
 fn test_two_child_removal_case_1() {
-    let keys = vec![1, 2, 3];
+    let keys = vec![2, 1, 3];
     let mut sgt = SGTree::new();
-    let to_remove = 3;
+    let to_remove = 2;
 
     for k in &keys {
         sgt.insert(*k, "n/a");
@@ -128,18 +161,19 @@ fn test_two_child_removal_case_1() {
     pretty_print(&sgt);
 
     sgt.remove(&to_remove);
+    assert_logical_invariants(&sgt);
 
     println!("\nAfter two child removal case 1 (removed {}):\n", to_remove);
     pretty_print(&sgt);
 
-    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2]);
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 3]);
 }
 
 #[test]
 fn test_two_child_removal_case_2() {
     let keys = vec![2, 1, 4, 3];
     let mut sgt = SGTree::new();
-    let to_remove = 3;
+    let to_remove = 2;
 
     for k in &keys {
         sgt.insert(*k, "n/a");
@@ -149,16 +183,17 @@ fn test_two_child_removal_case_2() {
     pretty_print(&sgt);
 
     sgt.remove(&to_remove);
+    assert_logical_invariants(&sgt);
 
     println!("\nAfter two child removal case 2 (removed {}):\n", to_remove);
     pretty_print(&sgt);
 
-    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4]);
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 3, 4]);
 }
 
 #[test]
 fn test_two_child_removal_case_3() {
-    let keys = vec![2, 1, 5, 4, 3];
+    let keys = vec![2, 1, 5, 4, 3, 6];
     let mut sgt = SGTree::new();
     let to_remove = 3;
 
@@ -170,32 +205,12 @@ fn test_two_child_removal_case_3() {
     pretty_print(&sgt);
 
     sgt.remove(&to_remove);
+    assert_logical_invariants(&sgt);
 
     println!("\nAfter two child removal case 3 (removed {}):\n", to_remove);
     pretty_print(&sgt);
 
-    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4, 5]);
-}
-
-#[test]
-fn test_two_child_removal_case_4() {
-    let keys = vec![2, 1, 4, 5];
-    let mut sgt = SGTree::new();
-    let to_remove = 5;
-
-    for k in &keys {
-        sgt.insert(*k, "n/a");
-    }
-
-    println!("\nBefore two child removal case 4:\n");
-    pretty_print(&sgt);
-
-    sgt.remove(&to_remove);
-
-    println!("\nAfter two child removal case 4 (removed {}):\n", to_remove);
-    pretty_print(&sgt);
-
-    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4]);
+    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(), vec![1, 2, 4, 5, 6]);
 }
 
 #[test]
@@ -217,6 +232,7 @@ fn test_rand_remove() {
         assert!(sgt.contains_key(k));
         let (removed_key, _) = sgt.remove_entry(k).unwrap();
         assert_eq!(*k, removed_key);
+        assert_logical_invariants(&sgt);
     }
 
     println!("\nAfter {} insertions, {} rebalance(s):\n", keys_to_remove.len(), sgt.rebal_cnt());
