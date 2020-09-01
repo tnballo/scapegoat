@@ -43,7 +43,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// TODO: docs
     pub fn insert(&mut self, key: K, val: V) {
 
-        let mut path = Vec::new(); // For backwards traversal without parent pointer on node (strict scapegoat)
+        let mut path = Vec::new();
         let new_node = Node::new(key, val);
 
         // Optional rebalance
@@ -267,7 +267,7 @@ impl<K: Ord, V> SGTree<K, V> {
                             }
                         },
                         Ordering::Equal => {
-                            curr_node.key = new_node.key; // Necessary because Ord != Eq
+                            curr_node.key = new_node.key; // Necessary b/c Eq may not consider all struct members
                             curr_node.val = new_node.val; // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
@@ -552,6 +552,8 @@ impl<K: Ord, V> SGTree<K, V> {
 
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
+
+    // TODO: slightly broken, see test_rebalance_edge_case
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst

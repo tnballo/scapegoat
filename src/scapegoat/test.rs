@@ -36,12 +36,16 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
 
 // Pretty print tree
 pub fn pretty_print<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) {
-    let sgt_lisp = stg_to_lisp_str(&sgt);
-    println!("{}", ruut::prettify(sgt_lisp, ruut::InputFormat::LispLike, "unused".to_string(), "unused".to_string(), None).unwrap());
+    let sgt_lisp = sgt_to_lisp_str(&sgt);
+    if sgt_lisp == "()" {
+        println!("(empty tree)");
+    } else {
+        println!("{}", ruut::prettify(sgt_lisp, ruut::InputFormat::LispLike, "unused".to_string(), "unused".to_string(), None).unwrap());
+    }
 }
 
 // Convert tree to a Lisp-like string.
-fn stg_to_lisp_str<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) -> String {
+fn sgt_to_lisp_str<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) -> String {
     match sgt.root_idx {
         Some(idx) => sgt_to_lisp_str_helper(sgt, idx),
         None => String::from("()")
@@ -100,7 +104,7 @@ fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
     }
 }
 
-// Inserts random keys, and randomly removes one of them
+// Inserts random keys, and randomly removes 20%
 fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
 
     let mut sgt = SGTree::new();
@@ -115,23 +119,49 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         sgt.insert(rand_key, "n/a");
         shadow_keys.insert(rand_key);
 
+        // TODO: temp
+        //println!("sgt.insert({}, \"n/a\");", rand_key);
+
+        // Verify internal state post-insert
+        if check_invars {
+            assert_logical_invariants(&sgt);
+        }
+
         // Randomly scheduled removal
         // Even though it's the key we just inserted, the tree likely rebalanced so the key could be anywhere
-        if (rand_key % 10) == 0 {
+        if (rand_key % 5) == 0 {
+
+            // TODO: temp
+            //println!("\nBefore removing {}:\n", rand_key);
+            //pretty_print(&sgt);
+
             assert!(shadow_keys.remove(&rand_key));
             assert!(sgt.contains_key(&rand_key));
             sgt.remove(&rand_key);
             removal_cnt += 1;
-        }
 
-        // Verify internal state
-        if check_invars {
-            assert_logical_invariants(&sgt);
+            // TODO: temp
+            //println!("\nAfter removing {}:\n", rand_key);
+            //pretty_print(&sgt);
+
+            // Verify internal state post-remove
+            if check_invars {
+                assert_logical_invariants(&sgt);
+            }
         }
     }
 
     let rebal_cnt = sgt.rebal_cnt();
-    assert_eq!(sgt.into_iter().map(|(k, _)| k).collect::<BTreeSet<usize>>(), shadow_keys);
+    let final_keys = sgt.into_iter().map(|(k, _)| k).collect::<BTreeSet<usize>>();
+
+    if final_keys != shadow_keys {
+        let diff_this: Vec<usize> = final_keys.difference(&shadow_keys).cloned().collect();
+        let diff_other: Vec<usize> = shadow_keys.difference(&final_keys).cloned().collect();
+        println!("Keys in SGTree and NOT in reference BTree: {:?}", diff_this);
+        println!("Keys in reference BTree and NOT in SGTree: {:?}", diff_other);
+        assert!(false, "Keys do not match shadow set!");
+    }
+
     println!("Fuzz summary: {} iterations, {} removals, {} rebalances.", iter_cnt, removal_cnt, rebal_cnt);
 }
 
@@ -274,6 +304,52 @@ fn test_rand_remove() {
 
     println!("\nAfter {} insertions, {} rebalance(s):\n", keys_to_remove.len(), sgt.rebal_cnt());
     pretty_print(&sgt);
+}
+
+#[test]
+fn test_rebalance_edge_case() {
+    let mut sgt: SGTree<usize, &str> = SGTree::new();
+
+    sgt.insert(237197427728999687, "n/a");
+    sgt.insert(2328219650045037451, "n/a");
+    sgt.insert(13658362701324851025, "n/a");
+
+    sgt.remove(&13658362701324851025);
+
+    sgt.insert(2239831466376212988, "n/a");
+    sgt.insert(15954331640746224573, "n/a");
+    sgt.insert(8202281457156668544, "n/a");
+    sgt.insert(5226917524540172628, "n/a");
+    sgt.insert(11823668523937575827, "n/a");
+    sgt.insert(13519144312507908668, "n/a");
+    sgt.insert(17799627035639903362, "n/a");
+    sgt.insert(17491737414383996868, "n/a");
+    sgt.insert(2247619647701733096, "n/a");
+    sgt.insert(15122725631405182851, "n/a");
+    sgt.insert(9837932133859010449, "n/a");
+    sgt.insert(15426779056379992972, "n/a");
+    sgt.insert(1963900452029117196, "n/a");
+    sgt.insert(1328762018325194497, "n/a");
+    sgt.insert(7471075696232724572, "n/a");
+    sgt.insert(9350363297060113585, "n/a");
+
+    sgt.remove(&9350363297060113585);
+
+    assert!(sgt.contains_key(&11823668523937575827));
+    assert!(sgt.contains_key(&13519144312507908668));
+    let critical_val = 11827258012878092103;
+
+    println!("\nBefore inserting {}:\n", critical_val);
+    pretty_print(&sgt);
+
+    sgt.insert(critical_val, "n/a");
+
+    println!("\nAfter inserting {}:\n", critical_val);
+    pretty_print(&sgt);
+
+    assert!(sgt.contains_key(&11823668523937575827));
+    assert!(sgt.contains_key(&critical_val));
+    assert!(sgt.contains_key(&13519144312507908668));
 }
 
 #[test]
