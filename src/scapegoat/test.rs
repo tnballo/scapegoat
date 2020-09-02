@@ -8,8 +8,6 @@ use ruut;
 use rand::{Rng, SeedableRng};
 use rand::rngs::SmallRng;
 
-// TODO: convert Vec usage to BTreeSet as appropriate
-
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
 // Build a small tree for testing
@@ -57,15 +55,16 @@ fn sgt_to_lisp_str_helper<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>, idx: usize
     let node = sgt.arena.hard_get(idx);
     match (node.left_idx, node.right_idx) {
         // No children
-        (None, None) => format!("{:?}", node.key),
+        (None, None) => format!("{:?} [{}]", node.key, idx),
         // Left child only
-        (Some(left_idx), None) => format!("{:?} ({})", node.key, sgt_to_lisp_str_helper(sgt, left_idx)),
+        (Some(left_idx), None) => format!("{:?} [{}] ({})", node.key, idx, sgt_to_lisp_str_helper(sgt, left_idx)),
         // Right child only
-        (None, Some(right_idx)) => format!("{:?} ({})", node.key, sgt_to_lisp_str_helper(sgt, right_idx)),
+        (None, Some(right_idx)) => format!("{:?} [{}] ({})", node.key, idx, sgt_to_lisp_str_helper(sgt, right_idx)),
         // Two children
         (Some(left_idx), Some(right_idx)) => format!(
-            "{:?} ({}, {})",
+            "{:?} [{}] ({}, {})",
             node.key,
+            idx,
             sgt_to_lisp_str_helper(sgt, left_idx),
             sgt_to_lisp_str_helper(sgt, right_idx)
         )
@@ -119,9 +118,6 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         sgt.insert(rand_key, "n/a");
         shadow_keys.insert(rand_key);
 
-        // TODO: temp
-        //println!("sgt.insert({}, \"n/a\");", rand_key);
-
         // Verify internal state post-insert
         if check_invars {
             assert_logical_invariants(&sgt);
@@ -131,18 +127,10 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         // Even though it's the key we just inserted, the tree likely rebalanced so the key could be anywhere
         if (rand_key % 5) == 0 {
 
-            // TODO: temp
-            //println!("\nBefore removing {}:\n", rand_key);
-            //pretty_print(&sgt);
-
             assert!(shadow_keys.remove(&rand_key));
             assert!(sgt.contains_key(&rand_key));
             sgt.remove(&rand_key);
             removal_cnt += 1;
-
-            // TODO: temp
-            //println!("\nAfter removing {}:\n", rand_key);
-            //pretty_print(&sgt);
 
             // Verify internal state post-remove
             if check_invars {
@@ -307,7 +295,7 @@ fn test_rand_remove() {
 }
 
 #[test]
-fn test_rebalance_edge_case() {
+fn test_subtree_rebalance() {
     let mut sgt: SGTree<usize, &str> = SGTree::new();
 
     sgt.insert(237197427728999687, "n/a");
@@ -359,5 +347,5 @@ fn test_logical_fuzz_fast() {
 
 #[test]
 fn test_logical_fuzz_slow() {
-    logical_fuzz(2500, true);
+    logical_fuzz(5000, true);
 }

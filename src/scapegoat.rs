@@ -523,7 +523,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Iterative in-place rebuild for balanced subtree
     fn rebuild(&mut self, idx: usize) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
-        self.rebalance_subtree_from_sorted_idxs(&sorted_sub);
+        self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
         self.rebal_cnt += 1;
     }
 
@@ -553,27 +553,40 @@ impl<K: Ord, V> SGTree<K, V> {
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
 
-    // TODO: slightly broken, see test_rebalance_edge_case
-
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
-    fn rebalance_subtree_from_sorted_idxs(&mut self, sorted_arena_idxs: &Vec<usize>) {
+    fn rebalance_subtree_from_sorted_idxs(&mut self, old_subtree_root_idx: usize, sorted_arena_idxs: &Vec<usize>) {
 
         if sorted_arena_idxs.len() <= 1 {
             return;
         }
 
+        debug_assert!(self.root_idx.is_some(), "Internal invariant failed: rebalance of multi-node tree without root!");
+
         let sorted_last_idx =  sorted_arena_idxs.len() - 1;
-        let sorted_subtree_root_idx = sorted_last_idx / 2;
+        let subtree_root_sorted_idx = sorted_last_idx / 2;
+        let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
         let mut subtree_worklist = Vec::new();
 
         // Init worklist with middle node (balanced subtree root)
-        subtree_worklist.push((sorted_subtree_root_idx, NodeRebuildHelper::new(0, sorted_last_idx)));
+        subtree_worklist.push((subtree_root_sorted_idx, NodeRebuildHelper::new(0, sorted_last_idx)));
 
-        // Update root tree root
+        // Update tree root or subtree parent
         if let Some(root_idx) = self.root_idx {
             if sorted_arena_idxs.contains(&root_idx) {
-                self.root_idx = Some(sorted_arena_idxs[sorted_subtree_root_idx]);
+                self.root_idx = Some(subtree_root_arena_idx);
+            } else {
+                let old_subtree_root = self.arena.hard_get(old_subtree_root_idx);
+                let ngh = self.priv_get(&old_subtree_root.key);
+                debug_assert!(ngh.parent_idx.is_some(), "Internal invariant failed: rebalance of non-root parent-less node!");
+                if let Some(parent_idx) = ngh.parent_idx {
+                    let parent_node = self.arena.hard_get_mut(parent_idx);
+                    if ngh.is_right_child {
+                        parent_node.right_idx = Some(subtree_root_arena_idx);
+                    } else {
+                        parent_node.left_idx = Some(subtree_root_arena_idx);
+                    }
+                }
             }
         }
 
@@ -598,6 +611,11 @@ impl<K: Ord, V> SGTree<K, V> {
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
         }
+
+        debug_assert!(
+            self.get_subtree_size(subtree_root_arena_idx) == sorted_arena_idxs.len(),
+            "Internal invariant failed: rebalance dropped node count!"
+        );
     }
 }
 
