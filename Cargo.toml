@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -8,7 +8,9 @@ readme = "README.md"
 homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
-description = "A safe scapegoat tree implementation. Work in progress, do not use yet!"
+keywords = ["scapegoat", "bst", "set", "map", "tree"]
+categories = ["algorithms", "data-structures"]
+description = "Ordered set and map data structures via an arena-based scapegoat tree (memory-efficient, self-balancing binary search tree)."
 include = [
     "**/*.rs",
     "**/*.md",

@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
+use std::mem;
 
 use crate::arena::NodeArena;
 use crate::node::{Node, NodeGetHelper, NodeRebuildHelper};
 
 pub mod iter;
-use iter::{InOrderIterator, RefInOrderIterator};
+pub use iter::{InOrderIterator, RefInOrderIterator};
 
 #[cfg(test)]
 mod test;
@@ -13,6 +14,8 @@ mod test;
 // TODO: for pattern matching, check if "return" keyword is necessary (yes for the loops we need to break, possible no otherwise)
 // TODO: verify current size and max size tracking against the paper
 
+/// A memory-efficient, self-balancing binary search tree.
+/// It's API mostly mirrors that of the standard library's `BTreeMap`, but is currently a subset.
 pub struct SGTree<K: Ord, V> {
     arena: NodeArena<K, V>,
     root_idx: Option<usize>,
@@ -39,21 +42,26 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// TODO: docs
-    pub fn insert(&mut self, key: K, val: V) {
+    /// Insert a key-value pair into the tree.
+    /// If the tree did not have this key present, `None` is returned.
+    /// If the tree did have this key present, the value is updated, the old value is returned,
+    /// and the key is updated. This accommodates types that can be `==` without being identical.
+    pub fn insert(&mut self, key: K, val: V) -> Option<V> {
         let mut path = Vec::new();
         let new_node = Node::new(key, val);
 
         // Optional rebalance
-        self.priv_insert(&mut path, new_node);
+        let opt_val = self.priv_insert(&mut path, new_node);
         if path.len() > log_3_2(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
         }
+
+        opt_val
     }
 
-    /// TODO: docs
+    /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         match self.priv_remove_by_key(key) {
             Some(node) => {
@@ -69,7 +77,7 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// TODO: docs
+    /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
     pub fn remove(&mut self, key: &K) -> Option<V> {
         match self.remove_entry(key) {
             Some((_, v)) => Some(v),
@@ -77,7 +85,7 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// Get both key and value references corresponding to key.
+    /// Returns the key-value pair corresponding to the given key.
     pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
         let ngh = self.priv_get(key);
         match ngh.node_idx {
@@ -89,7 +97,7 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// Get value reference corresponding to key.
+    /// Returns a reference to the value corresponding to the given key.
     pub fn get(&self, key: &K) -> Option<&V> {
         match self.get_key_value(key) {
             Some((_, v)) => Some(v),
@@ -109,69 +117,78 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// TODO: docs
+    /// Clears the tree, removing all elements.
     pub fn clear(&mut self) {
         let rebal_cnt = self.rebal_cnt;
         *self = SGTree::new();
         self.rebal_cnt = rebal_cnt;
     }
 
-    /// TODO: docs
+    /// Returns `true` if the tree contains a value for the given key.
     pub fn contains_key(&self, key: &K) -> bool {
         self.get(key).is_some()
     }
 
-    /// TODO: docs
+    /// Returns `true` if the tree contains no elements.
     pub fn is_empty(&self) -> bool {
         self.root_idx.is_none()
     }
 
-    /// TODO: docs
-    pub fn min_key_value(&self) -> Option<(&K, &V)> {
+    /// Returns a reference to the first key-value pair in the tree.
+    /// The key in this pair is the minimum key in the tree.
+    pub fn first_key_value(&self) -> Option<(&K, &V)> {
         match self.arena.get(self.min_idx) {
             Some(node) => Some((&node.key, &node.val)),
             None => None,
         }
     }
 
-    /// TODO: docs
-    pub fn min_key(&self) -> Option<&K> {
-        match self.min_key_value() {
+    /// Returns a reference to the first/minium key in the tree, if any.
+    pub fn first_key(&self) -> Option<&K> {
+        match self.first_key_value() {
             Some((k, _)) => Some(k),
             None => None,
         }
     }
 
-    /// TODO: docs
-    pub fn remove_min(&mut self) -> Option<(K, V)> {
+    /// Removes and returns the first element in the tree.
+    /// The key of this element is the minimum key that was in the tree.
+    pub fn pop_first(&mut self) -> Option<(K, V)> {
         match self.priv_remove_by_idx(self.min_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
         }
     }
 
-    /// TODO: docs
-    pub fn max_key_value(&self) -> Option<(&K, &V)> {
+    /// Returns a reference to the last key-value pair in the tree.
+    /// The key in this pair is the maximum key in the tree.
+    pub fn last_key_value(&self) -> Option<(&K, &V)> {
         match self.arena.get(self.max_idx) {
             Some(node) => Some((&node.key, &node.val)),
             None => None,
         }
     }
 
-    /// TODO: docs
-    pub fn max_key(&self) -> Option<&K> {
-        match self.max_key_value() {
+    /// Returns a reference to the last/maximum key in the tree, if any.
+    pub fn last_key(&self) -> Option<&K> {
+        match self.last_key_value() {
             Some((k, _)) => Some(k),
             None => None,
         }
     }
 
-    /// TODO: docs
-    pub fn remove_max(&mut self) -> Option<(K, V)> {
+    /// Removes and returns the last element in the tree.
+    /// The key of this element is the maximum key that was in the tree.
+    pub fn pop_last(&mut self) -> Option<(K, V)> {
         match self.priv_remove_by_idx(self.max_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
         }
+    }
+
+    /// Returns the number of elements in the tree.
+    pub fn len(&self) -> usize {
+        self.curr_size
     }
 
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering)
@@ -221,8 +238,10 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    // TODO: desc
-    fn priv_insert(&mut self, path: &mut Vec<usize>, new_node: Node<K, V>) {
+    // Sorted insert of node into the tree.
+    // Maintains a traversal path to avoid nodes needing to maintain a parent index.
+    // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
+    fn priv_insert(&mut self, path: &mut Vec<usize>, new_node: Node<K, V>) -> Option<V> {
         self.curr_size += 1;
         self.max_size += 1;
 
@@ -231,6 +250,7 @@ impl<K: Ord, V> SGTree<K, V> {
             Some(idx) => {
                 // Iterative traversal
                 let mut curr_idx = idx;
+                let mut opt_val = None;
                 let ngh;
                 loop {
                     let mut curr_node = self.arena.hard_get_mut(curr_idx);
@@ -267,7 +287,7 @@ impl<K: Ord, V> SGTree<K, V> {
                         }
                         Ordering::Equal => {
                             curr_node.key = new_node.key; // Necessary b/c Eq may not consider all struct members
-                            curr_node.val = new_node.val; // Overwrite value
+                            opt_val = Some(mem::replace(&mut curr_node.val, new_node.val)); // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
                         }
@@ -311,6 +331,9 @@ impl<K: Ord, V> SGTree<K, V> {
                         parent_node.left_idx = ngh.node_idx;
                     }
                 }
+
+                // Return old value if overwritten
+                opt_val
             }
 
             // Empty tree
@@ -319,17 +342,19 @@ impl<K: Ord, V> SGTree<K, V> {
                 self.root_idx = Some(root_idx);
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;
+                None
             }
         }
     }
 
-    // TODO: desc
+    // Remove a node by key.
     fn priv_remove_by_key(&mut self, key: &K) -> Option<Node<K, V>> {
         let ngh = self.priv_get(key);
         self.priv_remove(ngh)
     }
 
-    // TODO: desc
+    // Remove a node by index.
+    // A wrapper for by-key removal, traversal is still required to determine node parent.
     fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> {
         match self.arena.get(idx) {
             Some(node) => {
@@ -344,7 +369,7 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    // TODO: desc
+    // Remove a node from the tree, re-linking remaining nodes as necessary.
     fn priv_remove(&mut self, ngh: NodeGetHelper) -> Option<Node<K, V>> {
         match ngh.node_idx {
             Some(node_idx) => {
@@ -501,7 +526,7 @@ impl<K: Ord, V> SGTree<K, V> {
             parent_subtree_size = self.get_subtree_size(path[parent_path_idx])
         }
 
-        return Some(path[parent_path_idx]);
+        Some(path[parent_path_idx])
     }
 
     // Iterative subtree size computation
@@ -637,9 +662,9 @@ impl<K: Ord, V> SGTree<K, V> {
 // TODO: move inside to make static private function!
 // TODO: description here
 fn log_3_2(val: usize) -> usize {
-    let REBAL_DENUM: f64 = 3.0_f64.log(2.0); // TODO: how to eval at compile time? const doesn't work
+    let rebal_denum: f64 = 3.0_f64.log(2.0); // TODO: how to eval at compile time? const doesn't work
     let rebal_num = (val as f64).log10();
-    (rebal_num / REBAL_DENUM).floor() as usize
+    (rebal_num / rebal_denum).floor() as usize
 }
 
 // Iterators -----------------------------------------------------------------------------------------------------------

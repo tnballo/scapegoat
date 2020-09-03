@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;
 
-use super::{Node, SGTree};
+use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -343,6 +343,62 @@ fn test_rand_remove() {
         sgt.rebal_cnt()
     );
     pretty_print(&sgt);
+}
+
+#[test]
+fn test_clear() {
+    let (mut sgt, _) = get_test_tree_and_keys();
+    let empty_vec: Vec<usize> = Vec::new();
+    assert!(!sgt.is_empty());
+    sgt.clear();
+    assert!(sgt.is_empty());
+    assert_eq!(
+        sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
+        empty_vec
+    );
+}
+
+#[test]
+fn test_len() {
+    let (mut sgt, mut keys) = get_test_tree_and_keys();
+    let old_sgt_len = sgt.len();
+    let old_keys_len = keys.len();
+    assert_eq!(old_sgt_len, old_keys_len);
+
+    let (min_key, _) = sgt.pop_first().unwrap();
+    let (max_key, _) = sgt.pop_first().unwrap();
+    assert!(min_key < max_key);
+    assert_eq!(sgt.len(), old_sgt_len - 2);
+
+    keys.pop();
+    keys.pop();
+    assert_eq!(keys.len(), old_keys_len - 2);
+
+    assert_eq!(sgt.len(), keys.len());
+}
+
+#[test]
+fn test_first_last() {
+    let keys = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let mut sgt = SGTree::new();
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+        assert_logical_invariants(&sgt);
+        sgt.contains_key(k);
+    }
+
+    let (min_key, _) = sgt.pop_first().unwrap();
+    let (max_key, _) = sgt.pop_last().unwrap();
+    assert!(min_key < max_key);
+    assert_eq!(min_key, 1);
+    assert_eq!(max_key, 10);
+
+    assert_eq!(sgt.first_key_value().unwrap(), (&2, &"n/a"));
+    assert_eq!(sgt.last_key_value().unwrap(), (&9, &"n/a"));
+
+    sgt.clear();
+    assert!(sgt.first_key().is_none());
+    assert!(sgt.last_key().is_none());
 }
 
 #[test]

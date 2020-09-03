@@ -3,6 +3,7 @@ use crate::node::Node;
 /// A simple arena allocator.
 pub struct NodeArena<K: Ord, V> {
     arena: Vec<Option<Node<K, V>>>,
+    free_list: Vec<usize>,
 }
 
 impl<K: Ord, V> NodeArena<K, V> {
@@ -10,12 +11,15 @@ impl<K: Ord, V> NodeArena<K, V> {
 
     /// Constructor.
     pub fn new() -> Self {
-        NodeArena { arena: Vec::new() }
+        NodeArena {
+            arena: Vec::new(),
+            free_list: Vec::new(),
+        }
     }
 
     /// Add node to area, growing if necessary, and return addition index.
     pub fn add(&mut self, node: Node<K, V>) -> usize {
-        match self.arena.iter().position(|i| i.is_none()) {
+        match self.free_list.pop() {
             Some(free_idx) => {
                 debug_assert!(
                     self.arena[free_idx].is_none(),
@@ -42,6 +46,9 @@ impl<K: Ord, V> NodeArena<K, V> {
             self.arena.push(None);
             let len = self.arena.len();
             self.arena.swap(idx, len - 1);
+
+            // Append removed index to free list
+            self.free_list.push(idx);
 
             // Retrieve node
             return match self.arena.pop() {
