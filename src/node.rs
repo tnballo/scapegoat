@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-/// Binary tree node
+/// Binary tree node.
 pub struct Node<K: Ord, V> {
     pub key: K,
     pub val: V,
@@ -9,8 +9,7 @@ pub struct Node<K: Ord, V> {
 }
 
 impl<K: Ord, V> Node<K, V> {
-
-    /// Constructor
+    /// Constructor.
     pub fn new(key: K, val: V) -> Self {
         Node {
             key,
@@ -40,21 +39,20 @@ impl<K: Ord, V> PartialEq for Node<K, V> {
     }
 }
 
-
-/// Helper for node retrieval, eliminates the need a store parent pointer in each node
+/// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
 pub struct NodeGetHelper {
     pub node_idx: Option<usize>,
     pub parent_idx: Option<usize>,
     pub is_right_child: bool,
 }
 
-impl NodeGetHelper{
-    /// Constructor
+impl NodeGetHelper {
+    /// Constructor.
     pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
             node_idx,
             parent_idx,
-            is_right_child
+            is_right_child,
         }
     }
 }
@@ -67,14 +65,34 @@ pub struct NodeRebuildHelper {
 }
 
 impl NodeRebuildHelper {
-
-    /// Constructor
+    /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
-        debug_assert!(high_idx >= low_idx, "Node rebuild helper low/high index reversed!");
+        debug_assert!(
+            high_idx >= low_idx,
+            "Node rebuild helper low/high index reversed!"
+        );
         NodeRebuildHelper {
             low_idx,
             high_idx,
             mid_idx: low_idx + ((high_idx - low_idx) / 2),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Node;
+
+    #[test]
+    fn test_node_ord() {
+        let n_1 = Node::new(0, 5);
+        let mut n_2 = Node::new(0, 5);
+        let n_3 = Node::new(1, 5);
+
+        n_2.left_idx = Some(7);
+
+        assert!(n_1 == n_2);
+        assert!(n_3 > n_2);
+        assert!(n_1 < n_3);
     }
 }

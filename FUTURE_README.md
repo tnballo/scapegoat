@@ -14,7 +14,7 @@ Strives for two properties:
 
 * **Maximal safety:** strong [memory safety](https://tiemoko.com/blog/blue-team-rust/) guarantees.
     * **Compile-time safety:** no `unsafe` (no raw pointer dereference, etc.).
-    * **Debug-time safety:** `debug_assert!` for bounds invariants (logical checks for tests).
+    * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
     * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 
 * **Minimal footprint:** small binary (no dependencies outside of the standard library) with low resource use.

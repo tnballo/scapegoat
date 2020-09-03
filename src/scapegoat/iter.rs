@@ -13,7 +13,6 @@ pub struct RefInOrderIterator<'a, K: Ord, V> {
 }
 
 impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
-
     pub fn new(tree: &'a SGTree<K, V>) -> Self {
         let mut ordered_iter = RefInOrderIterator {
             tree,
@@ -28,7 +27,7 @@ impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
                     Some(lt_idx) => {
                         ordered_iter.idx_stack.push(curr_idx);
                         curr_idx = lt_idx;
-                    },
+                    }
                     None => {
                         ordered_iter.idx_stack.push(curr_idx);
                         break;
@@ -56,7 +55,7 @@ impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
                             Some(lt_idx) => {
                                 self.idx_stack.push(curr_idx);
                                 curr_idx = lt_idx;
-                            },
+                            }
                             None => {
                                 self.idx_stack.push(curr_idx);
                                 break;
@@ -66,9 +65,9 @@ impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
                 }
 
                 let node = self.tree.arena.hard_get(pop_idx);
-                return Some((&node.key, &node.val))
-            },
-            None => None
+                return Some((&node.key, &node.val));
+            }
+            None => None,
         }
     }
 }
@@ -84,11 +83,10 @@ pub struct InOrderIterator<K: Ord, V> {
 }
 
 impl<K: Ord, V> InOrderIterator<K, V> {
-
     pub fn new(tree: SGTree<K, V>) -> Self {
         let mut ordered_iter = InOrderIterator {
             tree,
-            sorted_idxs: Vec::new()
+            sorted_idxs: Vec::new(),
         };
 
         if let Some(root_idx) = ordered_iter.tree.root_idx {
@@ -105,16 +103,14 @@ impl<K: Ord, V> Iterator for InOrderIterator<K, V> {
 
     fn next(&mut self) -> Option<(K, V)> {
         match self.sorted_idxs.pop() {
-            Some(idx) => {
-                match self.tree.priv_remove_by_idx(idx) {
-                    Some (node) => Some((node.key, node.val)),
-                    None => {
-                        debug_assert!(false, "Use of invalid index in consuming iterator!");
-                        None
-                    }
+            Some(idx) => match self.tree.priv_remove_by_idx(idx) {
+                Some(node) => Some((node.key, node.val)),
+                None => {
+                    debug_assert!(false, "Use of invalid index in consuming iterator!");
+                    None
                 }
             },
-            None => None
+            None => None,
         }
     }
 }

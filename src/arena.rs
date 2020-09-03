@@ -1,31 +1,29 @@
 use crate::node::Node;
 
-// MAJOR TODO: capacity shrink
-
-/// TODO: description
+/// A simple arena allocator.
 pub struct NodeArena<K: Ord, V> {
     arena: Vec<Option<Node<K, V>>>,
 }
 
 impl<K: Ord, V> NodeArena<K, V> {
-
     // Public API ------------------------------------------------------------------------------------------------------
 
-    /// Constructor
+    /// Constructor.
     pub fn new() -> Self {
-        NodeArena {
-            arena: Vec::new()
-        }
+        NodeArena { arena: Vec::new() }
     }
 
     /// Add node to area, growing if necessary, and return addition index.
     pub fn add(&mut self, node: Node<K, V>) -> usize {
         match self.arena.iter().position(|i| i.is_none()) {
             Some(free_idx) => {
-                debug_assert!(self.arena[free_idx].is_none(), "Internal invariant failed: overwrite of allocated node!");
+                debug_assert!(
+                    self.arena[free_idx].is_none(),
+                    "Internal invariant failed: overwrite of allocated node!"
+                );
                 self.arena[free_idx] = Some(node);
                 free_idx
-            },
+            }
             None => {
                 self.arena.push(Some(node));
                 self.arena.len() - 1
@@ -33,11 +31,13 @@ impl<K: Ord, V> NodeArena<K, V> {
         }
     }
 
-    /// Remove node at given index from area.
-    pub fn remove(&mut self, idx: usize) -> Option<Node<K,V>> {
-        debug_assert!(idx < self.arena.len(), "API misuse: requested removal past last index!");
+    /// Remove node at a given index from area, return it.
+    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V>> {
+        debug_assert!(
+            idx < self.arena.len(),
+            "API misuse: requested removal past last index!"
+        );
         if idx < self.arena.len() {
-
             // Move node to back, replacing with None, preserving order
             self.arena.push(None);
             let len = self.arena.len();
@@ -48,12 +48,15 @@ impl<K: Ord, V> NodeArena<K, V> {
                 Some(opt_node) => match opt_node {
                     Some(node) => Some(node),
                     None => {
-                        debug_assert!(false, "Internal invariant failed: removal popped an empty node!");
+                        debug_assert!(
+                            false,
+                            "Internal invariant failed: removal popped an empty node!"
+                        );
                         None
                     }
-                }
+                },
                 None => None,
-            }
+            };
         }
 
         None
@@ -61,35 +64,33 @@ impl<K: Ord, V> NodeArena<K, V> {
 
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: usize) -> Node<K,V> {
+    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V> {
         match self.remove(idx) {
             Some(node) => node,
-            None => panic!("Internal invariant failed: attempted removal of node from invalid index."),
+            None => {
+                panic!("Internal invariant failed: attempted removal of node from invalid index.")
+            }
         }
     }
 
-    /// Get a reference to a node
+    /// Get a reference to a node.
     pub fn get(&self, idx: usize) -> Option<&Node<K, V>> {
         match self.arena.get(idx) {
-            Some(opt_node) => {
-                match opt_node {
-                    Some(node) => Some(node),
-                    None => None,
-                }
-            }
+            Some(opt_node) => match opt_node {
+                Some(node) => Some(node),
+                None => None,
+            },
             None => None,
         }
     }
 
-    /// Get mutable reference to a node
+    /// Get mutable reference to a node.
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Node<K, V>> {
         match self.arena.get_mut(idx) {
-            Some(opt_node) => {
-                match opt_node {
-                    Some(node) => Some(node),
-                    None => None,
-                }
-            }
+            Some(opt_node) => match opt_node {
+                Some(node) => Some(node),
+                None => None,
+            },
             None => None,
         }
     }
@@ -99,7 +100,9 @@ impl<K: Ord, V> NodeArena<K, V> {
     pub fn hard_get(&self, idx: usize) -> &Node<K, V> {
         match self.get(idx) {
             Some(node) => node,
-            None => panic!("Internal invariant failed: attempted retrieval of node from invalid index."),
+            None => {
+                panic!("Internal invariant failed: attempted retrieval of node from invalid index.")
+            }
         }
     }
 
@@ -110,5 +113,67 @@ impl<K: Ord, V> NodeArena<K, V> {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::{Node, NodeArena};
+
+    #[test]
+    fn test_add_and_remove() {
+        let n_1 = Node::new(1, "n/a");
+        let n_2 = Node::new(2, "n/a");
+        let n_3 = Node::new(3, "n/a");
+
+        let mut arena = NodeArena::new();
+
+        let n_1_idx = arena.add(n_1);
+        let n_2_idx = arena.add(n_2);
+        let n_3_idx = arena.add(n_3);
+
+        assert_eq!(n_1_idx, 0);
+        assert_eq!(n_2_idx, 1);
+        assert_eq!(n_3_idx, 2);
+
+        let n_2_removed = arena.remove(n_2_idx).unwrap();
+        assert_eq!(n_2_removed.key, 2);
+        assert!(arena.arena[1].is_none());
+
+        let n_4 = Node::new(4, "n/a");
+        let n_4_idx = arena.add(n_4);
+        assert_eq!(n_4_idx, 1);
+
+        let n_5 = Node::new(5, "n/a");
+        let n_5_idx = arena.add(n_5);
+        assert_eq!(n_5_idx, 3);
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let n_1 = Node::new(1, "n/a");
+        let mut arena = NodeArena::new();
+        let n_1_idx = arena.add(n_1);
+        assert_eq!(arena.get(n_1_idx).unwrap().val, "n/a");
+        let n_1_mut_ref = arena.get_mut(n_1_idx).unwrap();
+        n_1_mut_ref.val = "This is a value. There are many like it but this one is mine.";
+        assert_ne!(arena.get(n_1_idx).unwrap().val, "n/a");
+    }
+
+    #[test]
+    fn test_hard_get_1() {
+        let n_1 = Node::new(1, "n/a");
+        let mut arena = NodeArena::new();
+        let n_1_idx = arena.add(n_1);
+        let n_1_ref = arena.hard_get(n_1_idx);
+        assert_eq!(n_1_ref.key, 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_hard_get_2() {
+        let n_1 = Node::new(1, "n/a");
+        let mut arena = NodeArena::new();
+        arena.add(n_1);
+        arena.hard_get(1);
     }
 }

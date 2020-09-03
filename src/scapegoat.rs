@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
-use crate::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use crate::arena::NodeArena;
+use crate::node::{Node, NodeGetHelper, NodeRebuildHelper};
 
 pub mod iter;
 use iter::{InOrderIterator, RefInOrderIterator};
@@ -24,10 +24,9 @@ pub struct SGTree<K: Ord, V> {
 }
 
 impl<K: Ord, V> SGTree<K, V> {
-
     // Public API ------------------------------------------------------------------------------------------------------
 
-    /// TODO: docs
+    /// Constructor.
     pub fn new() -> Self {
         SGTree {
             arena: NodeArena::new(),
@@ -42,7 +41,6 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// TODO: docs
     pub fn insert(&mut self, key: K, val: V) {
-
         let mut path = Vec::new();
         let new_node = Node::new(key, val);
 
@@ -66,7 +64,7 @@ impl<K: Ord, V> SGTree<K, V> {
                     }
                 }
                 Some((node.key, node.val))
-            },
+            }
             None => None,
         }
     }
@@ -86,8 +84,8 @@ impl<K: Ord, V> SGTree<K, V> {
             Some(idx) => {
                 let node = self.arena.hard_get(idx);
                 Some((&node.key, &node.val))
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -106,8 +104,8 @@ impl<K: Ord, V> SGTree<K, V> {
             Some(idx) => {
                 let node = self.arena.hard_get_mut(idx);
                 Some(&mut node.val)
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -193,33 +191,33 @@ impl<K: Ord, V> SGTree<K, V> {
                 loop {
                     let node = self.arena.hard_get(curr_idx);
                     match key.cmp(&node.key) {
-                        Ordering::Less => {
-                            match node.left_idx {
-                                Some(lt_idx) => {
-                                    opt_parent_idx = Some(curr_idx);
-                                    curr_idx = lt_idx;
-                                    is_right_child = false;
-                                },
-                                None => return NodeGetHelper::new(None, None, false)
+                        Ordering::Less => match node.left_idx {
+                            Some(lt_idx) => {
+                                opt_parent_idx = Some(curr_idx);
+                                curr_idx = lt_idx;
+                                is_right_child = false;
                             }
+                            None => return NodeGetHelper::new(None, None, false),
                         },
                         Ordering::Equal => {
-                            return NodeGetHelper::new(Some(curr_idx), opt_parent_idx, is_right_child);
-                        },
-                        Ordering::Greater => {
-                            match node.right_idx {
-                                Some(gt_idx) => {
-                                    opt_parent_idx = Some(curr_idx);
-                                    curr_idx = gt_idx;
-                                    is_right_child = true;
-                                },
-                                None => return NodeGetHelper::new(None, None, false)
+                            return NodeGetHelper::new(
+                                Some(curr_idx),
+                                opt_parent_idx,
+                                is_right_child,
+                            );
+                        }
+                        Ordering::Greater => match node.right_idx {
+                            Some(gt_idx) => {
+                                opt_parent_idx = Some(curr_idx);
+                                curr_idx = gt_idx;
+                                is_right_child = true;
                             }
+                            None => return NodeGetHelper::new(None, None, false),
                         },
                     }
                 }
-            },
-            None => NodeGetHelper::new(None, None, false)
+            }
+            None => NodeGetHelper::new(None, None, false),
         }
     }
 
@@ -229,15 +227,12 @@ impl<K: Ord, V> SGTree<K, V> {
         self.max_size += 1;
 
         match self.root_idx {
-
             // Sorted insert
             Some(idx) => {
-
                 // Iterative traversal
                 let mut curr_idx = idx;
                 let ngh;
                 loop {
-
                     let mut curr_node = self.arena.hard_get_mut(curr_idx);
                     path.push(curr_idx);
 
@@ -261,17 +256,21 @@ impl<K: Ord, V> SGTree<K, V> {
                                         self.min_idx = new_node_idx;
                                     }
 
-                                    ngh = NodeGetHelper::new(Some(new_node_idx), Some(curr_idx), false);
+                                    ngh = NodeGetHelper::new(
+                                        Some(new_node_idx),
+                                        Some(curr_idx),
+                                        false,
+                                    );
                                     break;
                                 }
                             }
-                        },
+                        }
                         Ordering::Equal => {
                             curr_node.key = new_node.key; // Necessary b/c Eq may not consider all struct members
                             curr_node.val = new_node.val; // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
-                        },
+                        }
                         Ordering::Greater => {
                             match curr_node.right_idx {
                                 Some(right_idx) => curr_idx = right_idx,
@@ -291,7 +290,11 @@ impl<K: Ord, V> SGTree<K, V> {
                                         self.max_idx = new_node_idx;
                                     }
 
-                                    ngh = NodeGetHelper::new(Some(new_node_idx), Some(curr_idx), true);
+                                    ngh = NodeGetHelper::new(
+                                        Some(new_node_idx),
+                                        Some(curr_idx),
+                                        true,
+                                    );
                                     break;
                                 }
                             }
@@ -308,7 +311,7 @@ impl<K: Ord, V> SGTree<K, V> {
                         parent_node.left_idx = ngh.node_idx;
                     }
                 }
-            },
+            }
 
             // Empty tree
             None => {
@@ -331,10 +334,13 @@ impl<K: Ord, V> SGTree<K, V> {
         match self.arena.get(idx) {
             Some(node) => {
                 let ngh = self.priv_get(&node.key);
-                debug_assert!(ngh.node_idx.unwrap() == idx, "By-key retrieval index doesn't match arena storage index!");
+                debug_assert!(
+                    ngh.node_idx.unwrap() == idx,
+                    "By-key retrieval index doesn't match arena storage index!"
+                );
                 self.priv_remove(ngh)
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -369,29 +375,29 @@ impl<K: Ord, V> SGTree<K, V> {
                                 Some(lt_idx) => {
                                     min_parent_idx = min_idx;
                                     min_idx = lt_idx;
-                                },
+                                }
                                 // Min node found, unlink it
-                                None => {
-                                    match min_node.right_idx {
-                                        Some(_) => {
-                                            let unlink_new_child = min_node.right_idx;
-                                            if min_parent_idx == node_idx {
-                                                node_to_remove_right_idx = unlink_new_child;
-                                            } else {
-                                                let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
-                                                min_parent_node.left_idx = unlink_new_child;
-                                            }
-                                            break;
-                                        },
-                                        None => {
-                                            if min_parent_idx == node_idx {
-                                                node_to_remove_right_idx = None;
-                                            } else {
-                                                let min_parent_node = self.arena.hard_get_mut(min_parent_idx);
-                                                min_parent_node.left_idx = None;
-                                            }
-                                            break;
-                                        },
+                                None => match min_node.right_idx {
+                                    Some(_) => {
+                                        let unlink_new_child = min_node.right_idx;
+                                        if min_parent_idx == node_idx {
+                                            node_to_remove_right_idx = unlink_new_child;
+                                        } else {
+                                            let min_parent_node =
+                                                self.arena.hard_get_mut(min_parent_idx);
+                                            min_parent_node.left_idx = unlink_new_child;
+                                        }
+                                        break;
+                                    }
+                                    None => {
+                                        if min_parent_idx == node_idx {
+                                            node_to_remove_right_idx = None;
+                                        } else {
+                                            let min_parent_node =
+                                                self.arena.hard_get_mut(min_parent_idx);
+                                            min_parent_node.left_idx = None;
+                                        }
+                                        break;
                                     }
                                 },
                             }
@@ -416,7 +422,7 @@ impl<K: Ord, V> SGTree<K, V> {
                         } else {
                             parent_node.left_idx = new_child;
                         }
-                    },
+                    }
                     None => {
                         self.root_idx = new_child;
                     }
@@ -434,9 +440,8 @@ impl<K: Ord, V> SGTree<K, V> {
                 }
 
                 Some(removed_node)
-
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -455,8 +460,8 @@ impl<K: Ord, V> SGTree<K, V> {
                         }
                     }
                 }
-            },
-            None => self.min_idx = 0
+            }
+            None => self.min_idx = 0,
         }
     }
 
@@ -475,14 +480,13 @@ impl<K: Ord, V> SGTree<K, V> {
                         }
                     }
                 }
-            },
-            None => self.max_idx = 0
+            }
+            None => self.max_idx = 0,
         }
     }
 
     // Traverse upward, using path information, to find first unbalanced parent
     fn find_scapegoat(&self, path: &Vec<usize>) -> Option<usize> {
-
         if path.len() <= 1 {
             return None;
         }
@@ -491,7 +495,7 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_path_idx = path.len() - 1;
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
-		while (parent_path_idx > 0) && (3 * node_subtree_size) <= (2 * parent_subtree_size) {
+        while (parent_path_idx > 0) && (3 * node_subtree_size) <= (2 * parent_subtree_size) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             parent_subtree_size = self.get_subtree_size(path[parent_path_idx])
@@ -555,21 +559,30 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
-    fn rebalance_subtree_from_sorted_idxs(&mut self, old_subtree_root_idx: usize, sorted_arena_idxs: &Vec<usize>) {
-
+    fn rebalance_subtree_from_sorted_idxs(
+        &mut self,
+        old_subtree_root_idx: usize,
+        sorted_arena_idxs: &Vec<usize>,
+    ) {
         if sorted_arena_idxs.len() <= 1 {
             return;
         }
 
-        debug_assert!(self.root_idx.is_some(), "Internal invariant failed: rebalance of multi-node tree without root!");
+        debug_assert!(
+            self.root_idx.is_some(),
+            "Internal invariant failed: rebalance of multi-node tree without root!"
+        );
 
-        let sorted_last_idx =  sorted_arena_idxs.len() - 1;
+        let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
         let mut subtree_worklist = Vec::new();
 
         // Init worklist with middle node (balanced subtree root)
-        subtree_worklist.push((subtree_root_sorted_idx, NodeRebuildHelper::new(0, sorted_last_idx)));
+        subtree_worklist.push((
+            subtree_root_sorted_idx,
+            NodeRebuildHelper::new(0, sorted_last_idx),
+        ));
 
         // Update tree root or subtree parent
         if let Some(root_idx) = self.root_idx {
@@ -578,7 +591,10 @@ impl<K: Ord, V> SGTree<K, V> {
             } else {
                 let old_subtree_root = self.arena.hard_get(old_subtree_root_idx);
                 let ngh = self.priv_get(&old_subtree_root.key);
-                debug_assert!(ngh.parent_idx.is_some(), "Internal invariant failed: rebalance of non-root parent-less node!");
+                debug_assert!(
+                    ngh.parent_idx.is_some(),
+                    "Internal invariant failed: rebalance of non-root parent-less node!"
+                );
                 if let Some(parent_idx) = ngh.parent_idx {
                     let parent_node = self.arena.hard_get_mut(parent_idx);
                     if ngh.is_right_child {
@@ -592,7 +608,6 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Iteratively re-assign all children
         while let Some((sorted_idx, parent_nrh)) = subtree_worklist.pop() {
-
             let parent_node = self.arena.hard_get_mut(sorted_arena_idxs[sorted_idx]);
             parent_node.left_idx = None;
             parent_node.right_idx = None;
