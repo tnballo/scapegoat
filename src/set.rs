@@ -80,6 +80,12 @@ impl<T: Ord> SGSet<T> {
     }
 }
 
+impl<T: Ord> Default for SGSet<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Reference iterator
 impl<'a, T: Ord> IntoIterator for &'a SGSet<T> {
     type Item = &'a T;

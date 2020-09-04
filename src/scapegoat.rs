@@ -511,7 +511,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Traverse upward, using path information, to find first unbalanced parent
-    fn find_scapegoat(&self, path: &Vec<usize>) -> Option<usize> {
+    fn find_scapegoat(&self, path: &[usize]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
@@ -587,7 +587,7 @@ impl<K: Ord, V> SGTree<K, V> {
     fn rebalance_subtree_from_sorted_idxs(
         &mut self,
         old_subtree_root_idx: usize,
-        sorted_arena_idxs: &Vec<usize>,
+        sorted_arena_idxs: &[usize],
     ) {
         if sorted_arena_idxs.len() <= 1 {
             return;
@@ -656,6 +656,12 @@ impl<K: Ord, V> SGTree<K, V> {
             self.get_subtree_size(subtree_root_arena_idx) == sorted_arena_idxs.len(),
             "Internal invariant failed: rebalance dropped node count!"
         );
+    }
+}
+
+impl<K: Ord, V> Default for SGTree<K, V> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

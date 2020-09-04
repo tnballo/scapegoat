@@ -122,6 +122,13 @@ impl<K: Ord, V> NodeArena<K, V> {
         }
     }
 }
+
+impl<K: Ord, V> Default for NodeArena<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Node, NodeArena};

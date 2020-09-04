@@ -6,7 +6,6 @@ use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use ruut;
 
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
@@ -123,7 +122,7 @@ fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
         }
 
         let mut dedup_child_idxs = child_idxs.clone();
-        dedup_child_idxs.sort();
+        dedup_child_idxs.sort_unstable();
         dedup_child_idxs.dedup();
         assert!(
             dedup_child_idxs.len() == child_idxs.len(),

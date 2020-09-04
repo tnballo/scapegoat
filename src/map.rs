@@ -100,6 +100,12 @@ impl<K: Ord, V> SGMap<K, V> {
     }
 }
 
+impl<K: Ord, V> Default for SGMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
     type Item = (&'a K, &'a V);
