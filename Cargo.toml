@@ -19,5 +19,14 @@ include = [
 ]
 
 [dev-dependencies]
+criterion = "0.3.3"
 rand = { version = "0.7.3", features = ["small_rng"] }
 ruut = "0.6.1"
+
+[lib]
+name = "scapegoat"
+path = "src/lib.rs"
+
+[[bench]]
+name = "bench_set"
+harness = false

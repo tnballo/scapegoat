@@ -10,8 +10,6 @@ pub use iter::{InOrderIterator, RefInOrderIterator};
 #[cfg(test)]
 mod test;
 
-// TODO: review use of "if let Some(x)" => replace with match when only 2 possible options
-// TODO: for pattern matching, check if "return" keyword is necessary (yes for the loops we need to break, possible no otherwise)
 // TODO: verify current size and max size tracking against the paper
 
 /// A memory-efficient, self-balancing binary search tree.
