@@ -228,6 +228,45 @@ fn test_iter() {
 }
 
 #[test]
+fn test_from_iter() {
+    let mut key_val_tuples = Vec::new();
+    key_val_tuples.push((1, "1"));
+    key_val_tuples.push((2, "2"));
+    key_val_tuples.push((3, "3"));
+
+    let sgt = SGTree::from_iter(key_val_tuples.into_iter());
+
+    assert!(sgt.len() == 3);
+    assert_eq!(
+        sgt.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3")]
+    );
+}
+
+#[test]
+fn test_append() {
+    let mut a = SGTree::new();
+    a.insert(1, "1");
+    a.insert(2, "2");
+    a.insert(3, "3");
+
+    let mut b = SGTree::new();
+    b.insert(4, "4");
+    b.insert(5, "5");
+    b.insert(6, "6");
+
+    a.append(&mut b);
+
+    assert!(b.is_empty());
+    assert_eq!(a.len(), 6);
+
+    assert_eq!(
+        a.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
+    );
+}
+
+#[test]
 fn test_two_child_removal_case_1() {
     let keys = vec![2, 1, 3];
     let mut sgt = SGTree::new();

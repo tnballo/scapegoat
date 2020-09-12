@@ -6,9 +6,9 @@
 //!
 //!Three APIs:
 //!
-//!* Binary Tree API (`SGTree`)
-//!* Ordered Set API (`SGSet`)
-//!* Ordered Map API (`SGMap`)
+//!* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/scapegoat/struct.SGTree.html))
+//!* Ordered Set API ([`SGSet`](https://docs.rs/scapegoat/1.0.0/scapegoat/set/struct.SGSet.html))
+//!* Ordered Map API ([`SGMap`](https://docs.rs/scapegoat/1.0.0/scapegoat/map/struct.SGMap.html))
 //!
 //!Strives for two properties:
 //!
@@ -25,7 +25,7 @@
 //!Other features:
 //!
 //!* **Generic:** map keys and set elements can be any type that implements the `Ord` trait.
-//!* **Arbitrarily Mutable:** elements can be insert and removed, map values can be mutated.
+//!* **Arbitrarily mutable:** elements can be insert and removed, map values can be mutated.
 //!
 //!### Usage
 //!
@@ -57,9 +57,13 @@
 //!
 //!assert_eq!(
 //!    example.into_iter().map(|(_, v)| v).collect::<Vec<String>>(),
-//!    vec!["Don't blame","the","borrow checker", "! :P"]
+//!    vec!["Don't blame","the","borrow checker","! :P"]
 //!);
 //!```
+//!
+//!### Note
+//!
+//!This project is an exercise in safe datastructure design. It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
 
 pub mod node;
 pub use crate::node::*;

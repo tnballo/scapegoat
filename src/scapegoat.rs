@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::iter::FromIterator;
 use std::mem;
 
 use crate::arena::NodeArena;
@@ -10,10 +11,9 @@ pub use iter::{InOrderIterator, RefInOrderIterator};
 #[cfg(test)]
 mod test;
 
-// TODO: verify current size and max size tracking against the paper
-
 /// A memory-efficient, self-balancing binary search tree.
 /// It's API mostly mirrors that of the standard library's `BTreeMap`, but is currently a subset.
+/// API examples and descriptions are all adapted or directly copied from the standard library's `BTreeMap`.
 pub struct SGTree<K: Ord, V> {
     arena: NodeArena<K, V>,
     root_idx: Option<usize>,
@@ -38,6 +38,29 @@ impl<K: Ord, V> SGTree<K, V> {
             max_size: 0,
             rebal_cnt: 0,
         }
+    }
+
+    /// Moves all elements from `other` into `self`, leaving other empty.
+    pub fn append(&mut self, other: &mut SGTree<K, V>) {
+
+        // Nothing to append!
+        if other.is_empty() {
+            return;
+        }
+
+        // Nothing to append to!
+        if self.is_empty() {
+            mem::swap(self, other);
+            return;
+        }
+
+        // Rip elements directly out of other's arena and clear it
+        for arena_idx in 0..other.arena.len() {
+            if let Some(node) = other.arena.remove(arena_idx) {
+                self.insert(node.key, node.val);
+            }
+        }
+        other.clear();
     }
 
     /// Insert a key-value pair into the tree.
@@ -657,21 +680,27 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 }
 
+// Default constructor
 impl<K: Ord, V> Default for SGTree<K, V> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// TODO: move inside to make static private function!
-// TODO: description here
-fn log_3_2(val: usize) -> usize {
-    let rebal_denum: f64 = 3.0_f64.log(2.0); // TODO: how to eval at compile time? const doesn't work
-    let rebal_num = (val as f64).log10();
-    (rebal_num / rebal_denum).floor() as usize
-}
-
 // Iterators -----------------------------------------------------------------------------------------------------------
+
+// Construction iterator
+impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
+    fn from_iter<I: IntoIterator<Item=(K, V)>>(iter: I) -> Self {
+        let mut sgt = SGTree::new();
+
+        for (k, v) in iter {
+            sgt.insert(k, v);
+        }
+
+        sgt
+    }
+}
 
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
@@ -691,4 +720,14 @@ impl<K: Ord, V> IntoIterator for SGTree<K, V> {
     fn into_iter(self) -> Self::IntoIter {
         InOrderIterator::new(self)
     }
+}
+
+// Helpers -------------------------------------------------------------------------------------------------------------
+
+// TODO: move inside to make static private function!
+// TODO: description here
+fn log_3_2(val: usize) -> usize {
+    let rebal_denum: f64 = 3.0_f64.log(2.0); // TODO: how to eval at compile time? const doesn't work
+    let rebal_num = (val as f64).log10();
+    (rebal_num / rebal_denum).floor() as usize
 }

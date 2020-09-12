@@ -121,6 +121,11 @@ impl<K: Ord, V> NodeArena<K, V> {
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
         }
     }
+
+    /// Returns the number of entries in the arena, some of which may be `None`.
+    pub fn len(&self) -> usize {
+        self.arena.len()
+    }
 }
 
 impl<K: Ord, V> Default for NodeArena<K, V> {

@@ -1,3 +1,4 @@
+use std::iter::FromIterator;
 use scapegoat::SGMap;
 
 #[test]
@@ -76,4 +77,43 @@ fn test_basic_map_functionality() {
     let empty_vec: Vec<(usize, &str)> = Vec::new();
 
     assert_eq!(sgm.into_iter().collect::<Vec<(usize, &str)>>(), empty_vec);
+}
+
+#[test]
+fn test_map_from_iter() {
+    let mut key_val_tuples = Vec::new();
+    key_val_tuples.push((1, "1"));
+    key_val_tuples.push((2, "2"));
+    key_val_tuples.push((3, "3"));
+
+    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+
+    assert!(sgm.len() == 3);
+    assert_eq!(
+        sgm.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3")]
+    );
+}
+
+#[test]
+fn test_map_append() {
+    let mut a = SGMap::new();
+    a.insert(1, "1");
+    a.insert(2, "2");
+    a.insert(3, "3");
+
+    let mut b = SGMap::new();
+    b.insert(4, "4");
+    b.insert(5, "5");
+    b.insert(6, "6");
+
+    a.append(&mut b);
+
+    assert!(b.is_empty());
+    assert_eq!(a.len(), 6);
+
+    assert_eq!(
+        a.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
+    );
 }

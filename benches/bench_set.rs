@@ -2,7 +2,6 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
 
 use scapegoat::SGSet;
-use std::collections::BTreeSet;
 
 // TODO: repetitive code! Macros?
 

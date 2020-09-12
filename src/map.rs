@@ -1,7 +1,10 @@
+use std::iter::FromIterator;
+
 use crate::scapegoat::{InOrderIterator, RefInOrderIterator, SGTree};
 
 // Ordered map.
 // A wrapper interface for `SGTree`.
+/// API examples and descriptions are all adapted or directly copied from the standard library's `BTreeMap`.
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -10,6 +13,11 @@ impl<K: Ord, V> SGMap<K, V> {
     /// Constructor.
     pub fn new() -> Self {
         SGMap { bst: SGTree::new() }
+    }
+
+    /// Moves all elements from `other` into `self`, leaving other empty.
+    pub fn append(&mut self, other: &mut SGMap<K, V>) {
+        self.bst.append(&mut other.bst);
     }
 
     /// Insert a key-value pair into the map.
@@ -100,9 +108,19 @@ impl<K: Ord, V> SGMap<K, V> {
     }
 }
 
+// Default constructor
 impl<K: Ord, V> Default for SGMap<K, V> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Construction iterator
+impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
+    fn from_iter<I: IntoIterator<Item=(K, V)>>(iter: I) -> Self {
+        let mut sgm = SGMap::new();
+        sgm.bst = SGTree::from_iter(iter);
+        sgm
     }
 }
 
