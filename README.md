@@ -9,9 +9,9 @@ Ordered set and map data structures via an arena-based [scapegoat tree](https://
 
 Three APIs:
 
-* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/scapegoat/struct.SGTree.html))
 * Ordered Set API ([`SGSet`](https://docs.rs/scapegoat/1.0.0/scapegoat/set/struct.SGSet.html))
 * Ordered Map API ([`SGMap`](https://docs.rs/scapegoat/1.0.0/scapegoat/map/struct.SGMap.html))
+* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/scapegoat/struct.SGTree.html))
 
 Strives for two properties:
 
@@ -48,6 +48,8 @@ assert_eq!(
     (&example).into_iter().map(|(_, v)| v).collect::<Vec<&String>>(),
     vec!["Please","don't blame","the","borrow checker"]
 );
+
+assert_eq!(example[&3], "the");
 
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, String::from("Please")));

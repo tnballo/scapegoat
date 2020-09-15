@@ -1,5 +1,5 @@
-use std::iter::FromIterator;
 use scapegoat::SGMap;
+use std::iter::FromIterator;
 
 #[test]
 fn test_basic_map_functionality() {

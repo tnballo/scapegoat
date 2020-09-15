@@ -1,4 +1,4 @@
-use crate::node::Node;
+use super::node::Node;
 
 /// A simple arena allocator.
 pub struct NodeArena<K: Ord, V> {

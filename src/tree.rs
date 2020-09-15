@@ -1,19 +1,21 @@
 use std::cmp::Ordering;
 use std::iter::FromIterator;
 use std::mem;
+use std::ops::Index;
 
-use crate::arena::NodeArena;
-use crate::node::{Node, NodeGetHelper, NodeRebuildHelper};
+mod arena;
+use arena::NodeArena;
 
-pub mod iter;
+mod node;
+use node::{Node, NodeGetHelper, NodeRebuildHelper};
+
+mod iter;
 pub use iter::{InOrderIterator, RefInOrderIterator};
 
 #[cfg(test)]
 mod test;
 
 /// A memory-efficient, self-balancing binary search tree.
-/// It's API mostly mirrors that of the standard library's `BTreeMap`, but is currently a subset.
-/// API examples and descriptions are all adapted or directly copied from the standard library's `BTreeMap`.
 pub struct SGTree<K: Ord, V> {
     arena: NodeArena<K, V>,
     root_idx: Option<usize>,
@@ -40,9 +42,8 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    /// Moves all elements from `other` into `self`, leaving other empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     pub fn append(&mut self, other: &mut SGTree<K, V>) {
-
         // Nothing to append!
         if other.is_empty() {
             return;
@@ -263,9 +264,6 @@ impl<K: Ord, V> SGTree<K, V> {
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert(&mut self, path: &mut Vec<usize>, new_node: Node<K, V>) -> Option<V> {
-        self.curr_size += 1;
-        self.max_size += 1;
-
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -345,6 +343,9 @@ impl<K: Ord, V> SGTree<K, V> {
 
                 // Link to parent
                 if let Some(parent_idx) = ngh.parent_idx {
+                    self.curr_size += 1;
+                    self.max_size += 1;
+
                     let parent_node = self.arena.hard_get_mut(parent_idx);
                     if ngh.is_right_child {
                         parent_node.right_idx = ngh.node_idx;
@@ -359,10 +360,14 @@ impl<K: Ord, V> SGTree<K, V> {
 
             // Empty tree
             None => {
+                self.curr_size += 1;
+                self.max_size += 1;
+
                 let root_idx = self.arena.add(new_node);
                 self.root_idx = Some(root_idx);
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;
+
                 None
             }
         }
@@ -680,6 +685,8 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 }
 
+// Conveniences --------------------------------------------------------------------------------------------------------
+
 // Default constructor
 impl<K: Ord, V> Default for SGTree<K, V> {
     fn default() -> Self {
@@ -687,11 +694,20 @@ impl<K: Ord, V> Default for SGTree<K, V> {
     }
 }
 
+// Indexing
+impl<K: Ord, V> Index<&K> for SGTree<K, V> {
+    type Output = V;
+
+    fn index(&self, key: &K) -> &Self::Output {
+        self.get(key).expect("No value found for key")
+    }
+}
+
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construction iterator
 impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
-    fn from_iter<I: IntoIterator<Item=(K, V)>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgt = SGTree::new();
 
         for (k, v) in iter {

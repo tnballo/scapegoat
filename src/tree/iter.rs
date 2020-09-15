@@ -1,4 +1,4 @@
-use crate::scapegoat::SGTree;
+use crate::tree::SGTree;
 
 // TODO: add pre-order and post-order iterators
 

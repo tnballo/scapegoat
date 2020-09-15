@@ -1,5 +1,5 @@
-use std::iter::FromIterator;
 use scapegoat::SGSet;
+use std::iter::FromIterator;
 
 #[test]
 fn test_basic_set_functionality() {
@@ -64,7 +64,7 @@ fn test_basic_set_functionality() {
 
 #[test]
 fn test_set_from_iter() {
-    let mut keys= Vec::new();
+    let mut keys = Vec::new();
     keys.push(1);
     keys.push(10);
     keys.push(100);
@@ -72,10 +72,7 @@ fn test_set_from_iter() {
     let sgs = SGSet::from_iter(keys.into_iter());
 
     assert!(sgs.len() == 3);
-    assert_eq!(
-        sgs.into_iter().collect::<Vec<usize>>(),
-        vec![1, 10, 100]
-    );
+    assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
 }
 
 #[test]
@@ -144,7 +141,9 @@ fn test_set_symmetric_difference() {
     let a = SGSet::from_iter(&[1, 2, 3, 4, 5]);
     let b = SGSet::from_iter(&[4, 5, 6, 7, 8]);
     assert_eq!(
-        a.symmetric_difference(&b).map(|x| *x).collect::<Vec<&usize>>(),
+        a.symmetric_difference(&b)
+            .map(|x| *x)
+            .collect::<Vec<&usize>>(),
         vec![&1, &2, &3, &6, &7, &8]
     );
 }
