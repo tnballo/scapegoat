@@ -11,7 +11,7 @@ Three APIs:
 
 * Ordered Set API ([`SGSet`](https://docs.rs/scapegoat/1.0.0/scapegoat/set/struct.SGSet.html))
 * Ordered Map API ([`SGMap`](https://docs.rs/scapegoat/1.0.0/scapegoat/map/struct.SGMap.html))
-* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/scapegoat/struct.SGTree.html))
+* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/struct.SGTree.html))
 
 Strives for two properties:
 
