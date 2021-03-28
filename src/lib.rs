@@ -75,3 +75,7 @@ pub use crate::map::SGMap;
 
 mod set;
 pub use crate::set::SGSet;
+
+// TODO: export for no_std!
+//mod arena;
+//pub use crate::arena::SG_MAX_ELEMS;

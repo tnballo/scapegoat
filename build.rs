@@ -4,7 +4,7 @@ use std::path::Path;
 
 fn main() {
     let env_key = "SG_MAX_STACK_ELEMS";
-    let env_val_def = "12000";
+    let env_val_def = "1024";
 
     println!("cargo:rerun-if-env-changed={}", env_key);
 

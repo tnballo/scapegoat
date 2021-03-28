@@ -5,7 +5,8 @@ use super::node::Node;
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 #[cfg(feature = "no_std")]
-use smallvec::SmallVec;
+//use smallvec::SmallVec;
+use tinyvec::ArrayVec;
 
 // TODO: replace this with "new type pattern" to fix compiler error
 /// An optional arena node.
@@ -17,7 +18,8 @@ pub struct NodeArena<K: Ord, V> {
     arena: Vec<OptNode<K, V>>,
 
     #[cfg(feature = "no_std")]
-    arena: SmallVec<[OptNode<K, V>; MAX_ELEMS]>,
+    //arena: SmallVec<[OptNode<K, V>; MAX_ELEMS]>,
+    arena: ArrayVec<[OptNode<K, V>; MAX_ELEMS]>,
 
     //#[cfg(not(feature = "no_std"))]
     free_list: Vec<usize>,
@@ -36,7 +38,8 @@ impl<K: Ord, V> NodeArena<K, V> {
             arena: Vec::new(),
 
             #[cfg(feature = "no_std")]
-            arena: SmallVec::<[OptNode<K, V>; MAX_ELEMS]>::default(),
+            //arena: SmallVec::<[OptNode<K, V>; MAX_ELEMS]>::default(),
+            arena: ArrayVec::<[OptNode<K, V>; MAX_ELEMS]>::default(),
 
             //#[cfg(not(feature = "no_std"))]
             free_list: Vec::new(),
