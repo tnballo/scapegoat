@@ -18,10 +18,16 @@ include = [
     "LICENSE",
 ]
 
+[dependencies]
+smallvec = { version = "1.6", optional = true, features = ["const_generics"] }
+
 [dev-dependencies]
-criterion = "0.3.3"
-rand = { version = "0.7.3", features = ["small_rng"] }
-ruut = "0.6.1"
+criterion = "0.3"
+rand = { version = "0.7", features = ["small_rng"] }
+ruut = "0.6"
+
+[features]
+no_std = ["smallvec"]
 
 [lib]
 name = "scapegoat"
