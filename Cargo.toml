@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -8,9 +8,9 @@ readme = "README.md"
 homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
-keywords = ["scapegoat", "bst", "set", "map", "tree"]
+keywords = ["scapegoat", "tree", "set", "map", "no_std"]
 categories = ["algorithms", "data-structures"]
-description = "Ordered set and map data structures via an arena-based scapegoat tree."
+description = "Embedded-friendly ordered set and map data structures via an arena-based scapegoat tree."
 include = [
     "**/*.rs",
     "**/*.md",
@@ -19,17 +19,13 @@ include = [
 ]
 
 [dependencies]
-#smallvec = { version = "1.6", optional = true, features = ["const_generics"] }
-tinyvec = { version = "1.1", optional = true }
+smallvec = "1.6.1"  # Has no dependencies of it's own
+libm = "0.2.1"      # Has no dependenceis of it's own
 
 [dev-dependencies]
 criterion = "0.3"
 rand = { version = "0.7", features = ["small_rng"] }
 ruut = "0.6"
-
-[features]
-#no_std = ["smallvec"]
-no_std = ["tinyvec"]
 
 [lib]
 name = "scapegoat"

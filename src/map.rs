@@ -1,11 +1,11 @@
-use std::iter::FromIterator;
-use std::ops::Index;
+use core::iter::FromIterator;
+use core::ops::Index;
 
 use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
-/// API examples and descriptions are all adapted or directly copied from the standard library's `BTreeMap`.
+/// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -24,6 +24,25 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn new() -> Self {
         SGMap { bst: SGTree::new() }
+    }
+
+    /// `#![no_std]`: total capacity, e.g. maximum number of map pairs.
+    /// Attempting to insert pairs beyond capacity will panic.
+    ///
+    /// If using `std`: fast capacity, e.g. number of map pairs stored on the stack.
+    /// Pairs inserted beyond capacity will be stored on the heap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map = SGMap::<usize, &str>::new();
+    ///
+    /// assert!(map.capacity() > 0)
+    /// ```
+    pub fn capacity(&self) -> usize {
+        self.bst.capacity()
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.

@@ -487,10 +487,14 @@ fn test_subtree_rebalance() {
 
 #[test]
 fn test_logical_fuzz_fast() {
-    logical_fuzz(5_000, false);
+    let sgt: SGTree<usize, &str> = SGTree::new();
+    logical_fuzz(sgt.capacity(), false);         // Stack-only
+    logical_fuzz(sgt.capacity() + 2_000, false); // Stack + Heap
 }
 
 #[test]
 fn test_logical_fuzz_slow() {
-    logical_fuzz(5_000, true);
+    let sgt: SGTree<usize, &str> = SGTree::new();
+    logical_fuzz(sgt.capacity(), true);         // Stack-only
+    logical_fuzz(sgt.capacity() + 2_000, true); // Stack + Heap
 }

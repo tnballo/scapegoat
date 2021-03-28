@@ -11,11 +11,10 @@ fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("consts.rs");
 
-    // Soon this can be cargo-specified: https://stackoverflow.com/a/66509742
     let max_elems = match env::var(env_key) {
         Ok(val) => val,
         Err(_) => {
-            eprintln!("WARNING! Using default {} = {}", env_key, env_val_def);
+            println!("cargo:warning=Unset environment variable, using default: \'{}={}\'", env_key, env_val_def);
             env_val_def.to_string()
         }
     };
@@ -23,6 +22,6 @@ fn main() {
     fs::write(
         &dest_path,
         format!("const MAX_ELEMS: usize = {};", max_elems),
-
-    ).unwrap();
+    )
+    .unwrap();
 }

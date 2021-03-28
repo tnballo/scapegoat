@@ -1,15 +1,23 @@
-use std::cmp::Ordering;
-use std::iter::FromIterator;
+use core::cmp::Ordering;
+use core::iter::FromIterator;
+
+use smallvec::{SmallVec, IntoIter};
+
+use crate::MAX_ELEMS;
+
+type ElemVec<'a, T> = SmallVec::<[&'a T; MAX_ELEMS]>;
+type ElemIter<'a, T> = IntoIter<[&'a T; MAX_ELEMS]>;
 
 use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 
 /// Ordered set.
-/// API examples and descriptions are all adapted or directly copied from the standard library's `BTreeSet`.
+/// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
 
 impl<T: Ord> SGSet<T> {
+
     /// Constructor.
     ///
     /// # Examples
@@ -21,6 +29,25 @@ impl<T: Ord> SGSet<T> {
     /// ```
     pub fn new() -> Self {
         SGSet { bst: SGTree::new() }
+    }
+
+    /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
+    /// Attempting to insert elements beyond capacity will panic.
+    ///
+    /// If using `std`: fast capacity, e.g. number of set elements stored on the stack.
+    /// Elements inserted beyond capacity will be stored on the heap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set: SGSet<i32> = SGSet::new();
+    ///
+    /// assert!(set.capacity() > 0)
+    /// ```
+    pub fn capacity(&self) -> usize {
+        self.bst.capacity()
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -256,8 +283,8 @@ impl<T: Ord> SGSet<T> {
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference(&self, other: &SGSet<T>) -> std::vec::IntoIter<&T> {
-        let mut diff = Vec::new();
+    pub fn difference(&self, other: &SGSet<T>) -> ElemIter<T> {
+        let mut diff = ElemVec::new();
         for val in self {
             if !other.contains(val) {
                 diff.push(val);
@@ -284,9 +311,8 @@ impl<T: Ord> SGSet<T> {
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
-    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> std::vec::IntoIter<&T> {
-        let mut sym_diff = Vec::new();
-
+    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemIter<T> {
+        let mut sym_diff = ElemVec::new();
         for val in self {
             if !other.contains(val) {
                 sym_diff.push(val);
@@ -321,12 +347,12 @@ impl<T: Ord> SGSet<T> {
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection(&self, other: &SGSet<T>) -> std::vec::IntoIter<&T> {
+    pub fn intersection(&self, other: &SGSet<T>) -> ElemIter<T> {
         let mut self_iter = self.into_iter();
         let mut other_iter = other.into_iter();
         let mut opt_self_val = self_iter.next();
         let mut opt_other_val = other_iter.next();
-        let mut intersect = Vec::new();
+        let mut intersect = ElemVec::new();
 
         // Linear time
         while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
@@ -364,8 +390,8 @@ impl<T: Ord> SGSet<T> {
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> std::vec::IntoIter<&T> {
-        let mut union = Vec::new();
+    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemIter<T> {
+        let mut union = ElemVec::new();
 
         for val in self {
             union.push(val);

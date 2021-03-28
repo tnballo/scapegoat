@@ -1,14 +1,14 @@
-//!# scapegoat
-//!
 //!Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
+//!
+//!This library is `!#[no_std]` compatible by default and strictly `#![forbid(unsafe_code)]`.
 //!
 //!### About
 //!
 //!Three APIs:
 //!
-//!* Ordered Set API ([`SGSet`](https://docs.rs/scapegoat/1.0.0/scapegoat/set/struct.SGSet.html))
-//!* Ordered Map API ([`SGMap`](https://docs.rs/scapegoat/1.0.0/scapegoat/map/struct.SGMap.html))
-//!* Binary Tree API ([`SGTree`](https://docs.rs/scapegoat/1.0.0/scapegoat/struct.SGTree.html))
+//!* Ordered Set API ([`SGSet`](crate::SGSet))
+//!* Ordered Map API ([`SGMap`](crate::SGMap))
+//!* Binary Tree API ([`SGTree`](crate::SGTree))
 //!
 //!Strives for two properties:
 //!
@@ -17,7 +17,7 @@
 //!    * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
 //!    * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 //!
-//!* **Minimal footprint:** small binary (no dependencies outside of the standard library) with low resource use.
+//!* **Minimal footprint:** small binary with low resource use.
 //!    * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
 //!    * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
 //!    * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
@@ -63,9 +63,39 @@
 //!);
 //!```
 //!
+//!### Configuring a Stack Storage Limit
+//!
+//!The maximum number of stack-stored elements (set) or key-value pairs (map/tree) is determined at compile-time, via the environment variable `SG_MAX_STACK_ELEMS`.
+//![Valid values](https://docs.rs/smallvec/1.6.1/smallvec/trait.Array.html#implementors) are in the range `[0, 32]` and powers of 2 up to `1048576`.
+//!For example, to store up to `2048` items on the stack:
+//!
+//!```bash
+//!export SG_MAX_STACK_ELEMS=2048
+//!cargo build --release
+//!```
+//!
+//! Please note:
+//!
+//!* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
+//!* For embedded systems without dynamic (heap) memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
+//!* For any system with dynamic memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated (no panic).
+//!
+//!### Trusted Dependencies
+//!
+//!This library has two dependencies, each of which have no dependencies of their own (e.g. exactly two total dependencies).
+//!Both dependencies were carefully chosen.
+//!
+//! * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vector` alternative. Used in Mozilla's Servo browser engine.
+//! * [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
+//!
 //!### Note
 //!
-//!This project is an exercise in safe datastructure design. It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
+//!This project is an exercise in safe data structure design. It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
+
+#![forbid(unsafe_code)]
+#![cfg_attr(not(test), no_std)]
+
+include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 mod tree;
 pub use crate::tree::SGTree;
@@ -75,7 +105,3 @@ pub use crate::map::SGMap;
 
 mod set;
 pub use crate::set::SGSet;
-
-// TODO: export for no_std!
-//mod arena;
-//pub use crate::arena::SG_MAX_ELEMS;

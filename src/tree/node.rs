@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 /// Binary tree node.
 pub struct Node<K: Ord, V> {

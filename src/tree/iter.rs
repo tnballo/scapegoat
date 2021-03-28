@@ -1,4 +1,5 @@
-use crate::tree::SGTree;
+
+use crate::tree::{SGTree, IdxVec};
 
 // TODO: add pre-order and post-order iterators
 
@@ -9,14 +10,14 @@ use crate::tree::SGTree;
 /// This iterator is more memory efficient than the consuming variant, but slower.
 pub struct RefInOrderIterator<'a, K: Ord, V> {
     bst: &'a SGTree<K, V>,
-    idx_stack: Vec<usize>,
+    idx_stack: IdxVec,
 }
 
 impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
     pub fn new(bst: &'a SGTree<K, V>) -> Self {
         let mut ordered_iter = RefInOrderIterator {
             bst,
-            idx_stack: Vec::new(),
+            idx_stack: IdxVec::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {
@@ -79,14 +80,14 @@ impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
 /// This iterator is less memory efficient than the reference variant, but faster.
 pub struct InOrderIterator<K: Ord, V> {
     bst: SGTree<K, V>,
-    sorted_idxs: Vec<usize>,
+    sorted_idxs: IdxVec,
 }
 
 impl<K: Ord, V> InOrderIterator<K, V> {
     pub fn new(bst: SGTree<K, V>) -> Self {
         let mut ordered_iter = InOrderIterator {
             bst,
-            sorted_idxs: Vec::new(),
+            sorted_idxs: IdxVec::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {

@@ -1,7 +1,10 @@
-use std::cmp::Ordering;
-use std::iter::FromIterator;
-use std::mem;
-use std::ops::Index;
+use core::cmp::Ordering;
+use core::iter::FromIterator;
+use core::mem;
+use core::ops::Index;
+
+use smallvec::{SmallVec, smallvec};
+use libm::{floor, log2, log10};
 
 mod arena;
 use arena::NodeArena;
@@ -9,11 +12,15 @@ use arena::NodeArena;
 mod node;
 use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
+#[cfg(test)]
+mod test;
+
 mod iter;
 pub use iter::{InOrderIterator, RefInOrderIterator};
 
-#[cfg(test)]
-mod test;
+use crate::MAX_ELEMS;
+
+type IdxVec = SmallVec<[usize; MAX_ELEMS]>;
 
 /// A memory-efficient, self-balancing binary search tree.
 pub struct SGTree<K: Ord, V> {
@@ -40,6 +47,15 @@ impl<K: Ord, V> SGTree<K, V> {
             max_size: 0,
             rebal_cnt: 0,
         }
+    }
+
+    /// `#![no_std]`: total capacity, e.g. maximum number of tree pairs.
+    /// Attempting to insert pairs beyond capacity will panic.
+    ///
+    /// If using `std`: fast capacity, e.g. number of tree pairs stored on the stack.
+    /// Pairs inserted beyond capacity will be stored on the heap.
+    pub fn capacity(&self) -> usize {
+        self.arena.capacity()
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -69,7 +85,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// If the tree did have this key present, the value is updated, the old value is returned,
     /// and the key is updated. This accommodates types that can be `==` without being identical.
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
-        let mut path = Vec::new();
+        let mut path = IdxVec::new();
         let new_node = Node::new(key, val);
 
         // Optional rebalance
@@ -263,7 +279,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Sorted insert of node into the tree.
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
-    fn priv_insert(&mut self, path: &mut Vec<usize>, new_node: Node<K, V>) -> Option<V> {
+    fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -557,7 +573,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Iterative subtree size computation
     fn get_subtree_size(&self, idx: usize) -> usize {
-        let mut subtree_worklist = vec![self.arena.hard_get(idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
@@ -583,9 +599,9 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Flatten subtree into array of node indexs sorted by node key
-    fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> Vec<usize> {
-        let mut subtree_node_idx_pairs = vec![(self.arena.hard_get(idx), idx)];
-        let mut subtree_worklist = vec![self.arena.hard_get(idx)];
+    fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
+        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V>, usize); MAX_ELEMS]> = smallvec![(self.arena.hard_get(idx), idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> = smallvec![self.arena.hard_get(idx)];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx {
@@ -627,7 +643,7 @@ impl<K: Ord, V> SGTree<K, V> {
         let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
-        let mut subtree_worklist = Vec::new();
+        let mut subtree_worklist = SmallVec::<[(usize, NodeRebuildHelper); MAX_ELEMS]>::new();
 
         // Init worklist with middle node (balanced subtree root)
         subtree_worklist.push((
@@ -741,9 +757,9 @@ impl<K: Ord, V> IntoIterator for SGTree<K, V> {
 // Helpers -------------------------------------------------------------------------------------------------------------
 
 // TODO: move inside to make static private function!
-// TODO: description here
+// TODO: this needs verification - seems to rebalance a little too aggressively
 fn log_3_2(val: usize) -> usize {
-    let rebal_denum: f64 = 3.0_f64.log(2.0); // TODO: how to eval at compile time? const doesn't work
-    let rebal_num = (val as f64).log10();
-    (rebal_num / rebal_denum).floor() as usize
+    let rebal_denum: f64 = log2(3.0_f64); // TODO: how to eval at compile time? const doesn't work
+    let rebal_num = log10(val as f64);
+    floor(rebal_num / rebal_denum) as usize
 }
