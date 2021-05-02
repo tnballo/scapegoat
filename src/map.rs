@@ -6,6 +6,7 @@ use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
+#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }

@@ -47,7 +47,7 @@ impl<K: Ord, V> NodeArena<K, V> {
                 );
                 self.arena[free_idx] = Some(node);
                 free_idx
-            }
+            },
             None => {
                 self.arena.push(Some(node));
                 self.arena.len() - 1
@@ -103,22 +103,16 @@ impl<K: Ord, V> NodeArena<K, V> {
     /// Get a reference to a node.
     pub fn get(&self, idx: usize) -> Option<&Node<K, V>> {
         match self.arena.get(idx) {
-            Some(opt_node) => match opt_node {
-                Some(node) => Some(node),
-                None => None,
-            },
-            None => None,
+            Some(Some(node)) => Some(node),
+            _ => None,
         }
     }
 
     /// Get mutable reference to a node.
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut Node<K, V>> {
         match self.arena.get_mut(idx) {
-            Some(opt_node) => match opt_node {
-                Some(node) => Some(node),
-                None => None,
-            },
-            None => None,
+            Some(Some(node)) => Some(node),
+            _ => None,
         }
     }
 

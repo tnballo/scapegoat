@@ -12,6 +12,7 @@ use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
+#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
