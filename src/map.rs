@@ -6,6 +6,7 @@ use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
+#[derive(Hash)]
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
@@ -385,6 +386,54 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
         sgm
     }
 }
+
+// Extension from iterator
+impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+        iter.into_iter().for_each(move |(k, v)| {
+            self.insert(k, v);
+        });
+    }
+
+    /*
+    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.insert(k, v);
+    }
+    */
+}
+
+// Extension from reference iterator
+impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+
+    /*
+    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
+        self.insert(k, v);
+    }
+    */
+}
+
+/*
+TODO: investigate
+impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGMap<K, V> {
+    fn eq(&self, other: &SGMap<K, V>) -> bool {
+        (self.len() == other.len()) && (self.iter().zip(other).all(|(a, b)| a == b))
+    }
+}
+*/
+
+/*
+TODO: investigate
+impl<K: PartialOrd, V: PartialOrd> PartialOrd for SGMap<K, V> {
+    fn partial_cmp(&self, other: &SGMap<K, V>) -> Option<core::cmp::Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+*/
 
 // Iterators -----------------------------------------------------------------------------------------------------------
 

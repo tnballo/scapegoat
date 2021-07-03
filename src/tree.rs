@@ -23,6 +23,7 @@ use crate::MAX_ELEMS;
 type IdxVec = SmallVec<[usize; MAX_ELEMS]>;
 
 /// A memory-efficient, self-balancing binary search tree.
+#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGTree<K: Ord, V> {
     arena: NodeArena<K, V>,

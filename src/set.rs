@@ -1,5 +1,6 @@
 use core::cmp::Ordering;
 use core::iter::FromIterator;
+use core::ops::{Sub, BitAnd, BitOr, BitXor};
 
 use smallvec::{SmallVec, IntoIter};
 
@@ -12,6 +13,7 @@ use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
 
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
+#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
@@ -496,8 +498,6 @@ impl<T: Ord> Default for SGSet<T> {
     }
 }
 
-// Iterators -----------------------------------------------------------------------------------------------------------
-
 // Construction iterator
 impl<T: Ord> FromIterator<T> for SGSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -510,6 +510,38 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
         sgs
     }
 }
+
+// Extension from iterator
+impl<T: Ord> Extend<T> for SGSet<T> {
+    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
+        iter.into_iter().for_each(move |elem| {
+            self.insert(elem);
+        });
+    }
+
+    /*
+    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, elem: T) {
+        self.insert(elem);
+    }
+    */
+}
+
+// Extension from reference iterator
+impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for SGSet<T> {
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+
+    /*
+    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.insert(elem);
+    }
+    */
+}
+
+// Iterators -----------------------------------------------------------------------------------------------------------
 
 // Reference iterator
 impl<'a, T: Ord> IntoIterator for &'a SGSet<T> {
@@ -576,5 +608,95 @@ impl<T: Ord> Iterator for SetInOrderIterator<T> {
             Some((k, _)) => Some(k),
             None => None,
         }
+    }
+}
+
+// Operator Overloading ------------------------------------------------------------------------------------------------
+
+impl<T: Ord + Clone> Sub<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the difference of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let result = &a - &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 2]);
+    /// ```
+    fn sub(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.difference(rhs).cloned().collect()
+    }
+}
+
+impl <T: Ord + Clone> BitAnd<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the intersection of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let result = &a & &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [2, 3]);
+    /// ```
+    fn bitand(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.intersection(rhs).cloned().collect()
+    }
+}
+
+impl<T: Ord + Clone> BitOr<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the union of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let result = &a | &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
+    /// ```
+    fn bitor(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.union(rhs).cloned().collect()
+    }
+}
+
+impl<T: Ord + Clone> BitXor<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the symmetric difference of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let result = &a ^ &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 4]);
+    /// ```
+    fn bitxor(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.symmetric_difference(rhs).cloned().collect()
     }
 }

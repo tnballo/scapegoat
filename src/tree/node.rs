@@ -1,6 +1,7 @@
 use core::cmp::Ordering;
 
 /// Binary tree node.
+#[derive(Hash)]
 pub struct Node<K: Ord, V> {
     pub key: K,
     pub val: V,
