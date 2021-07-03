@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -14,6 +14,7 @@ description = "Embedded-friendly ordered set and map data structures via an aren
 include = [
     "**/*.rs",
     "**/*.md",
+    "**/*.sh",
     "Cargo.toml",
     "LICENSE",
 ]

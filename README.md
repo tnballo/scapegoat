@@ -18,14 +18,14 @@ Three APIs:
 Strives for two properties:
 
 * **Maximal safety:** strong [memory safety](https://tiemoko.com/blog/blue-team-rust/) guarantees.
-   * **Compile-time safety:** no `unsafe` (no raw pointer dereference, etc.).
-   * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
-   * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
+    * **Compile-time safety:** no `unsafe` (no raw pointer dereference, etc.).
+    * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
+    * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 
 * **Minimal footprint:** small binary with low resource use.
-   * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
-   * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
-   * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
+    * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
+    * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
+    * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
 
 Other features:
 
@@ -47,8 +47,8 @@ example.insert(1, String::from("Please"));
 example.insert(4, String::from("borrow checker"));
 
 assert_eq!(
-   (&example).into_iter().map(|(_, v)| v).collect::<Vec<&String>>(),
-   vec!["Please","don't blame","the","borrow checker"]
+    (&example).into_iter().map(|(_, v)| v).collect::<Vec<&String>>(),
+    vec!["Please","don't blame","the","borrow checker"]
 );
 
 assert_eq!(example[&3], "the");
@@ -63,8 +63,8 @@ dont_blame.remove(0);
 dont_blame.insert(0, 'D');
 
 assert_eq!(
-   example.into_iter().map(|(_, v)| v).collect::<Vec<String>>(),
-   vec!["Don't blame","the","borrow checker","! :P"]
+    example.into_iter().map(|(_, v)| v).collect::<Vec<String>>(),
+    vec!["Don't blame","the","borrow checker","! :P"]
 );
 ```
 
@@ -79,7 +79,7 @@ export SG_MAX_STACK_ELEMS=2048
 cargo build --release
 ```
 
-Please note:
+ Please note:
 
 * If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
 * For embedded systems without dynamic (heap) memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
@@ -90,9 +90,13 @@ Please note:
 This library has two dependencies, each of which have no dependencies of their own (e.g. exactly two total dependencies).
 Both dependencies were carefully chosen.
 
-* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vector` alternative. Used in Mozilla's Servo browser engine.
-* [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
+ * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vector` alternative. Used in Mozilla's Servo browser engine.
+ * [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
 
 ### Note
 
-This project is an exercise in safe data structure design. It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
+This project is an exercise in safe data structure design.
+It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
+However:
+ * It's APIs are a subset of those offered by `BTreeMap`/`BTreeSet`, making it a mostly "drop-in" replacement for `!#[no_std]` systems.
+ * [Coverage-guided differential fuzzing](./fuzz/README.md) is used to verify that this implementation is logically equivalent and reliable.

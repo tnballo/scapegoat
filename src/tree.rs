@@ -7,10 +7,10 @@ use smallvec::{SmallVec, smallvec};
 use libm::{floor, log2, log10};
 
 mod arena;
-use arena::NodeArena;
+pub use arena::NodeArena;
 
 mod node;
-use node::{Node, NodeGetHelper, NodeRebuildHelper};
+pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
 #[cfg(test)]
 mod test;
