@@ -92,6 +92,18 @@ fn test_map_from_iter() {
 }
 
 #[test]
+fn test_map_iter() {
+    let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
+    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let mut sgm_iter = sgm.iter();
+
+    assert_eq!(sgm_iter.next(), Some((&1, &"1")));
+    assert_eq!(sgm_iter.next(), Some((&2, &"2")));
+    assert_eq!(sgm_iter.next(), Some((&3, &"3")));
+    assert_eq!(sgm_iter.next(), None);
+}
+
+#[test]
 fn test_map_append() {
     let mut a = SGMap::new();
     a.insert(1, "1");

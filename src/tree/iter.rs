@@ -7,14 +7,14 @@ use crate::tree::{SGTree, IdxVec};
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
 /// This iterator is more memory efficient than the consuming variant, but slower.
-pub struct RefInOrderIterator<'a, K: Ord, V> {
+pub struct Iter<'a, K: Ord, V> {
     bst: &'a SGTree<K, V>,
     idx_stack: IdxVec,
 }
 
-impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
+impl<'a, K: Ord, V> Iter<'a, K, V> {
     pub fn new(bst: &'a SGTree<K, V>) -> Self {
-        let mut ordered_iter = RefInOrderIterator {
+        let mut ordered_iter = Iter {
             bst,
             idx_stack: IdxVec::new(),
         };
@@ -40,7 +40,7 @@ impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
+impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -77,14 +77,14 @@ impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
 /// This iterator is less memory efficient than the reference variant, but faster.
-pub struct InOrderIterator<K: Ord, V> {
+pub struct ConsumingIter<K: Ord, V> {
     bst: SGTree<K, V>,
     sorted_idxs: IdxVec,
 }
 
-impl<K: Ord, V> InOrderIterator<K, V> {
+impl<K: Ord, V> ConsumingIter<K, V> {
     pub fn new(bst: SGTree<K, V>) -> Self {
-        let mut ordered_iter = InOrderIterator {
+        let mut ordered_iter = ConsumingIter {
             bst,
             sorted_idxs: IdxVec::new(),
         };
@@ -98,7 +98,7 @@ impl<K: Ord, V> InOrderIterator<K, V> {
     }
 }
 
-impl<K: Ord, V> Iterator for InOrderIterator<K, V> {
+impl<K: Ord, V> Iterator for ConsumingIter<K, V> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -72,6 +72,18 @@ fn test_set_from_iter() {
 }
 
 #[test]
+fn test_set_iter() {
+    let keys = vec![1, 2, 3];
+    let sgs = SGSet::from_iter(keys.into_iter());
+    let mut sgs_iter = sgs.iter();
+
+    assert_eq!(sgs_iter.next(), Some(&1));
+    assert_eq!(sgs_iter.next(), Some(&2));
+    assert_eq!(sgs_iter.next(), Some(&3));
+    assert_eq!(sgs_iter.next(), None);
+}
+
+#[test]
 fn test_set_append() {
     let mut a = SGSet::new();
     a.insert(1);

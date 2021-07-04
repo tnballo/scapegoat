@@ -1,7 +1,7 @@
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
+use crate::tree::{ConsumingIter, Iter, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
@@ -98,6 +98,31 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
         self.bst.insert(key, val)
+    }
+
+    /// Gets an iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map = SGMap::new();
+    /// map.insert(3, "c");
+    /// map.insert(2, "b");
+    /// map.insert(1, "a");
+    ///
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = map.iter().next().unwrap();
+    /// assert_eq!((*first_key, *first_value), (1, "a"));
+    /// ```
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        Iter::new(&self.bst)
     }
 
     /// Removes a key from the map, returning the stored key and value if the key was previously in the map.
@@ -439,19 +464,19 @@ impl<K: PartialOrd, V: PartialOrd> PartialOrd for SGMap<K, V> {
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
     type Item = (&'a K, &'a V);
-    type IntoIter = RefInOrderIterator<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RefInOrderIterator::new(&self.bst)
+        self.iter()
     }
 }
 
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGMap<K, V> {
     type Item = (K, V);
-    type IntoIter = InOrderIterator<K, V>;
+    type IntoIter = ConsumingIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        InOrderIterator::new(self.bst)
+        ConsumingIter::new(self.bst)
     }
 }
