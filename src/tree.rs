@@ -16,7 +16,7 @@ pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 mod test;
 
 mod iter;
-pub use iter::{ConsumingIter, Iter};
+pub use iter::{ConsumingIter, Iter, IterMut};
 
 use crate::MAX_ELEMS;
 
@@ -123,6 +123,31 @@ impl<K: Ord, V> SGTree<K, V> {
     /// ```
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter::new(self)
+    }
+
+    /// Gets a mutable iterator over the entries of the tree, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let mut tree = SGTree::new();
+    /// tree.insert("a", 1);
+    /// tree.insert("b", 2);
+    /// tree.insert("c", 3);
+    ///
+    /// // Add 10 to the value if the key isn't "a"
+    /// for (key, value) in map.iter_mut() {
+    ///     if key != &"a" {
+    ///         *value += 10;
+    ///     }
+    /// }
+    /// ```
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        IterMut::new(self)
     }
 
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
