@@ -1,4 +1,3 @@
-
 use smallvec::SmallVec;
 
 use super::node::Node;
@@ -12,7 +11,6 @@ type ArenaVec<K, V> = SmallVec<[OptNode<K, V>; MAX_ELEMS]>;
 type FreeIdxVec = SmallVec<[usize; MAX_ELEMS]>;
 
 /// A simple arena allocator.
-#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct NodeArena<K: Ord, V> {
     arena: ArenaVec<K, V>,
     free_list: FreeIdxVec,

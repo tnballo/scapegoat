@@ -1,4 +1,3 @@
-
 use crate::tree::{SGTree, IdxVec};
 
 // TODO: add pre-order and post-order iterators

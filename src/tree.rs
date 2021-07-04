@@ -23,7 +23,6 @@ use crate::MAX_ELEMS;
 type IdxVec = SmallVec<[usize; MAX_ELEMS]>;
 
 /// A memory-efficient, self-balancing binary search tree.
-#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGTree<K: Ord, V> {
     arena: NodeArena<K, V>,
@@ -619,9 +618,9 @@ impl<K: Ord, V> SGTree<K, V> {
             }
         }
 
-        // Leverage Node's Ord trait impl to sort by key
+        // Sort by Node key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
+        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key.cmp(&b.0.key));
 
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
@@ -703,7 +702,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 }
 
-// Conveniences --------------------------------------------------------------------------------------------------------
+// Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Default constructor
 impl<K: Ord, V> Default for SGTree<K, V> {

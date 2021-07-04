@@ -1,7 +1,4 @@
-use core::cmp::Ordering;
-
 /// Binary tree node.
-#[derive(Hash)]
 pub struct Node<K: Ord, V> {
     pub key: K,
     pub val: V,
@@ -18,25 +15,6 @@ impl<K: Ord, V> Node<K, V> {
             left_idx: None,
             right_idx: None,
         }
-    }
-}
-
-impl<K: Ord, V> Ord for Node<K, V> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.key.cmp(&other.key)
-    }
-}
-
-impl<K: Ord, V> PartialOrd for Node<K, V> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<K: Ord, V> Eq for Node<K, V> {}
-impl<K: Ord, V> PartialEq for Node<K, V> {
-    fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
     }
 }
 
@@ -77,23 +55,5 @@ impl NodeRebuildHelper {
             high_idx,
             mid_idx: low_idx + ((high_idx - low_idx) / 2),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Node;
-
-    #[test]
-    fn test_node_ord() {
-        let n_1 = Node::new(0, 5);
-        let mut n_2 = Node::new(0, 5);
-        let n_3 = Node::new(1, 5);
-
-        n_2.left_idx = Some(7);
-
-        assert!(n_1 == n_2);
-        assert!(n_3 > n_2);
-        assert!(n_1 < n_3);
     }
 }
