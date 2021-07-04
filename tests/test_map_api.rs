@@ -81,11 +81,7 @@ fn test_basic_map_functionality() {
 
 #[test]
 fn test_map_from_iter() {
-    let mut key_val_tuples = Vec::new();
-    key_val_tuples.push((1, "1"));
-    key_val_tuples.push((2, "2"));
-    key_val_tuples.push((3, "3"));
-
+    let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
     let sgm = SGMap::from_iter(key_val_tuples.into_iter());
 
     assert!(sgm.len() == 3);

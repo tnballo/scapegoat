@@ -204,10 +204,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(set.is_empty());
     /// ```
     pub fn pop_first(&mut self) -> Option<T> {
-        match self.bst.pop_first() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.bst.pop_first().map(|(k, _)| k)
     }
 
     /// Returns the last/maximum value in the set, if any.
@@ -245,10 +242,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(set.is_empty());
     /// ```
     pub fn pop_last(&mut self) -> Option<T> {
-        match self.bst.pop_last() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.bst.pop_last().map(|(k, _)| k)
     }
 
     /// Returns the number of elements in the set.
@@ -358,7 +352,7 @@ impl<T: Ord> SGSet<T> {
 
         // Linear time
         while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
-            match self_val.cmp(&other_val) {
+            match self_val.cmp(other_val) {
                 Ordering::Less => {
                     opt_self_val = self_iter.next();
                 }
@@ -548,7 +542,7 @@ impl<'a, T: Ord> IntoIterator for &'a SGSet<T> {
     type IntoIter = SetRefInOrderIterator<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        SetRefInOrderIterator::new(&self)
+        SetRefInOrderIterator::new(self)
     }
 }
 
@@ -603,10 +597,7 @@ impl<T: Ord> Iterator for SetInOrderIterator<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.iter.next().map(|(k, _)| k)
     }
 }
 

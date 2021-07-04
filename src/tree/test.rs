@@ -33,7 +33,7 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
 
 // Pretty print tree.
 pub fn pretty_print<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) {
-    let sgt_lisp = sgt_to_lisp_str(&sgt);
+    let sgt_lisp = sgt_to_lisp_str(sgt);
     if sgt_lisp == "()" {
         println!("(empty tree)");
     } else {
@@ -182,7 +182,7 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
             "Keys in reference BTree and NOT in SGTree: {:?}",
             diff_other
         );
-        assert!(false, "Keys do not match shadow set!");
+        panic!("Keys do not match shadow set!");
     }
 
     println!(

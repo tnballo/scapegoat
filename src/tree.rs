@@ -118,10 +118,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        match self.remove_entry(key) {
-            Some((_, v)) => Some(v),
-            None => None,
-        }
+        self.remove_entry(key).map(|(_, v)| v)
     }
 
     /// Returns the key-value pair corresponding to the given key.
@@ -176,10 +173,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Returns a reference to the first key-value pair in the tree.
     /// The key in this pair is the minimum key in the tree.
     pub fn first_key_value(&self) -> Option<(&K, &V)> {
-        match self.arena.get(self.min_idx) {
-            Some(node) => Some((&node.key, &node.val)),
-            None => None,
-        }
+        self.arena.get(self.min_idx).map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -202,10 +196,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Returns a reference to the last key-value pair in the tree.
     /// The key in this pair is the maximum key in the tree.
     pub fn last_key_value(&self) -> Option<(&K, &V)> {
-        match self.arena.get(self.max_idx) {
-            Some(node) => Some((&node.key, &node.val)),
-            None => None,
-        }
+        self.arena.get(self.max_idx).map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -741,7 +732,7 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
     type IntoIter = RefInOrderIterator<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RefInOrderIterator::new(&self)
+        RefInOrderIterator::new(self)
     }
 }
 
