@@ -16,6 +16,11 @@ impl<K: Ord, V> Node<K, V> {
             right_idx: None,
         }
     }
+
+    // TODO: use?
+    pub fn get_mut(&mut self) -> (&K, &mut V) {
+        (&self.key, &mut self.val)
+    }
 }
 
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.

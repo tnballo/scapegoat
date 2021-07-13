@@ -1,4 +1,5 @@
-use crate::tree::{SGTree, IdxVec};
+use crate::tree::{Node, SGTree, IdxVec};
+use super::arena::OptNode;
 
 // TODO: add pre-order and post-order iterators
 
@@ -73,38 +74,27 @@ impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
 
 // Mutable Reference iterator ----------------------------------------------------------------------------------------
 
-/// Uses iterative in-order tree traversal algorithm.
-/// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
 pub struct IterMut<'a, K: Ord, V> {
-    bst: &'a mut SGTree<K, V>,
-    idx_stack: IdxVec,
+    //node_arena: &'a mut NodeArena<K, V>,
+    arena_slice: &'a mut [OptNode<K,V>],
+    sorted_idxs: IdxVec,
+    //next: Option<(&'a K, &'a mut V)>,
 }
 
 impl<'a, K: Ord, V> IterMut<'a, K, V> {
     pub fn new(bst: &'a mut SGTree<K, V>) -> Self {
-        let mut ordered_iter_mut = IterMut {
-            bst,
-            idx_stack: IdxVec::new(),
+        let mut sorted_idxs = IdxVec::new();
+        if let Some(root_idx) = bst.root_idx {
+            sorted_idxs = bst.flatten_subtree_to_sorted_idxs(root_idx);
+            sorted_idxs.reverse();
         };
 
-        if let Some(root_idx) = ordered_iter_mut.bst.root_idx {
-            let mut curr_idx = root_idx;
-            loop {
-                let node = ordered_iter_mut.bst.arena.hard_get(curr_idx);
-                match node.left_idx {
-                    Some(lt_idx) => {
-                        ordered_iter_mut.idx_stack.push(curr_idx);
-                        curr_idx = lt_idx;
-                    }
-                    None => {
-                        ordered_iter_mut.idx_stack.push(curr_idx);
-                        break;
-                    }
-                }
-            }
+        IterMut {
+            //node_arena: &mut bst.arena,
+            arena_slice: bst.arena.as_mut_slice(),
+            sorted_idxs,
+            //next: None,
         }
-
-        ordered_iter_mut
     }
 }
 
@@ -112,29 +102,19 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.idx_stack.pop() {
-            Some(pop_idx) => {
-                let node = self.bst.arena.hard_get(pop_idx);
-                if let Some(gt_idx) = node.right_idx {
-                    let mut curr_idx = gt_idx;
-                    loop {
-                        let node = self.bst.arena.hard_get(curr_idx);
-                        match node.left_idx {
-                            Some(lt_idx) => {
-                                self.idx_stack.push(curr_idx);
-                                curr_idx = lt_idx;
-                            }
-                            None => {
-                                self.idx_stack.push(curr_idx);
-                                break;
-                            }
-                        }
-                    }
-                }
+        match self.sorted_idxs.pop() {
+            Some(idx) => {
+                // TODO: clever splitting and manipulation here
+                let slice = core::mem::replace(&mut self.arena_slice, &mut []);
+                //let (left, right) = self.arena_slice.split_at_mut(idx);
+                let (_, right) = slice.split_at_mut(idx);
+                let (mut target, _) = right.split_first_mut()?;
+                //self.arena_slice = slice; // Can't merge since no copy!
+                target.as_mut().map(|mut node| (&node.key, &mut node.val))
 
-                let node = self.bst.arena.hard_get_mut(pop_idx);
-                Some((&node.key, &mut node.val))
-            }
+                //self.node_arena.take(idx).map(|mut node| (&node.key, &mut node.val))
+                //self.next = self.node_arena.take_mut(idx).map(|mut node| (&node.key, &mut node.val));
+            },
             None => None,
         }
     }

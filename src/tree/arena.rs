@@ -1,3 +1,6 @@
+// TODO: remove
+//use core::ops::IndexMut;
+
 use smallvec::SmallVec;
 
 use super::node::Node;
@@ -133,6 +136,19 @@ impl<K: Ord, V> NodeArena<K, V> {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
         }
+    }
+
+    /*
+    // TODO: remove
+    pub fn take(&mut self, idx: usize) -> Option<Node<K,V>> {
+        self.arena.index_mut(idx).take()
+    }
+    */
+
+    // TODO: document
+    pub fn as_mut_slice(&mut self) -> &mut [OptNode<K,V>] {
+        //self.arena.as_mut_slice().iter_mut().filter_map(|node| *node).collect()
+        self.arena.as_mut_slice()
     }
 
     /// Returns the number of entries in the arena, some of which may be `None`.
