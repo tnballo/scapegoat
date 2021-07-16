@@ -16,10 +16,13 @@ enum ArenaMethod<K: Ord + fmt::Debug, V: fmt::Debug> {
     New,
     // capacity() returns a constant. Omitted, irrelevant coverage.
     Add { key: K, val: V },
+    Iter,
+    IterMut,
     HardRemove { idx: usize },
     HardGet { idx: usize },
     HardGetMut { idx: usize },
     Len,
+    // sort() exercised through SGMap fuzz target (input invariants are complex, tree structure related)
 }
 
 fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
@@ -36,6 +39,12 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
                 let node = Node::new(key, val);
                 let idx = arena.add(node);
                 idx_set.insert(idx);
+            },
+            ArenaMethod::Iter => {
+                let _ = arena.iter();
+            },
+            ArenaMethod::IterMut => {
+                let _ = arena.iter_mut();
             },
             ArenaMethod::HardRemove { idx } => {
                 match idx_set.remove(&idx) {

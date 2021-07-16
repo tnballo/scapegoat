@@ -26,6 +26,7 @@ enum SetMethod<T: Ord + Debug> {
     IsEmpty,
     IsSubset { other: Vec<T> },
     IsSuperset { other: Vec<T> },
+    Iter,
     Last,
     Len,
     New,
@@ -35,17 +36,7 @@ enum SetMethod<T: Ord + Debug> {
     SymmetricDifference { other: Vec<T> },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
-    // TODO: IntoIterator
-    // TODO: BitAnd
-    // TODO: BitOr
-    // TODO: BitXor
-    // TODO: Sub
-    // TODO: Eq
-    // TODO: Ord
-    // TODO: PartialEq
-    // TODO: PartialOrd
-    // TODO: StructuralEq
-    // TODO: StructuralPartialEq
+    // TODO
 }
 
 fn checked_get_len<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>) -> usize {
@@ -163,6 +154,9 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                     bt_set.is_subset(&BTreeSet::from_iter(other))
                 );
             },
+            SetMethod::Iter => {
+                assert!(sg_set.iter().eq(bt_set.iter()));
+            },
             SetMethod::IsSuperset { other } => {
                 assert_eq!(
                     sg_set.is_superset(&SGSet::from_iter(other.clone())),
@@ -228,22 +222,10 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             SetMethod::Union { other } => {
                 let sg_union: Vec<_>= sg_set.union(&SGSet::from_iter(other.clone())).cloned().collect();
                 let bt_union: Vec<_> = bt_set.union(&BTreeSet::from_iter(other)).cloned().collect();
-                assert_eq!(sg_union, bt_union);
 
+                assert_eq!(sg_union, bt_union);
                 assert!(sg_union.len() >= sg_set.len());
             },
-            /*
-            SetMethod::IntoIterator => {
-                assert_eq!(
-                    sg_set.len(),
-                    bt_set.len()
-                );
-                assert_eq!(
-                    (&sg_set).into_iter(),
-                    (&bt_set).into_iter(),
-                );
-            },
-            */
         }
     }
 });

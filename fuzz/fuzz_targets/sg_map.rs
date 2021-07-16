@@ -24,6 +24,8 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     GetMut { key: K },
     Insert { key: K, val: V },
     IsEmpty,
+    Iter,
+    IterMut,
     LastKey,
     LastKeyValue,
     Len,
@@ -33,11 +35,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Remove { key: K },
     RemoveEntry { key: K },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
-    // TODO: IntoIterator
-    // TODO: Eq
-    // TODO: Ord
-    // TODO: PartialEq
-    // TODO: PartialOrd
+    // TODO
 }
 
 fn checked_get_len<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>) -> usize {
@@ -168,6 +166,12 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                     sg_map.is_empty(),
                     bt_map.is_empty(),
                 );
+            },
+            MapMethod::Iter => {
+                assert!(sg_map.iter().eq(bt_map.iter()));
+            },
+            MapMethod::IterMut => {
+                assert!(sg_map.iter_mut().eq(bt_map.iter_mut()));
             },
             MapMethod::LastKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);

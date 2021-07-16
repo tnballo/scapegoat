@@ -39,6 +39,16 @@ impl<K: Ord, V> NodeArena<K, V> {
         MAX_ELEMS
     }
 
+    /// Description: TODO
+    pub fn iter(&self) -> Iter<'_, OptNode<K, V>> {
+        self.arena.iter()
+    }
+
+    // Description: TODO
+    pub fn iter_mut(&mut self) -> IterMut<'_, OptNode<K, V>> {
+        self.arena.iter_mut()
+    }
+
     /// Add node to area, growing if necessary, and return addition index.
     pub fn add(&mut self, node: Node<K, V>) -> usize {
         match self.free_list.pop() {
@@ -89,16 +99,6 @@ impl<K: Ord, V> NodeArena<K, V> {
         }
 
         None
-    }
-
-    /// Description: TODO
-    pub fn iter(&self) -> Iter<'_, OptNode<K, V>> {
-        self.arena.iter()
-    }
-
-    // Description: TODO
-    pub fn iter_mut(&mut self) -> IterMut<'_, OptNode<K, V>> {
-        self.arena.iter_mut()
     }
 
     /// Description: TODO

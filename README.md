@@ -5,7 +5,7 @@
 
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-This library is `!#[no_std]` compatible by default and strictly `#![forbid(unsafe_code)]`.
+This library is `!#[no_std]` compatible by default, strictly `#![forbid(unsafe_code)]`, and verified using differential fuzzing.
 
 ### About
 
@@ -47,7 +47,7 @@ example.insert(1, String::from("Please"));
 example.insert(4, String::from("borrow checker"));
 
 assert_eq!(
-    (&example).into_iter().map(|(_, v)| v).collect::<Vec<&String>>(),
+    example.iter().map(|(_, v)| v).collect::<Vec<&String>>(),
     vec!["Please","don't blame","the","borrow checker"]
 );
 
@@ -79,7 +79,7 @@ export SG_MAX_STACK_ELEMS=2048
 cargo build --release
 ```
 
- Please note:
+Please note:
 
 * If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
 * For embedded systems without dynamic (heap) memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
@@ -90,13 +90,14 @@ cargo build --release
 This library has two dependencies, each of which have no dependencies of their own (e.g. exactly two total dependencies).
 Both dependencies were carefully chosen.
 
- * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vector` alternative. Used in Mozilla's Servo browser engine.
- * [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
+* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vector` alternative. Used in Mozilla's Servo browser engine.
+* [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
 
-### Note
+### Considerations
 
 This project is an exercise in safe data structure design.
 It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
-However:
- * It's APIs are a subset of those offered by `BTreeMap`/`BTreeSet`, making it a mostly "drop-in" replacement for `!#[no_std]` systems.
- * [Coverage-guided differential fuzzing](./fuzz/README.md) is used to verify that this implementation is logically equivalent and reliable.
+It does, however, offer:
+* **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems.
+* **Dynamic Verification:** [Coverage-guided differential fuzzing](./fuzz/README.md) is used to verify that this implementation is logically equivalent and equally reliable.
+
