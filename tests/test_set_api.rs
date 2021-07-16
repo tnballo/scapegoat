@@ -149,8 +149,7 @@ fn test_set_symmetric_difference() {
     let a = SGSet::from_iter(&[1, 2, 3, 4, 5]);
     let b = SGSet::from_iter(&[4, 5, 6, 7, 8]);
     assert_eq!(
-        a.symmetric_difference(&b).copied()
-            .collect::<Vec<&usize>>(),
+        a.symmetric_difference(&b).copied().collect::<Vec<&usize>>(),
         vec![&1, &2, &3, &6, &7, &8]
     );
 }

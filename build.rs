@@ -14,7 +14,10 @@ fn main() {
     let max_elems = match env::var(env_key) {
         Ok(val) => val,
         Err(_) => {
-            println!("cargo:warning=Unset environment variable, using default: \'{}={}\'", env_key, env_val_def);
+            println!(
+                "cargo:warning=Unset environment variable, using default: \'{}={}\'",
+                env_key, env_val_def
+            );
             env_val_def.to_string()
         }
     };

@@ -125,7 +125,7 @@ fn test_map_iter_mut() {
     assert_eq!(sgm.last_key_value(), Some((&"h", &8)));
 
     for (key, val) in sgm.iter_mut() {
-        if (key != &"a") &&  (key != &"f") {
+        if (key != &"a") && (key != &"f") {
             *val += 10;
         }
     }
@@ -175,7 +175,7 @@ fn test_map_iter_mut_rand() {
 
     let result_vec = sgm.into_iter().collect::<Vec<(isize, isize)>>();
     assert!(result_vec.as_slice().windows(2).all(|w| w[0].0 <= w[1].0));
-    assert!(result_vec.iter().all(|(_,v)| *v == 25));
+    assert!(result_vec.iter().all(|(_, v)| *v == 25));
 }
 
 #[test]

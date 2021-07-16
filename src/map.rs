@@ -145,6 +145,9 @@ impl<K: Ord, V> SGMap<K, V> {
     ///         *value += 10;
     ///     }
     /// }
+    ///
+    /// let (second_key, second_value) = map.iter().skip(1).next().unwrap();
+    /// assert_eq!((*second_key, *second_value), ("b", 12));
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         IterMut::new(&mut self.bst)

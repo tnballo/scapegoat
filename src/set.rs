@@ -1,12 +1,12 @@
 use core::cmp::Ordering;
 use core::iter::FromIterator;
-use core::ops::{Sub, BitAnd, BitOr, BitXor};
+use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use smallvec::{SmallVec, IntoIter};
+use smallvec::{IntoIter, SmallVec};
 
 use crate::MAX_ELEMS;
 
-type ElemVec<'a, T> = SmallVec::<[&'a T; MAX_ELEMS]>;
+type ElemVec<'a, T> = SmallVec<[&'a T; MAX_ELEMS]>;
 type ElemIter<'a, T> = IntoIter<[&'a T; MAX_ELEMS]>;
 
 use crate::tree::{ConsumingIter as TreeConsumingIter, Iter as TreeIter, SGTree};
@@ -19,7 +19,6 @@ pub struct SGSet<T: Ord> {
 }
 
 impl<T: Ord> SGSet<T> {
-
     /// Constructor.
     ///
     /// # Examples
@@ -656,7 +655,7 @@ impl<T: Ord + Clone> Sub<&SGSet<T>> for &SGSet<T> {
     }
 }
 
-impl <T: Ord + Clone> BitAnd<&SGSet<T>> for &SGSet<T> {
+impl<T: Ord + Clone> BitAnd<&SGSet<T>> for &SGSet<T> {
     type Output = SGSet<T>;
 
     /// Returns the intersection of `self` and `rhs` as a new `SGSet<T>`.

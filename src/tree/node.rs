@@ -68,64 +68,64 @@ impl NodeRebuildHelper {
 
 // Swap History Cache --------------------------------------------------------------------------------------------------
 
-/// TODO: documentation
-/// TODO: apply this mini struct pattern elsewhere?
+/// A helper "cache" for swap operation history.
+/// If every index swap is logged, tracks mapping of original to current indexes.
 pub struct NodeSwapHistHelper {
     /// Map `original_idx` -> `current_idx`
     history: SortSwapVec,
 }
 
 impl NodeSwapHistHelper {
-
-    /// TODO: docs
+    /// Constructor.
     pub fn new() -> NodeSwapHistHelper {
-        NodeSwapHistHelper { history: SortSwapVec::new() }
+        NodeSwapHistHelper {
+            history: SortSwapVec::new(),
+        }
     }
 
-    /// TODO: docs
+    /// Log the swap of elements at two indexes.
+    /// Every swap performed must be logged with this method for the cache to remain accurate.
     pub fn add(&mut self, pos_1: usize, pos_2: usize) {
-
         debug_assert_ne!(pos_1, pos_2);
 
-        let mut known_p1 = false;
-        let mut known_p2 = false;
+        let mut known_pos_1 = false;
+        let mut known_pos_2 = false;
 
         // Update existing
         for (_, curr_idx) in self.history.iter_mut() {
             if *curr_idx == pos_1 {
                 *curr_idx = pos_2;
-                known_p1 = true;
+                known_pos_1 = true;
             } else if *curr_idx == pos_2 {
                 *curr_idx = pos_1;
-                known_p2 = true;
+                known_pos_2 = true;
             }
         }
 
-        // Add new
-        if !known_p1 {
+        // Add new mapping
+        if !known_pos_1 {
             self.history.push((pos_1, pos_2));
         }
 
-        // Add new
-        if !known_p2 {
+        // Add new mapping
+        if !known_pos_2 {
             self.history.push((pos_2, pos_1));
         }
     }
 
-    // TODO: docs
-    pub fn curr_idx(&self, pos: usize) -> usize {
-        debug_assert!(
-            self.history.iter()
-                .filter(|(orig, _)| *orig == pos)
-                .count() <= 1
-        );
+    /// Retrieve the current value of an original index from the map.
+    pub fn curr_idx(&self, orig_pos: usize) -> usize {
+        debug_assert!(self.history.iter().filter(|(k, _)| *k == orig_pos).count() <= 1);
 
-        match self.history.iter()
-            .filter(|(orig, _)| *orig == pos)
-            .map(|(_, curr)| *curr )
-            .next() {
-                Some(curr_idx) => curr_idx,
-                None => pos,
+        match self
+            .history
+            .iter()
+            .filter(|(k, _)| *k == orig_pos)
+            .map(|(_, curr)| *curr)
+            .next()
+        {
+            Some(curr_idx) => curr_idx,
+            None => orig_pos,
         }
     }
 }

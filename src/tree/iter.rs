@@ -1,5 +1,6 @@
-use crate::tree::{SGTree, IdxVec};
-use super::arena::OptNode;
+use super::node::Node;
+use super::tree::SGTree;
+use super::types::IdxVec;
 
 // TODO: add pre-order and post-order iterators
 
@@ -75,14 +76,14 @@ impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
 // Mutable Reference iterator ----------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K: Ord, V> {
-    arena_iter_mut: core::slice::IterMut<'a, OptNode<K, V>>
+    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V>>>,
 }
 
 impl<'a, K: Ord, V> IterMut<'a, K, V> {
     pub fn new(bst: &'a mut SGTree<K, V>) -> Self {
         bst.sort_arena();
         IterMut {
-            arena_iter_mut: bst.arena.iter_mut()
+            arena_iter_mut: bst.arena.iter_mut(),
         }
     }
 }
