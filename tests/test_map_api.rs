@@ -1,5 +1,8 @@
-use scapegoat::SGMap;
 use std::iter::FromIterator;
+
+use scapegoat::SGMap;
+
+use rand::Rng;
 
 #[test]
 fn test_basic_map_functionality() {
@@ -101,6 +104,78 @@ fn test_map_iter() {
     assert_eq!(sgm_iter.next(), Some((&2, &"2")));
     assert_eq!(sgm_iter.next(), Some((&3, &"3")));
     assert_eq!(sgm_iter.next(), None);
+}
+
+#[test]
+fn test_map_iter_mut() {
+    let key_val_tuples = vec![
+        ("h", 8),
+        ("d", 4),
+        ("b", 2),
+        ("e", 5),
+        ("f", 6),
+        ("a", 1),
+        ("g", 7),
+        ("c", 3),
+    ];
+
+    let mut sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    assert_eq!(sgm.len(), 8);
+    assert_eq!(sgm.first_key_value(), Some((&"a", &1)));
+    assert_eq!(sgm.last_key_value(), Some((&"h", &8)));
+
+    for (key, val) in sgm.iter_mut() {
+        if (key != &"a") &&  (key != &"f") {
+            *val += 10;
+        }
+    }
+
+    assert_eq!(sgm.len(), 8);
+    assert_eq!(sgm.first_key_value(), Some((&"a", &1)));
+    assert_eq!(sgm.last_key_value(), Some((&"h", &18)));
+
+    assert_eq!(
+        sgm.into_iter().collect::<Vec<(&str, usize)>>(),
+        vec![
+            ("a", 1),
+            ("b", 12),
+            ("c", 13),
+            ("d", 14),
+            ("e", 15),
+            ("f", 6),
+            ("g", 17),
+            ("h", 18),
+        ],
+    );
+}
+
+#[test]
+fn test_map_iter_mut_rand() {
+    let mut sgm = SGMap::<isize, isize>::new();
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..500 {
+        sgm.insert(rng.gen(), 0);
+    }
+
+    let min_key = *sgm.first_key().unwrap();
+    let max_key = *sgm.last_key().unwrap();
+
+    let mut last_key_opt = None;
+    for (key, val) in sgm.iter_mut() {
+        *val += 25;
+        if let Some(last_key) = last_key_opt {
+            assert!(key >= last_key);
+        }
+        last_key_opt = Some(key);
+    }
+
+    assert_eq!(min_key, *sgm.first_key().unwrap());
+    assert_eq!(max_key, *sgm.last_key().unwrap());
+
+    let result_vec = sgm.into_iter().collect::<Vec<(isize, isize)>>();
+    assert!(result_vec.as_slice().windows(2).all(|w| w[0].0 <= w[1].0));
+    assert!(result_vec.iter().all(|(_,v)| *v == 25));
 }
 
 #[test]

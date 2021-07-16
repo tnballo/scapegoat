@@ -12,6 +12,9 @@ pub use arena::NodeArena;
 mod node;
 pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
+mod types;
+pub use types::SortMetaVec;
+
 #[cfg(test)]
 mod test;
 
@@ -140,7 +143,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// tree.insert("c", 3);
     ///
     /// // Add 10 to the value if the key isn't "a"
-    /// for (key, value) in map.iter_mut() {
+    /// for (key, value) in tree.iter_mut() {
     ///     if key != &"a" {
     ///         *value += 10;
     ///     }
@@ -740,6 +743,26 @@ impl<K: Ord, V> SGTree<K, V> {
             self.get_subtree_size(subtree_root_arena_idx) == sorted_arena_idxs.len(),
             "Internal invariant failed: rebalance dropped node count!"
         );
+    }
+
+    // TODO: add public version of this function?
+    // Sort the arena such that contiguous nodes are in-order (by key)
+    // This expensive operation forces "physical" order to match "logical" order
+    fn sort_arena(&mut self) {
+        if let Some(root_idx) = self.root_idx {
+            let mut sort_metadata = self.arena.iter()
+                .filter(|n| n.is_some())
+                .map(|n| n.as_ref().unwrap())
+                .map(|n| self.priv_get(&n.key))
+                .collect::<SortMetaVec>();
+
+            sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx.unwrap()).key);
+            let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
+
+            self.root_idx = Some(sorted_root_idx);
+            self.update_max_idx();
+            self.update_min_idx();
+        }
     }
 }
 

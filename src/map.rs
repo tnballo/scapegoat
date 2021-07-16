@@ -1,7 +1,7 @@
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{ConsumingIter, Iter, SGTree};
+use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
@@ -123,6 +123,31 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter::new(&self.bst)
+    }
+
+    /// Gets a mutable iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map = SGMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Add 10 to the value if the key isn't "a"
+    /// for (key, value) in map.iter_mut() {
+    ///     if key != &"a" {
+    ///         *value += 10;
+    ///     }
+    /// }
+    /// ```
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        IterMut::new(&mut self.bst)
     }
 
     /// Removes a key from the map, returning the stored key and value if the key was previously in the map.

@@ -1,9 +1,9 @@
-// TODO: remove
-//use core::ops::IndexMut;
+use core::slice::{Iter, IterMut};
 
 use smallvec::SmallVec;
 
-use super::node::Node;
+use super::node::{Node, NodeSwapHistHelper};
+use super::types::SortMetaVec;
 
 use crate::MAX_ELEMS;
 
@@ -91,6 +91,54 @@ impl<K: Ord, V> NodeArena<K, V> {
         None
     }
 
+    /// Description: TODO
+    pub fn iter(&self) -> Iter<'_, OptNode<K, V>> {
+        self.arena.iter()
+    }
+
+    // Description: TODO
+    pub fn iter_mut(&mut self) -> IterMut<'_, OptNode<K, V>> {
+        self.arena.iter_mut()
+    }
+
+    /// Description: TODO
+    /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
+    pub fn sort(&mut self, root_idx: usize, sort_metadata: SortMetaVec) -> usize {
+        debug_assert!(
+            sort_metadata.iter().all(|ngh| ngh.node_idx.is_some())
+        );
+
+        let mut swap_history = NodeSwapHistHelper::new();
+
+        // Sort as requested
+        for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
+            let old_idx = ngh.node_idx.unwrap();
+            let curr_idx = swap_history.curr_idx(old_idx);
+            if curr_idx != sorted_idx {
+                self.arena.swap(curr_idx, sorted_idx);
+                swap_history.add(curr_idx, sorted_idx);
+                self.free_list.retain(|i| *i != sorted_idx);
+            }
+        }
+
+        // Update all parent-child relationships
+        for ngh in sort_metadata {
+            if let Some(parent_idx) = ngh.parent_idx {
+                let curr_parent_idx = swap_history.curr_idx(parent_idx);
+                let curr_child_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
+                let parent_node = self.hard_get_mut(curr_parent_idx);
+                if ngh.is_right_child {
+                    parent_node.right_idx = Some(curr_child_idx);
+                } else {
+                    parent_node.left_idx = Some(curr_child_idx);
+                }
+            }
+        }
+
+        // Report new root
+        swap_history.curr_idx(root_idx)
+    }
+
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
     pub fn hard_remove(&mut self, idx: usize) -> Node<K, V> {
@@ -138,19 +186,6 @@ impl<K: Ord, V> NodeArena<K, V> {
         }
     }
 
-    /*
-    // TODO: remove
-    pub fn take(&mut self, idx: usize) -> Option<Node<K,V>> {
-        self.arena.index_mut(idx).take()
-    }
-    */
-
-    // TODO: document
-    pub fn as_mut_slice(&mut self) -> &mut [OptNode<K,V>] {
-        //self.arena.as_mut_slice().iter_mut().filter_map(|node| *node).collect()
-        self.arena.as_mut_slice()
-    }
-
     /// Returns the number of entries in the arena, some of which may be `None`.
     pub fn len(&self) -> usize {
         self.arena.len()
@@ -166,7 +201,9 @@ impl<K: Ord, V> Default for NodeArena<K, V> {
 #[cfg(test)]
 mod tests {
     use super::{Node, NodeArena};
+    use crate::tree::node::NodeGetHelper;
     use crate::tree::arena::MAX_ELEMS;
+    use smallvec::smallvec;
 
     #[test]
     fn test_add_and_remove() {
@@ -230,5 +267,60 @@ mod tests {
     fn test_capacity() {
         let arena = NodeArena::<i32, &str>::new();
         assert_eq!(arena.capacity(), MAX_ELEMS);
+    }
+
+    #[test]
+    fn test_sort() {
+        let mut arena = NodeArena::<usize, &str>::new();
+
+        // Simple 3-node tree:
+        //
+        //     2
+        //     |
+        // ---------
+        // |       |
+        // 1       3
+        //
+        let n_1 = Node::new(1, "n/a");
+        let mut n_2 = Node::new(2, "n/a");
+        let n_3 = Node::new(3, "n/a");
+
+        n_2.left_idx = Some(2);
+        n_2.right_idx = Some(0);
+
+        arena.add(n_3);
+        arena.add(n_2);
+        arena.add(n_1);
+
+        // Unsorted (insertion/"physical" order)
+        assert_eq!(arena.arena[0].as_ref().unwrap().key, 3);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key, 1);
+
+        // Would be supplied for the above tree
+        let sort_metadata = smallvec!{
+            NodeGetHelper {
+                node_idx: Some(2),
+                parent_idx: Some(1),
+                is_right_child: false,
+            },
+            NodeGetHelper {
+                node_idx: Some(1),
+                parent_idx: None,
+                is_right_child: false,
+            },
+            NodeGetHelper {
+                node_idx: Some(0),
+                parent_idx: Some(1),
+                is_right_child: true,
+            },
+        };
+
+        arena.sort(1, sort_metadata);
+
+        // Sorted ("logical" order)
+        assert_eq!(arena.arena[0].as_ref().unwrap().key, 1);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key, 3);
     }
 }
