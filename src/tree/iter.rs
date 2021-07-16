@@ -1,21 +1,21 @@
-
-use crate::tree::{SGTree, IdxVec};
+use super::node::Node;
+use super::tree::SGTree;
+use super::types::IdxVec;
 
 // TODO: add pre-order and post-order iterators
 
-// Reference iterator --------------------------------------------------------------------------------------------------
+// Immutable Reference iterator ----------------------------------------------------------------------------------------
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
-/// This iterator is more memory efficient than the consuming variant, but slower.
-pub struct RefInOrderIterator<'a, K: Ord, V> {
+pub struct Iter<'a, K: Ord, V> {
     bst: &'a SGTree<K, V>,
     idx_stack: IdxVec,
 }
 
-impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
+impl<'a, K: Ord, V> Iter<'a, K, V> {
     pub fn new(bst: &'a SGTree<K, V>) -> Self {
-        let mut ordered_iter = RefInOrderIterator {
+        let mut ordered_iter = Iter {
             bst,
             idx_stack: IdxVec::new(),
         };
@@ -41,7 +41,7 @@ impl<'a, K: Ord, V> RefInOrderIterator<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
+impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -73,19 +73,44 @@ impl<'a, K: Ord, V> Iterator for RefInOrderIterator<'a, K, V> {
     }
 }
 
+// Mutable Reference iterator ----------------------------------------------------------------------------------------
+
+pub struct IterMut<'a, K: Ord, V> {
+    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V>>>,
+}
+
+impl<'a, K: Ord, V> IterMut<'a, K, V> {
+    pub fn new(bst: &'a mut SGTree<K, V>) -> Self {
+        bst.sort_arena();
+        IterMut {
+            arena_iter_mut: bst.arena.iter_mut(),
+        }
+    }
+}
+
+impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.arena_iter_mut.next() {
+            Some(Some(node)) => Some((&node.key, &mut node.val)),
+            _ => None,
+        }
+    }
+}
+
 // Consuming iterator --------------------------------------------------------------------------------------------------
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
-/// This iterator is less memory efficient than the reference variant, but faster.
-pub struct InOrderIterator<K: Ord, V> {
+pub struct ConsumingIter<K: Ord, V> {
     bst: SGTree<K, V>,
     sorted_idxs: IdxVec,
 }
 
-impl<K: Ord, V> InOrderIterator<K, V> {
+impl<K: Ord, V> ConsumingIter<K, V> {
     pub fn new(bst: SGTree<K, V>) -> Self {
-        let mut ordered_iter = InOrderIterator {
+        let mut ordered_iter = ConsumingIter {
             bst,
             sorted_idxs: IdxVec::new(),
         };
@@ -99,7 +124,7 @@ impl<K: Ord, V> InOrderIterator<K, V> {
     }
 }
 
-impl<K: Ord, V> Iterator for InOrderIterator<K, V> {
+impl<K: Ord, V> Iterator for ConsumingIter<K, V> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {

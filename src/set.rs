@@ -1,14 +1,15 @@
 use core::cmp::Ordering;
 use core::iter::FromIterator;
+use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use smallvec::{SmallVec, IntoIter};
+use smallvec::{IntoIter, SmallVec};
 
 use crate::MAX_ELEMS;
 
-type ElemVec<'a, T> = SmallVec::<[&'a T; MAX_ELEMS]>;
+type ElemVec<'a, T> = SmallVec<[&'a T; MAX_ELEMS]>;
 type ElemIter<'a, T> = IntoIter<[&'a T; MAX_ELEMS]>;
 
-use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
+use crate::tree::{ConsumingIter as TreeConsumingIter, Iter as TreeIter, SGTree};
 
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
@@ -18,7 +19,6 @@ pub struct SGSet<T: Ord> {
 }
 
 impl<T: Ord> SGSet<T> {
-
     /// Constructor.
     ///
     /// # Examples
@@ -100,6 +100,37 @@ impl<T: Ord> SGSet<T> {
     /// ```
     pub fn insert(&mut self, value: T) -> bool {
         self.bst.insert(value, ()).is_none()
+    }
+
+    /// Gets an iterator that visits the values in the `SGSet` in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let set: SGSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
+    ///
+    /// Values returned by the iterator are returned in ascending order:
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let set: SGSet<usize> = [3, 1, 2].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter::new(self)
     }
 
     /// Removes a value from the set. Returns whether the value was present in the set.
@@ -203,10 +234,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(set.is_empty());
     /// ```
     pub fn pop_first(&mut self) -> Option<T> {
-        match self.bst.pop_first() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.bst.pop_first().map(|(k, _)| k)
     }
 
     /// Returns the last/maximum value in the set, if any.
@@ -244,10 +272,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(set.is_empty());
     /// ```
     pub fn pop_last(&mut self) -> Option<T> {
-        match self.bst.pop_last() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.bst.pop_last().map(|(k, _)| k)
     }
 
     /// Returns the number of elements in the set.
@@ -357,7 +382,7 @@ impl<T: Ord> SGSet<T> {
 
         // Linear time
         while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
-            match self_val.cmp(&other_val) {
+            match self_val.cmp(other_val) {
                 Ordering::Less => {
                     opt_self_val = self_iter.next();
                 }
@@ -487,7 +512,7 @@ impl<T: Ord> SGSet<T> {
     }
 }
 
-// Conveniences --------------------------------------------------------------------------------------------------------
+// Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Default constructor
 impl<T: Ord> Default for SGSet<T> {
@@ -495,8 +520,6 @@ impl<T: Ord> Default for SGSet<T> {
         Self::new()
     }
 }
-
-// Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construction iterator
 impl<T: Ord> FromIterator<T> for SGSet<T> {
@@ -511,30 +534,62 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
     }
 }
 
+// Extension from iterator
+impl<T: Ord> Extend<T> for SGSet<T> {
+    fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
+        iter.into_iter().for_each(move |elem| {
+            self.insert(elem);
+        });
+    }
+
+    /*
+    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, elem: T) {
+        self.insert(elem);
+    }
+    */
+}
+
+// Extension from reference iterator
+impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for SGSet<T> {
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+
+    /*
+    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.insert(elem);
+    }
+    */
+}
+
+// Iterators -----------------------------------------------------------------------------------------------------------
+
 // Reference iterator
 impl<'a, T: Ord> IntoIterator for &'a SGSet<T> {
     type Item = &'a T;
-    type IntoIter = SetRefInOrderIterator<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        SetRefInOrderIterator::new(&self)
+        self.iter()
     }
 }
 
 /// Reference iterator wrapper
-pub struct SetRefInOrderIterator<'a, T: Ord> {
-    ref_iter: RefInOrderIterator<'a, T, ()>,
+pub struct Iter<'a, T: Ord> {
+    ref_iter: TreeIter<'a, T, ()>,
 }
 
-impl<'a, T: Ord> SetRefInOrderIterator<'a, T> {
+impl<'a, T: Ord> Iter<'a, T> {
     pub fn new(set: &'a SGSet<T>) -> Self {
-        SetRefInOrderIterator {
-            ref_iter: RefInOrderIterator::new(&set.bst),
+        Iter {
+            ref_iter: TreeIter::new(&set.bst),
         }
     }
 }
 
-impl<'a, T: Ord> Iterator for SetRefInOrderIterator<'a, T> {
+impl<'a, T: Ord> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -548,33 +603,120 @@ impl<'a, T: Ord> Iterator for SetRefInOrderIterator<'a, T> {
 // Consuming iterator
 impl<T: Ord> IntoIterator for SGSet<T> {
     type Item = T;
-    type IntoIter = SetInOrderIterator<T>;
+    type IntoIter = ConsumingIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        SetInOrderIterator::new(self)
+        ConsumingIter::new(self)
     }
 }
 
 /// Consuming iterator wrapper
-pub struct SetInOrderIterator<T: Ord> {
-    iter: InOrderIterator<T, ()>,
+pub struct ConsumingIter<T: Ord> {
+    cons_iter: TreeConsumingIter<T, ()>,
 }
 
-impl<T: Ord> SetInOrderIterator<T> {
+impl<T: Ord> ConsumingIter<T> {
     pub fn new(set: SGSet<T>) -> Self {
-        SetInOrderIterator {
-            iter: InOrderIterator::new(set.bst),
+        ConsumingIter {
+            cons_iter: TreeConsumingIter::new(set.bst),
         }
     }
 }
 
-impl<T: Ord> Iterator for SetInOrderIterator<T> {
+impl<T: Ord> Iterator for ConsumingIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.cons_iter.next().map(|(k, _)| k)
+    }
+}
+
+// Operator Overloading ------------------------------------------------------------------------------------------------
+
+impl<T: Ord + Clone> Sub<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the difference of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let result = &a - &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 2]);
+    /// ```
+    fn sub(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.difference(rhs).cloned().collect()
+    }
+}
+
+impl<T: Ord + Clone> BitAnd<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the intersection of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let result = &a & &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [2, 3]);
+    /// ```
+    fn bitand(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.intersection(rhs).cloned().collect()
+    }
+}
+
+impl<T: Ord + Clone> BitOr<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the union of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    ///
+    /// let result = &a | &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
+    /// ```
+    fn bitor(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.union(rhs).cloned().collect()
+    }
+}
+
+impl<T: Ord + Clone> BitXor<&SGSet<T>> for &SGSet<T> {
+    type Output = SGSet<T>;
+
+    /// Returns the symmetric difference of `self` and `rhs` as a new `SGSet<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    ///
+    /// let result = &a ^ &b;
+    /// let result_vec: Vec<_> = result.into_iter().collect();
+    /// assert_eq!(result_vec, [1, 4]);
+    /// ```
+    fn bitxor(self, rhs: &SGSet<T>) -> SGSet<T> {
+        self.symmetric_difference(rhs).cloned().collect()
     }
 }

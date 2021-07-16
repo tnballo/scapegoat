@@ -64,15 +64,23 @@ fn test_basic_set_functionality() {
 
 #[test]
 fn test_set_from_iter() {
-    let mut keys = Vec::new();
-    keys.push(1);
-    keys.push(10);
-    keys.push(100);
-
+    let keys = vec![1, 10, 100];
     let sgs = SGSet::from_iter(keys.into_iter());
 
     assert!(sgs.len() == 3);
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
+}
+
+#[test]
+fn test_set_iter() {
+    let keys = vec![1, 2, 3];
+    let sgs = SGSet::from_iter(keys.into_iter());
+    let mut sgs_iter = sgs.iter();
+
+    assert_eq!(sgs_iter.next(), Some(&1));
+    assert_eq!(sgs_iter.next(), Some(&2));
+    assert_eq!(sgs_iter.next(), Some(&3));
+    assert_eq!(sgs_iter.next(), None);
 }
 
 #[test]
@@ -131,7 +139,7 @@ fn test_set_difference() {
     let a = SGSet::from_iter(&[1, 3, 9, 7]);
     let b = SGSet::from_iter(&[2, 8, 9, 1]);
     assert_eq!(
-        a.difference(&b).map(|x| *x).collect::<Vec<&usize>>(),
+        a.difference(&b).copied().collect::<Vec<&usize>>(),
         vec![&3, &7]
     );
 }
@@ -141,9 +149,7 @@ fn test_set_symmetric_difference() {
     let a = SGSet::from_iter(&[1, 2, 3, 4, 5]);
     let b = SGSet::from_iter(&[4, 5, 6, 7, 8]);
     assert_eq!(
-        a.symmetric_difference(&b)
-            .map(|x| *x)
-            .collect::<Vec<&usize>>(),
+        a.symmetric_difference(&b).copied().collect::<Vec<&usize>>(),
         vec![&1, &2, &3, &6, &7, &8]
     );
 }
@@ -153,7 +159,7 @@ fn test_set_union() {
     let a = SGSet::from_iter(&[1, 3, 9, 7]);
     let b = SGSet::from_iter(&[2, 8]);
     assert_eq!(
-        a.union(&b).map(|x| *x).collect::<Vec<&usize>>(),
+        a.union(&b).copied().collect::<Vec<&usize>>(),
         vec![&1, &2, &3, &7, &8, &9]
     );
 }

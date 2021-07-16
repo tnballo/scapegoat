@@ -1,0 +1,40 @@
+
+[package]
+name = "scapegoat-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+#libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] } // TODO: why doesn't this work?
+libfuzzer-sys = { version = "0.4" }
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.scapegoat]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "sg_arena"
+path = "fuzz_targets/sg_arena.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "sg_set"
+path = "fuzz_targets/sg_set.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "sg_map"
+path = "fuzz_targets/sg_map.rs"
+test = false
+doc = false

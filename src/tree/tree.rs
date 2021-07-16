@@ -3,30 +3,20 @@ use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
 
-use smallvec::{SmallVec, smallvec};
-use libm::{floor, log2, log10};
-
-mod arena;
-use arena::NodeArena;
-
-mod node;
-use node::{Node, NodeGetHelper, NodeRebuildHelper};
-
-#[cfg(test)]
-mod test;
-
-mod iter;
-pub use iter::{InOrderIterator, RefInOrderIterator};
-
+use super::arena::NodeArena;
+use super::iter::{ConsumingIter, Iter, IterMut};
+use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
+use super::types::{IdxVec, SortMetaVec};
 use crate::MAX_ELEMS;
 
-type IdxVec = SmallVec<[usize; MAX_ELEMS]>;
+use libm::{floor, log10, log2};
+use smallvec::{smallvec, SmallVec};
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
 pub struct SGTree<K: Ord, V> {
-    arena: NodeArena<K, V>,
-    root_idx: Option<usize>,
+    pub(crate) arena: NodeArena<K, V>,
+    pub(crate) root_idx: Option<usize>,
     max_idx: usize,
     min_idx: usize,
     curr_size: usize,
@@ -100,6 +90,59 @@ impl<K: Ord, V> SGTree<K, V> {
         opt_val
     }
 
+    /// Gets an iterator over the entries of the tree, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let mut tree = SGTree::new();
+    /// tree.insert(3, "c");
+    /// tree.insert(2, "b");
+    /// tree.insert(1, "a");
+    ///
+    /// for (key, value) in tree.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = tree.iter().next().unwrap();
+    /// assert_eq!((*first_key, *first_value), (1, "a"));
+    /// ```
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        Iter::new(self)
+    }
+
+    /// Gets a mutable iterator over the entries of the tree, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let mut tree = SGTree::new();
+    /// tree.insert("a", 1);
+    /// tree.insert("b", 2);
+    /// tree.insert("c", 3);
+    ///
+    /// // Add 10 to the value if the key isn't "a"
+    /// for (key, value) in tree.iter_mut() {
+    ///     if key != &"a" {
+    ///         *value += 10;
+    ///     }
+    /// }
+    ///
+    /// let (second_key, second_value) = tree.iter().skip(1).next().unwrap();
+    /// assert_eq!((*second_key, *second_value), ("b", 12));
+    /// ```
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        IterMut::new(self)
+    }
+
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         match self.priv_remove_by_key(key) {
@@ -118,10 +161,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        match self.remove_entry(key) {
-            Some((_, v)) => Some(v),
-            None => None,
-        }
+        self.remove_entry(key).map(|(_, v)| v)
     }
 
     /// Returns the key-value pair corresponding to the given key.
@@ -176,10 +216,9 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Returns a reference to the first key-value pair in the tree.
     /// The key in this pair is the minimum key in the tree.
     pub fn first_key_value(&self) -> Option<(&K, &V)> {
-        match self.arena.get(self.min_idx) {
-            Some(node) => Some((&node.key, &node.val)),
-            None => None,
-        }
+        self.arena
+            .get(self.min_idx)
+            .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -202,10 +241,9 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Returns a reference to the last key-value pair in the tree.
     /// The key in this pair is the maximum key in the tree.
     pub fn last_key_value(&self) -> Option<(&K, &V)> {
-        match self.arena.get(self.max_idx) {
-            Some(node) => Some((&node.key, &node.val)),
-            None => None,
-        }
+        self.arena
+            .get(self.max_idx)
+            .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -233,6 +271,74 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering)
     pub fn rebal_cnt(&self) -> usize {
         self.rebal_cnt
+    }
+
+    // Crate-internal API ----------------------------------------------------------------------------------------------
+
+    // Remove a node by index.
+    // A wrapper for by-key removal, traversal is still required to determine node parent.
+    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> {
+        match self.arena.get(idx) {
+            Some(node) => {
+                let ngh = self.priv_get(&node.key);
+                debug_assert!(
+                    ngh.node_idx.unwrap() == idx,
+                    "By-key retrieval index doesn't match arena storage index!"
+                );
+                self.priv_remove(ngh)
+            }
+            None => None,
+        }
+    }
+
+    // Flatten subtree into array of node indexs sorted by node key
+    pub(crate) fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
+        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V>, usize); MAX_ELEMS]> =
+            smallvec![(self.arena.hard_get(idx), idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> =
+            smallvec![self.arena.hard_get(idx)];
+
+        while let Some(node) = subtree_worklist.pop() {
+            if let Some(left_idx) = node.left_idx {
+                let left_child_node = self.arena.hard_get(left_idx);
+                subtree_node_idx_pairs.push((left_child_node, left_idx));
+                subtree_worklist.push(left_child_node);
+            }
+
+            if let Some(right_idx) = node.right_idx {
+                let right_child_node = self.arena.hard_get(right_idx);
+                subtree_node_idx_pairs.push((right_child_node, right_idx));
+                subtree_worklist.push(right_child_node);
+            }
+        }
+
+        // Sort by Node key
+        // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
+        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key.cmp(&b.0.key));
+
+        subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
+    }
+
+    // TODO: make function fully public?
+    // Sort the arena such that contiguous nodes are in-order (by key)
+    // This expensive operation forces "physical" order to match "logical" order
+    pub(crate) fn sort_arena(&mut self) {
+        if let Some(root_idx) = self.root_idx {
+            let mut sort_metadata = self
+                .arena
+                .iter()
+                .filter(|n| n.is_some())
+                .map(|n| n.as_ref().unwrap())
+                .map(|n| self.priv_get(&n.key))
+                .collect::<SortMetaVec>();
+
+            sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx.unwrap()).key);
+            let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
+
+            self.root_idx = Some(sorted_root_idx);
+            self.update_max_idx();
+            self.update_min_idx();
+        }
     }
 
     // Private API -----------------------------------------------------------------------------------------------------
@@ -394,22 +500,6 @@ impl<K: Ord, V> SGTree<K, V> {
     fn priv_remove_by_key(&mut self, key: &K) -> Option<Node<K, V>> {
         let ngh = self.priv_get(key);
         self.priv_remove(ngh)
-    }
-
-    // Remove a node by index.
-    // A wrapper for by-key removal, traversal is still required to determine node parent.
-    fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> {
-        match self.arena.get(idx) {
-            Some(node) => {
-                let ngh = self.priv_get(&node.key);
-                debug_assert!(
-                    ngh.node_idx.unwrap() == idx,
-                    "By-key retrieval index doesn't match arena storage index!"
-                );
-                self.priv_remove(ngh)
-            }
-            None => None,
-        }
     }
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
@@ -574,7 +664,8 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Iterative subtree size computation
     fn get_subtree_size(&self, idx: usize) -> usize {
-        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> = smallvec![self.arena.hard_get(idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> =
+            smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
@@ -597,32 +688,6 @@ impl<K: Ord, V> SGTree<K, V> {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
         self.rebal_cnt += 1;
-    }
-
-    // Flatten subtree into array of node indexs sorted by node key
-    fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
-        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V>, usize); MAX_ELEMS]> = smallvec![(self.arena.hard_get(idx), idx)];
-        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> = smallvec![self.arena.hard_get(idx)];
-
-        while let Some(node) = subtree_worklist.pop() {
-            if let Some(left_idx) = node.left_idx {
-                let left_child_node = self.arena.hard_get(left_idx);
-                subtree_node_idx_pairs.push((left_child_node, left_idx));
-                subtree_worklist.push(left_child_node);
-            }
-
-            if let Some(right_idx) = node.right_idx {
-                let right_child_node = self.arena.hard_get(right_idx);
-                subtree_node_idx_pairs.push((right_child_node, right_idx));
-                subtree_worklist.push(right_child_node);
-            }
-        }
-
-        // Leverage Node's Ord trait impl to sort by key
-        // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.cmp(b.0));
-
-        subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
@@ -702,7 +767,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 }
 
-// Conveniences --------------------------------------------------------------------------------------------------------
+// Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Default constructor
 impl<K: Ord, V> Default for SGTree<K, V> {
@@ -738,20 +803,20 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
     type Item = (&'a K, &'a V);
-    type IntoIter = RefInOrderIterator<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RefInOrderIterator::new(&self)
+        self.iter()
     }
 }
 
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGTree<K, V> {
     type Item = (K, V);
-    type IntoIter = InOrderIterator<K, V>;
+    type IntoIter = ConsumingIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        InOrderIterator::new(self)
+        ConsumingIter::new(self)
     }
 }
 

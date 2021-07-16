@@ -1,7 +1,7 @@
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{InOrderIterator, RefInOrderIterator, SGTree};
+use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
@@ -98,6 +98,59 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
         self.bst.insert(key, val)
+    }
+
+    /// Gets an iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map = SGMap::new();
+    /// map.insert(3, "c");
+    /// map.insert(2, "b");
+    /// map.insert(1, "a");
+    ///
+    /// for (key, value) in map.iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    ///
+    /// let (first_key, first_value) = map.iter().next().unwrap();
+    /// assert_eq!((*first_key, *first_value), (1, "a"));
+    /// ```
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        Iter::new(&self.bst)
+    }
+
+    /// Gets a mutable iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map = SGMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Add 10 to the value if the key isn't "a"
+    /// for (key, value) in map.iter_mut() {
+    ///     if key != &"a" {
+    ///         *value += 10;
+    ///     }
+    /// }
+    ///
+    /// let (second_key, second_value) = map.iter().skip(1).next().unwrap();
+    /// assert_eq!((*second_key, *second_value), ("b", 12));
+    /// ```
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        IterMut::new(&mut self.bst)
     }
 
     /// Removes a key from the map, returning the stored key and value if the key was previously in the map.
@@ -359,7 +412,7 @@ impl<K: Ord, V> SGMap<K, V> {
     }
 }
 
-// Conveniences --------------------------------------------------------------------------------------------------------
+// Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Default constructor
 impl<K: Ord, V> Default for SGMap<K, V> {
@@ -386,24 +439,72 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
     }
 }
 
+// Extension from iterator
+impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+        iter.into_iter().for_each(move |(k, v)| {
+            self.insert(k, v);
+        });
+    }
+
+    /*
+    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.insert(k, v);
+    }
+    */
+}
+
+// Extension from reference iterator
+impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+
+    /*
+    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
+        self.insert(k, v);
+    }
+    */
+}
+
+/*
+TODO: investigate
+impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGMap<K, V> {
+    fn eq(&self, other: &SGMap<K, V>) -> bool {
+        (self.len() == other.len()) && (self.iter().zip(other).all(|(a, b)| a == b))
+    }
+}
+*/
+
+/*
+TODO: investigate
+impl<K: PartialOrd, V: PartialOrd> PartialOrd for SGMap<K, V> {
+    fn partial_cmp(&self, other: &SGMap<K, V>) -> Option<core::cmp::Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+*/
+
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
     type Item = (&'a K, &'a V);
-    type IntoIter = RefInOrderIterator<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RefInOrderIterator::new(&self.bst)
+        self.iter()
     }
 }
 
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGMap<K, V> {
     type Item = (K, V);
-    type IntoIter = InOrderIterator<K, V>;
+    type IntoIter = ConsumingIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        InOrderIterator::new(self.bst)
+        ConsumingIter::new(self.bst)
     }
 }
