@@ -1,4 +1,5 @@
 mod types;
+pub(crate) use types::{ElemRefIter, ElemRefVec};
 
 #[cfg(test)]
 mod test;

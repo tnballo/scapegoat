@@ -2,14 +2,9 @@ use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use smallvec::{IntoIter, SmallVec};
-
-use crate::MAX_ELEMS;
-
-type ElemVec<'a, T> = SmallVec<[&'a T; MAX_ELEMS]>;
-type ElemIter<'a, T> = IntoIter<[&'a T; MAX_ELEMS]>;
-
-use crate::tree::{ConsumingIter as TreeConsumingIter, Iter as TreeIter, SGTree};
+use crate::tree::{
+    ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
+};
 
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
@@ -309,8 +304,8 @@ impl<T: Ord> SGSet<T> {
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference(&self, other: &SGSet<T>) -> ElemIter<T> {
-        let mut diff = ElemVec::new();
+    pub fn difference(&self, other: &SGSet<T>) -> ElemRefIter<T> {
+        let mut diff = ElemRefVec::new();
         for val in self {
             if !other.contains(val) {
                 diff.push(val);
@@ -337,8 +332,8 @@ impl<T: Ord> SGSet<T> {
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
-    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemIter<T> {
-        let mut sym_diff = ElemVec::new();
+    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T> {
+        let mut sym_diff = ElemRefVec::new();
         for val in self {
             if !other.contains(val) {
                 sym_diff.push(val);
@@ -373,12 +368,12 @@ impl<T: Ord> SGSet<T> {
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection(&self, other: &SGSet<T>) -> ElemIter<T> {
+    pub fn intersection(&self, other: &SGSet<T>) -> ElemRefIter<T> {
         let mut self_iter = self.into_iter();
         let mut other_iter = other.into_iter();
         let mut opt_self_val = self_iter.next();
         let mut opt_other_val = other_iter.next();
-        let mut intersect = ElemVec::new();
+        let mut intersect = ElemRefVec::new();
 
         // Linear time
         while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
@@ -416,8 +411,8 @@ impl<T: Ord> SGSet<T> {
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemIter<T> {
-        let mut union = ElemVec::new();
+    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T> {
+        let mut union = ElemRefVec::new();
 
         for val in self {
             union.push(val);

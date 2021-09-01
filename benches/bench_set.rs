@@ -4,12 +4,11 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use scapegoat::SGSet;
 
 mod rtd;
-use rtd::{RTD_100, RTD_1_000, RTD_10_000, SGS_100, SGS_1_000, SGS_10_000};
+use rtd::{RTD_100, RTD_10_000, RTD_1_000, SGS_100, SGS_10_000, SGS_1_000};
 
 // Benches -------------------------------------------------------------------------------------------------------------
 
-fn insert_bench(c: &mut Criterion) {
-
+fn bench_insert(c: &mut Criterion) {
     c.bench_function("sgs_insert_100", |b| {
         b.iter(|| {
             let mut sgs = SGSet::new();
@@ -38,8 +37,7 @@ fn insert_bench(c: &mut Criterion) {
     });
 }
 
-fn get_bench(c: &mut Criterion) {
-
+fn bench_get(c: &mut Criterion) {
     c.bench_function("sgs_get_100", |b| {
         b.iter(|| {
             for k in &RTD_100.get_idxs {
@@ -65,8 +63,7 @@ fn get_bench(c: &mut Criterion) {
     });
 }
 
-fn remove_bench(c: &mut Criterion) {
-
+fn bench_remove(c: &mut Criterion) {
     let mut sgs_100: SGSet<usize> = SGSet::from_iter(RTD_100.keys.clone());
     let mut sgs_1_000: SGSet<usize> = SGSet::from_iter(RTD_1_000.keys.clone());
     let mut sgs_10_000: SGSet<usize> = SGSet::from_iter(RTD_10_000.keys.clone());
@@ -98,5 +95,5 @@ fn remove_bench(c: &mut Criterion) {
 
 // Runner --------------------------------------------------------------------------------------------------------------
 
-criterion_group!(benches, insert_bench, get_bench, remove_bench);
+criterion_group!(benches, bench_insert, bench_get, bench_remove);
 criterion_main!(benches);

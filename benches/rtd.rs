@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 
-use scapegoat::SGSet;
 use rand::Rng;
+use scapegoat::SGSet;
 
 // Random Test Data ----------------------------------------------------------------------------------------------------
 
@@ -25,13 +25,13 @@ impl RandTestData {
 
 // Init Random Test Data (Immutable, Global) ---------------------------------------------------------------------------
 
-lazy_static:: lazy_static! {
+lazy_static::lazy_static! {
     pub static ref RTD_100: RandTestData = RandTestData::new(100);
     pub static ref RTD_1_000: RandTestData = RandTestData::new(1_000);
     pub static ref RTD_10_000: RandTestData = RandTestData::new(10_000);
 }
 
-lazy_static:: lazy_static! {
+lazy_static::lazy_static! {
     pub static ref SGS_100: SGSet<usize> = SGSet::from_iter(RTD_100.keys.clone());
     pub static ref SGS_1_000: SGSet<usize> = SGSet::from_iter(RTD_1_000.keys.clone());
     pub static ref SGS_10_000: SGSet<usize> = SGSet::from_iter(RTD_10_000.keys.clone());
