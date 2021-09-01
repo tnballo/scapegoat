@@ -27,6 +27,7 @@ libm = "0.2.1"      # Has no dependenceis of it's own
 criterion = "0.3"
 rand = { version = "0.7", features = ["small_rng"] }
 ruut = "0.6"
+lazy_static = "1"
 
 [lib]
 name = "scapegoat"
