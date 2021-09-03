@@ -9,7 +9,7 @@ homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
 keywords = ["scapegoat", "tree", "set", "map", "no_std"]
-categories = ["algorithms", "data-structures"]
+categories = ["algorithms", "data-structures", "no-std", "embedded"]
 description = "Embedded-friendly ordered set and map data structures via an arena-based scapegoat tree."
 include = [
     "**/*.rs",
