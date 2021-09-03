@@ -6,11 +6,10 @@ use core::ops::Index;
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
-use super::types::{IdxVec, SortMetaVec};
-use crate::MAX_ELEMS;
+use super::types::{IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec};
 
-use libm::{floor, log10, log2};
-use smallvec::{smallvec, SmallVec};
+use micromath::F32Ext;
+use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
@@ -81,7 +80,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Optional rebalance
         let opt_val = self.priv_insert(&mut path, new_node);
-        if path.len() > log_3_2(self.max_size) {
+        if path.len() > Self::log_3_2(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
@@ -268,7 +267,7 @@ impl<K: Ord, V> SGTree<K, V> {
         self.curr_size
     }
 
-    /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering)
+    /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
     pub fn rebal_cnt(&self) -> usize {
         self.rebal_cnt
     }
@@ -293,10 +292,9 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Flatten subtree into array of node indexs sorted by node key
     pub(crate) fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
-        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V>, usize); MAX_ELEMS]> =
+        let mut subtree_node_idx_pairs: SortNodeRefIdxPairVec<K, V> =
             smallvec![(self.arena.hard_get(idx), idx)];
-        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> =
-            smallvec![self.arena.hard_get(idx)];
+        let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx {
@@ -319,9 +317,7 @@ impl<K: Ord, V> SGTree<K, V> {
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
 
-    // TODO: make function fully public?
-    // Sort the arena such that contiguous nodes are in-order (by key)
-    // This expensive operation forces "physical" order to match "logical" order
+    /// Sort the internal arena such that logically contiguous nodes are in-order (by key).
     pub(crate) fn sort_arena(&mut self) {
         if let Some(root_idx) = self.root_idx {
             let mut sort_metadata = self
@@ -483,6 +479,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
             // Empty tree
             None => {
+                debug_assert_eq!(self.curr_size, 0);
                 self.curr_size += 1;
                 self.max_size += 1;
 
@@ -664,8 +661,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Iterative subtree size computation
     fn get_subtree_size(&self, idx: usize) -> usize {
-        let mut subtree_worklist: SmallVec<[&Node<K, V>; MAX_ELEMS]> =
-            smallvec![self.arena.hard_get(idx)];
+        let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
@@ -709,7 +705,7 @@ impl<K: Ord, V> SGTree<K, V> {
         let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
-        let mut subtree_worklist = SmallVec::<[(usize, NodeRebuildHelper); MAX_ELEMS]>::new();
+        let mut subtree_worklist = RebuildMetaVec::new();
 
         // Init worklist with middle node (balanced subtree root)
         subtree_worklist.push((
@@ -765,6 +761,11 @@ impl<K: Ord, V> SGTree<K, V> {
             "Internal invariant failed: rebalance dropped node count!"
         );
     }
+
+    // Log base 3/2 helper
+    fn log_3_2(val: usize) -> usize {
+        (val as f32).log(3.0 / 2.0).floor() as usize
+    }
 }
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
@@ -818,14 +819,4 @@ impl<K: Ord, V> IntoIterator for SGTree<K, V> {
     fn into_iter(self) -> Self::IntoIter {
         ConsumingIter::new(self)
     }
-}
-
-// Helpers -------------------------------------------------------------------------------------------------------------
-
-// TODO: move inside to make static private function!
-// TODO: this needs verification - seems to rebalance a little too aggressively
-fn log_3_2(val: usize) -> usize {
-    let rebal_denum: f64 = log2(3.0_f64); // TODO: how to eval at compile time? const doesn't work
-    let rebal_num = log10(val as f64);
-    floor(rebal_num / rebal_denum) as usize
 }
