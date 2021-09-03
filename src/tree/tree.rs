@@ -8,7 +8,7 @@ use super::iter::{ConsumingIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::types::{IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec};
 
-use libm::{floor, log10, log2};
+use micromath::F32Ext;
 use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
@@ -80,7 +80,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Optional rebalance
         let opt_val = self.priv_insert(&mut path, new_node);
-        if path.len() > log_3_2(self.max_size) {
+        if path.len() > Self::log_3_2(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
@@ -267,7 +267,7 @@ impl<K: Ord, V> SGTree<K, V> {
         self.curr_size
     }
 
-    /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering)
+    /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
     pub fn rebal_cnt(&self) -> usize {
         self.rebal_cnt
     }
@@ -479,6 +479,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
             // Empty tree
             None => {
+                debug_assert_eq!(self.curr_size, 0);
                 self.curr_size += 1;
                 self.max_size += 1;
 
@@ -760,6 +761,11 @@ impl<K: Ord, V> SGTree<K, V> {
             "Internal invariant failed: rebalance dropped node count!"
         );
     }
+
+    // Log base 3/2 helper
+    fn log_3_2(val: usize) -> usize {
+        (val as f32).log(3.0 / 2.0).floor() as usize
+    }
 }
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
@@ -813,14 +819,4 @@ impl<K: Ord, V> IntoIterator for SGTree<K, V> {
     fn into_iter(self) -> Self::IntoIter {
         ConsumingIter::new(self)
     }
-}
-
-// Helpers -------------------------------------------------------------------------------------------------------------
-
-// TODO: move inside to make static private function!
-// TODO: this needs verification - seems to rebalance a little too aggressively
-fn log_3_2(val: usize) -> usize {
-    let rebal_denum: f64 = log2(3.0_f64); // TODO: how to eval at compile time? const doesn't work
-    let rebal_num = log10(val as f64);
-    floor(rebal_num / rebal_denum) as usize
 }

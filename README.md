@@ -91,13 +91,15 @@ This library has two dependencies, each of which have no dependencies of their o
 Both dependencies were carefully chosen.
 
 * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
-* [`libm`](https://crates.io/crates/libm) - `!#[no_std]` compatible math operations. Maintained by the Rust Language Team.
+* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
 
 ### Considerations
 
 This project is an exercise in safe data structure design.
 It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
 It does, however, offer:
+
 * **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please open an issue if an API you need isn't yet supported!
+
 * **Dynamic Verification:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to verify that this implementation is logically equivalent and equally reliable.
 
