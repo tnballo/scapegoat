@@ -7,11 +7,24 @@ fn test_basic_set_functionality() {
 
     assert!(sgs.is_empty());
 
-    sgs.insert(1);
-    sgs.insert(2);
-    sgs.insert(3);
-    sgs.insert(4);
-    sgs.insert(5);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgs.insert(1);
+        sgs.insert(2);
+        sgs.insert(3);
+        sgs.insert(4);
+        sgs.insert(5);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgs.checked_insert(1);
+        sgs.checked_insert(2);
+        sgs.checked_insert(3);
+        sgs.checked_insert(4);
+        sgs.checked_insert(5);
+    }
 
     assert!(!sgs.is_empty());
     assert_eq!(sgs.len(), 5);
@@ -42,9 +55,20 @@ fn test_basic_set_functionality() {
 
     assert_eq!(sgs.len(), 2);
 
-    sgs.insert(0);
-    sgs.insert(3);
-    sgs.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgs.insert(0);
+        sgs.insert(3);
+        sgs.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgs.checked_insert(0);
+        sgs.checked_insert(3);
+        sgs.checked_insert(10);
+    }
 
     assert_eq!(sgs.len(), 5);
 
@@ -86,14 +110,38 @@ fn test_set_iter() {
 #[test]
 fn test_set_append() {
     let mut a = SGSet::new();
-    a.insert(1);
-    a.insert(2);
-    a.insert(3);
+
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        a.insert(1);
+        a.insert(2);
+        a.insert(3);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        a.checked_insert(1);
+        a.checked_insert(2);
+        a.checked_insert(3);
+    }
 
     let mut b = SGSet::new();
-    b.insert(4);
-    b.insert(5);
-    b.insert(6);
+
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        b.insert(4);
+        b.insert(5);
+        b.insert(6);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        b.checked_insert(4);
+        b.checked_insert(5);
+        b.checked_insert(6);
+    }
 
     a.append(&mut b);
 
@@ -110,19 +158,45 @@ fn test_set_append() {
 fn test_set_intersection() {
     let mut a = SGSet::new();
 
-    a.insert(2);
-    a.insert(4);
-    a.insert(6);
-    a.insert(8);
-    a.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        a.insert(2);
+        a.insert(4);
+        a.insert(6);
+        a.insert(8);
+        a.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        a.checked_insert(2);
+        a.checked_insert(4);
+        a.checked_insert(6);
+        a.checked_insert(8);
+        a.checked_insert(10);
+    }
 
     let mut b = SGSet::new();
 
-    b.insert(1);
-    b.insert(2);
-    b.insert(3);
-    b.insert(4);
-    b.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        b.insert(1);
+        b.insert(2);
+        b.insert(3);
+        b.insert(4);
+        b.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        b.checked_insert(1);
+        b.checked_insert(2);
+        b.checked_insert(3);
+        b.checked_insert(4);
+        b.checked_insert(10);
+    }
 
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     assert_eq!(intersection, [2, 4, 10]);

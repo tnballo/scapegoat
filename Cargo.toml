@@ -22,12 +22,16 @@ include = [
 [dependencies]
 smallvec = "1.6.1"  # Has no dependencies of it's own
 micromath = "2.0.0" # Has no dependenceis of it's own
+smallnum = "0.2.0"  # Has no dependencies of it's own
 
 [dev-dependencies]
 criterion = "0.3"
 rand = { version = "0.7", features = ["small_rng"] }
 ruut = "0.6"
 lazy_static = "1"
+
+[features]
+high_assurance = []
 
 [lib]
 name = "scapegoat"

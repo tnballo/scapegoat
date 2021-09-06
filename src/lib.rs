@@ -78,16 +78,28 @@ cargo build --release
 Please note:
 
 * If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
+
 * For embedded systems without dynamic (heap) memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
-* For any system with dynamic memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated (no panic).
+    * Use feature `high_assurance` to force error handling and avoid panic, more info below.
+
+* For any system with dynamic memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
+    * No panic. Unless the physical/virtual host exhausts RAM.
+
+### The `high_assurance` Feature
+
+For embedded systems that need to survive in the field, the `high_assurance` feature makes two changes:
+
+* **Front-end, API Swap:** `pub fn insert(&mut self, key: K, val: V) -> Option<V>` is replaced with `pub fn checked_insert(&mut self, key: K, val: V) -> Result<Option<V>, ()>`. If the stack-based arena is full, insertion returns `Err` and the caller must handle it. No panics, no heap use.
+
+* **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized using the `small_num` crate. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 
 ### Trusted Dependencies
 
-This library has two dependencies, each of which have no dependencies of their own (e.g. exactly two total dependencies).
-Both dependencies were carefully chosen.
+This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
 * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
 * [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
+* [`smallnum`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer packing.
 
 ### Considerations
 

@@ -96,8 +96,15 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[&37], "c");
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
         self.bst.insert(key, val)
+    }
+
+    /// TODO: docs here!
+    #[cfg(feature = "high_assurance")]
+    pub fn checked_insert(&mut self, key: K, val: V) -> Result<Option<V>, ()> {
+        self.bst.checked_insert(key, val)
     }
 
     /// Gets an iterator over the entries of the map, sorted by key.
@@ -443,7 +450,11 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
 impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
+            #[cfg(not(feature = "high_assurance"))]
             self.insert(k, v);
+
+            #[cfg(feature = "high_assurance")]
+            self.checked_insert(k, v);
         });
     }
 

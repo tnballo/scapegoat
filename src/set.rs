@@ -93,8 +93,18 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, value: T) -> bool {
         self.bst.insert(value, ()).is_none()
+    }
+
+    /// TODO: docs here!
+    #[cfg(feature = "high_assurance")]
+    pub fn checked_insert(&mut self, value: T) -> Result<bool, ()> {
+        match self.bst.checked_insert(value, ()) {
+            Ok(opt_val) => Ok(opt_val.is_none()),
+            Err(_) => Err(())
+        }
     }
 
     /// Gets an iterator that visits the values in the `SGSet` in ascending order.
@@ -522,7 +532,11 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
         let mut sgs = SGSet::new();
 
         for v in iter {
+            #[cfg(not(feature = "high_assurance"))]
             sgs.insert(v);
+
+            #[cfg(feature = "high_assurance")]
+            sgs.checked_insert(v);
         }
 
         sgs
@@ -533,7 +547,11 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
 impl<T: Ord> Extend<T> for SGSet<T> {
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
         iter.into_iter().for_each(move |elem| {
+            #[cfg(not(feature = "high_assurance"))]
             self.insert(elem);
+
+            #[cfg(feature = "high_assurance")]
+            self.checked_insert(elem);
         });
     }
 
