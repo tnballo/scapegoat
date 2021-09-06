@@ -90,11 +90,47 @@ Please note:
 
 ### The `high_assurance` Feature
 
-For embedded use cases prioritizing robustness, the `high_assurance` feature makes two changes:
+For embedded use cases prioritizing robustness, enabling the `high_assurance` feature makes two changes:
 
-* **Front-end, API Swap:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, caller must handle. No heap use, no panic.
+1. **Front-end, API Tweak:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, so caller must handle. No heap use, no panic on insert.
 
-* **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
+2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
+
+That second change is a subtle but interesting one.
+Example of packing saving 53.545% (30.752 KB) of RAM usage:
+
+```rust
+use scapegoat::SGMap;
+use core::mem::size_of;
+
+// If you're on a 64-bit system, you can compile-time check the below numbers yourself!
+// Just do:
+//
+// $ cargo test --doc
+// $ cargo test --doc --features="high_assurance"
+//
+// One command per set of `cfg` macros below.
+// Internally, this compile time struct packing is done with the `smallnum` crate:
+// https://crates.io/crates/smallnum
+
+// This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)
+let temp: SGMap<u64, u64> = SGMap::new();
+assert!(temp.capacity() == 1024);
+
+// Without packing
+#[cfg(target_pointer_width = "64")]
+#[cfg(not(feature = "high_assurance"))]
+{
+    assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
+}
+
+// With packing
+#[cfg(target_pointer_width = "64")]
+#[cfg(feature = "high_assurance")]
+{
+    assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
+}
+```
 
 ### Trusted Dependencies
 
@@ -102,7 +138,7 @@ This library has three dependencies, each of which have no dependencies of their
 
 * [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
 * [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
-* [`smallnum`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer packing.
+* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer packing.
 
 ### Considerations
 

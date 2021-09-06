@@ -215,8 +215,8 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
 
 #[test]
 fn test_tree_packing() {
-    // See `SG_MAX_STACK_ELEMS` default
-    if MAX_ELEMS < u16::MAX.into() {
+    // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
+    if MAX_ELEMS == 1024 {
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
         {

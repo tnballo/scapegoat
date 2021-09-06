@@ -149,7 +149,7 @@ mod tests {
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
         {
-            // See `SG_MAX_STACK_ELEMS` default
+            // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {
                 assert_eq!(size_of::<Node<u32, u32>>(), 16);
             }

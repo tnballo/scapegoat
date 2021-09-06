@@ -100,6 +100,8 @@ impl<K: Ord, V> SGTree<K, V> {
             }
             other.clear();
         } else {
+            // Preemptive - we haven't mutated `self` or `other`!
+            // Caller can assume unchanged state.
             return Err(SGErr::StackCapacityExceeded);
         }
 
