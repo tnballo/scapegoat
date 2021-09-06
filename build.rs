@@ -2,9 +2,11 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
+const ELEM_LIMIT: usize = 2048;
+
 fn main() {
     let env_key = "SG_MAX_STACK_ELEMS";
-    let env_val_def = "1024";
+    let env_val_def = "2048";
 
     println!("cargo:rerun-if-env-changed={}", env_key);
 
@@ -21,6 +23,8 @@ fn main() {
             env_val_def.to_string()
         }
     };
+
+    assert!(max_elems.parse::<usize>().unwrap() <= ELEM_LIMIT);
 
     fs::write(
         &dest_path,

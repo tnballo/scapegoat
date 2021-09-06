@@ -67,17 +67,17 @@ assert_eq!(
 ### Configuring a Stack Storage Limit
 
 The maximum number of stack-stored elements (set) or key-value pairs (map/tree) is determined at compile-time, via the environment variable `SG_MAX_STACK_ELEMS`.
-[Valid values](https://docs.rs/smallvec/1.6.1/smallvec/trait.Array.html#implementors) are in the range `[0, 32]` and powers of 2 up to `1,048,576`.
-For example, to store up to `2048` items on the stack:
+Valid values are in the range `[0, 32]` and powers of 2 up to `2048`.
+For example, to store up to `1024` items on the stack:
 
 ```bash
-export SG_MAX_STACK_ELEMS=2048
+export SG_MAX_STACK_ELEMS=1024
 cargo build --release
 ```
 
 Please note:
 
-* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
+* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `2048`.
 
 * For any system with dynamic (heap) memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
 
@@ -88,12 +88,12 @@ Please note:
 
 For embedded use cases prioritizing robustness, enabling the `high_assurance` feature makes two changes:
 
-1. **Front-end, API Tweak:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, so caller must handle. No heap use, no panic on insert.
+1. **Front-end, API Tweak:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, so caller must handle. No heap use, no panic potential on insert.
 
 2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 
 That second change is a subtle but interesting one.
-Example of packing saving 53.545% (30.752 KB) of RAM usage:
+Example of packing saving 53% (but in reality only 61 KB) of RAM usage:
 
 ```
 use scapegoat::SGMap;
@@ -109,22 +109,22 @@ use core::mem::size_of;
 // Internally, this compile time struct packing is done with the `smallnum` crate:
 // https://crates.io/crates/smallnum
 
-// This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)
+// This code assumes `SG_MAX_STACK_ELEMS == 2048` (default)
 let temp: SGMap<u64, u64> = SGMap::new();
-assert!(temp.capacity() == 1024);
+assert!(temp.capacity() == 2048);
 
 // Without packing
 #[cfg(target_pointer_width = "64")]
 #[cfg(not(feature = "high_assurance"))]
 {
-    assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
+    assert_eq!(size_of::<SGMap<u64, u64>>(), 114_776);
 }
 
 // With packing
 #[cfg(target_pointer_width = "64")]
 #[cfg(feature = "high_assurance")]
 {
-    assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
+    assert_eq!(size_of::<SGMap<u64, u64>>(), 53_304);
 }
 ```
 
