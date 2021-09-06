@@ -6,9 +6,12 @@ use crate::tree::{
     ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
 };
 
+#[cfg(feature = "high_assurance")]
+use crate::tree::SGErr;
+
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
@@ -108,7 +111,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&5));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGSet<T>) -> Result<(), ()> {
+    pub fn append(&mut self, other: &mut SGSet<T>) -> Result<(), SGErr> {
         self.bst.append(&mut other.bst)
     }
 
@@ -140,7 +143,7 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::{SGSet, SGErr};
     ///
     /// let mut set = SGSet::new();
     ///
@@ -154,13 +157,13 @@ impl<T: Ord> SGSet<T> {
     ///     elem += 1;
     /// }
     ///
-    /// assert_eq!(set.insert(elem), Err(()));
+    /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, value: T) -> Result<bool, ()> {
+    pub fn insert(&mut self, value: T) -> Result<bool, SGErr> {
         match self.bst.insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
-            Err(_) => Err(()),
+            Err(_) => Err(SGErr::StackCapacityExceeded),
         }
     }
 

@@ -3,10 +3,13 @@ use core::ops::Index;
 
 use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
+#[cfg(feature = "high_assurance")]
+use crate::tree::SGErr;
+
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -108,7 +111,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(a[&5], "f");
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGMap<K, V>) -> Result<(), ()> {
+    pub fn append(&mut self, other: &mut SGMap<K, V>) -> Result<(), SGErr> {
         self.bst.append(&mut other.bst)
     }
 
@@ -144,7 +147,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGMap;
+    /// use scapegoat::{SGMap, SGErr};
     ///
     /// let mut map = SGMap::new();
     /// assert_eq!(map.insert(37, "a"), Ok(None));
@@ -160,10 +163,10 @@ impl<K: Ord, V> SGMap<K, V> {
     ///     key += 1;
     /// }
     ///
-    /// assert_eq!(map.insert(key, "out of bounds"), Err(()));
+    /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, ()> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
         self.bst.insert(key, val)
     }
 

@@ -10,12 +10,15 @@ use super::types::{
     Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
 };
 
+#[cfg(feature = "high_assurance")]
+use super::error::SGErr;
+
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGTree<K: Ord, V> {
     pub(crate) arena: NodeArena<K, V>,
     pub(crate) root_idx: Option<Idx>,
@@ -76,7 +79,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), ()> {
+    pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), SGErr> {
         // Nothing to append!
         if other.is_empty() {
             return Ok(());
@@ -97,7 +100,7 @@ impl<K: Ord, V> SGTree<K, V> {
             }
             other.clear();
         } else {
-            return Err(());
+            return Err(SGErr::StackCapacityExceeded);
         }
 
         Ok(())
@@ -118,10 +121,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// * The old value if the tree did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, ()> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
         match self.capacity() > self.len() {
             true => Ok(self.priv_balancing_insert(key, val)),
-            false => Err(()),
+            false => Err(SGErr::StackCapacityExceeded),
         }
     }
 

@@ -125,6 +125,9 @@ pub use crate::tree::{Node, NodeArena, NodeGetHelper, NodeRebuildHelper};
 mod tree;
 pub use crate::tree::SGTree;
 
+#[cfg(feature = "high_assurance")]
+pub use crate::tree::SGErr;
+
 mod map;
 pub use crate::map::SGMap;
 
