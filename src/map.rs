@@ -80,7 +80,6 @@ impl<K: Ord, V> SGMap<K, V> {
     }
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
-    /// Returns `Err` if `self`'s stack capacity would be exceeded by the copy, leaving `self` full and `other` partially drained.
     ///
     /// # Examples
     ///

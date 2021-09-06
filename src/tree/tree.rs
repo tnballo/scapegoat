@@ -75,7 +75,6 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
-    /// Returns `Err` if `self`'s stack capacity would be exceeded by the copy, leaving `self` full and `other` partially drained.
     #[cfg(feature = "high_assurance")]
     pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), ()> {
         // Nothing to append!
@@ -90,12 +89,17 @@ impl<K: Ord, V> SGTree<K, V> {
         }
 
         // Rip elements directly out of other's arena and clear it
-        for arena_idx in 0..other.arena.len() {
-            if let Some(node) = other.arena.remove(arena_idx as Idx) {
-                self.insert(node.key, node.val)?;
+        if (self.len() + other.len()) <= self.capacity() {
+            for arena_idx in 0..other.arena.len() {
+                if let Some(node) = other.arena.remove(arena_idx as Idx) {
+                    self.insert(node.key, node.val)?;
+                }
             }
+            other.clear();
+        } else {
+            return Err(());
         }
-        other.clear();
+
         Ok(())
     }
 

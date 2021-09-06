@@ -1,12 +1,15 @@
 use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;
+use std::mem::size_of;
 
 use super::types::Idx;
 use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+
+use crate::MAX_ELEMS;
 
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
@@ -211,6 +214,24 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
 // Tests ---------------------------------------------------------------------------------------------------------------
 
 #[test]
+fn test_tree_packing() {
+    // See `SG_MAX_STACK_ELEMS` default
+    if MAX_ELEMS < u16::MAX.into() {
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 49_240);
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        {
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 18_488);
+        }
+    }
+}
+
+#[test]
 fn test_ref_iter() {
     let (sgt, keys) = get_test_tree_and_keys();
     let mut ref_iter_keys = Vec::<usize>::new();
@@ -257,6 +278,17 @@ fn test_from_iter() {
     assert_eq!(
         sgt.into_iter().collect::<Vec<(usize, &str)>>(),
         vec![(1, "1"), (2, "2"), (3, "3")]
+    );
+}
+
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_from_iter_panic() {
+    let sgt_temp: SGTree<isize, isize> = SGTree::new();
+    let max_capacity = sgt_temp.capacity();
+    let _ = SGTree::from_iter(
+        (0..(max_capacity + 1)).map(|val| (val, val))
     );
 }
 

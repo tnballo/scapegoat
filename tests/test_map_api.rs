@@ -118,6 +118,17 @@ fn test_map_from_iter() {
     );
 }
 
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_map_from_iter_panic() {
+    let sgm_temp: SGMap<isize, isize> = SGMap::new();
+    let max_capacity = sgm_temp.capacity();
+    let _ = SGMap::from_iter(
+        (0..(max_capacity + 1)).map(|val| (val, val))
+    );
+}
+
 #[test]
 fn test_map_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];

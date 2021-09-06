@@ -129,3 +129,30 @@ impl NodeSwapHistHelper {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Node;
+    use std::mem::size_of;
+
+    #[cfg(feature = "high_assurance")]
+    use crate::MAX_ELEMS;
+
+    #[test]
+    fn test_node_packing() {
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            assert_eq!(size_of::<Node<u32, u32>>(), 40);
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        {
+            // See `SG_MAX_STACK_ELEMS` default
+            if MAX_ELEMS < u16::MAX.into() {
+                assert_eq!(size_of::<Node<u32, u32>>(), 16);
+            }
+        }
+    }
+}

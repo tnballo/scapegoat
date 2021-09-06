@@ -95,6 +95,15 @@ fn test_set_from_iter() {
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
 }
 
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_set_from_iter_panic() {
+    let sgs_temp: SGSet<isize> = SGSet::new();
+    let max_capacity = sgs_temp.capacity();
+    let _ = SGSet::from_iter(0..(max_capacity + 1));
+}
+
 #[test]
 fn test_set_iter() {
     let keys = vec![1, 2, 3];
