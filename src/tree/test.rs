@@ -1,9 +1,7 @@
 use std::collections::BTreeSet;
-use std::fmt;
 use std::iter::FromIterator;
 use std::mem::size_of;
 
-use super::types::Idx;
 use super::SGTree;
 
 use rand::rngs::SmallRng;
@@ -41,65 +39,6 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
     }
 
     (sgt, keys)
-}
-
-// Pretty print tree.
-pub fn pretty_print<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) {
-    let sgt_lisp = sgt_to_lisp_str(sgt);
-    if sgt_lisp == "()" {
-        println!("(empty tree)");
-    } else {
-        println!(
-            "{}",
-            ruut::prettify(
-                sgt_lisp,
-                ruut::InputFormat::LispLike,
-                "unused".to_string(),
-                "unused".to_string(),
-                None
-            )
-            .unwrap()
-        );
-    }
-}
-
-// Convert tree to a Lisp-like string.
-fn sgt_to_lisp_str<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>) -> String {
-    match sgt.root_idx {
-        Some(idx) => sgt_to_lisp_str_helper(sgt, idx),
-        None => String::from("()"),
-    }
-}
-
-// Helper function to convert tree to a Lisp-like string.
-fn sgt_to_lisp_str_helper<K: Ord + fmt::Debug, V>(sgt: &SGTree<K, V>, idx: Idx) -> String {
-    let node = sgt.arena.hard_get(idx);
-    match (node.left_idx, node.right_idx) {
-        // No children
-        (None, None) => format!("{:?} [{}]", node.key, idx),
-        // Left child only
-        (Some(left_idx), None) => format!(
-            "{:?} [{}] ({})",
-            node.key,
-            idx,
-            sgt_to_lisp_str_helper(sgt, left_idx)
-        ),
-        // Right child only
-        (None, Some(right_idx)) => format!(
-            "{:?} [{}] ({})",
-            node.key,
-            idx,
-            sgt_to_lisp_str_helper(sgt, right_idx)
-        ),
-        // Two children
-        (Some(left_idx), Some(right_idx)) => format!(
-            "{:?} [{}] ({}, {})",
-            node.key,
-            idx,
-            sgt_to_lisp_str_helper(sgt, left_idx),
-            sgt_to_lisp_str_helper(sgt, right_idx)
-        ),
-    }
 }
 
 // Verify three logical invariants for the tree:
@@ -149,7 +88,6 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
     let mut shadow_keys = BTreeSet::new();
     let mut fast_rng = SmallRng::from_entropy();
     let mut slow_rng = rand::thread_rng();
-    let mut removal_cnt = 0;
 
     for _ in 0..iter_cnt {
         let rand_key: usize;
@@ -182,7 +120,6 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
             assert!(shadow_keys.remove(&rand_key));
             assert!(sgt.contains_key(&rand_key));
             sgt.remove(&rand_key);
-            removal_cnt += 1;
 
             // Verify internal state post-remove
             if check_invars {
@@ -191,7 +128,6 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         }
     }
 
-    let rebal_cnt = sgt.rebal_cnt();
     let final_keys = sgt.into_iter().map(|(k, _)| k).collect::<BTreeSet<usize>>();
 
     if final_keys != shadow_keys {
@@ -204,11 +140,6 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         );
         panic!("Keys do not match shadow set!");
     }
-
-    println!(
-        "Fuzz summary: {} iterations, {} removals, {} rebalances.",
-        iter_cnt, removal_cnt, rebal_cnt
-    );
 }
 
 // Tests ---------------------------------------------------------------------------------------------------------------
@@ -236,10 +167,8 @@ fn test_ref_iter() {
     let (sgt, keys) = get_test_tree_and_keys();
     let mut ref_iter_keys = Vec::<usize>::new();
 
-    println!("\nReference iterator output:\n");
     for (k, _) in &sgt {
         ref_iter_keys.push(*k);
-        println!("ITER: {}", k);
     }
 
     let k_1 = BTreeSet::from_iter(keys.iter().cloned());
@@ -253,10 +182,8 @@ fn test_iter() {
     let (sgt, keys) = get_test_tree_and_keys();
     let mut iter_keys = Vec::<usize>::new();
 
-    println!("\nConsuming iterator output:\n");
     for (k, _) in sgt {
         iter_keys.push(k);
-        println!("ITER: {}", k);
     }
 
     let k_1 = BTreeSet::from_iter(keys.iter().cloned());
@@ -287,9 +214,7 @@ fn test_from_iter() {
 fn test_from_iter_panic() {
     let sgt_temp: SGTree<isize, isize> = SGTree::new();
     let max_capacity = sgt_temp.capacity();
-    let _ = SGTree::from_iter(
-        (0..(max_capacity + 1)).map(|val| (val, val))
-    );
+    let _ = SGTree::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
 }
 
 #[test]
@@ -356,17 +281,8 @@ fn test_two_child_removal_case_1() {
         }
     }
 
-    println!("\nBefore two child removal case 1:\n");
-    pretty_print(&sgt);
-
     sgt.remove(&to_remove);
     assert_logical_invariants(&sgt);
-
-    println!(
-        "\nAfter two child removal case 1 (removed {}):\n",
-        to_remove
-    );
-    pretty_print(&sgt);
 
     assert_eq!(
         sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
@@ -391,17 +307,8 @@ fn test_two_child_removal_case_2() {
         }
     }
 
-    println!("\nBefore two child removal case 2:\n");
-    pretty_print(&sgt);
-
     sgt.remove(&to_remove);
     assert_logical_invariants(&sgt);
-
-    println!(
-        "\nAfter two child removal case 2 (removed {}):\n",
-        to_remove
-    );
-    pretty_print(&sgt);
 
     assert_eq!(
         sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
@@ -426,17 +333,8 @@ fn test_two_child_removal_case_3() {
         }
     }
 
-    println!("\nBefore two child removal case 3:\n");
-    pretty_print(&sgt);
-
     sgt.remove(&to_remove);
     assert_logical_invariants(&sgt);
-
-    println!(
-        "\nAfter two child removal case 3 (removed {}):\n",
-        to_remove
-    );
-    pretty_print(&sgt);
 
     assert_eq!(
         sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
@@ -449,32 +347,17 @@ fn test_rand_remove() {
     let (mut sgt, mut keys) = get_test_tree_and_keys();
     let mut rng = SmallRng::from_entropy();
 
-    println!(
-        "\nAfter {} insertions, {} rebalance(s):\n",
-        keys.len(),
-        sgt.rebal_cnt()
-    );
-    pretty_print(&sgt);
-
     // Remove half of keys at random
     let mut keys_to_remove = Vec::new();
     for _ in 0..=(keys.len() / 2) {
         keys_to_remove.push(keys.remove(rng.gen_range(0, keys.len())));
     }
     for k in &keys_to_remove {
-        println!("Removing {}", k);
         assert!(sgt.contains_key(k));
         let (removed_key, _) = sgt.remove_entry(k).unwrap();
         assert_eq!(*k, removed_key);
         assert_logical_invariants(&sgt);
     }
-
-    println!(
-        "\nAfter {} insertions, {} rebalance(s):\n",
-        keys_to_remove.len(),
-        sgt.rebal_cnt()
-    );
-    pretty_print(&sgt);
 }
 
 #[test]
@@ -609,9 +492,6 @@ fn test_subtree_rebalance() {
     assert!(sgt.contains_key(&13519144312507908668));
     let critical_val = 11827258012878092103;
 
-    println!("\nBefore inserting {}:\n", critical_val);
-    pretty_print(&sgt);
-
     #[cfg(not(feature = "high_assurance"))]
     sgt.insert(critical_val, "n/a");
 
@@ -620,9 +500,6 @@ fn test_subtree_rebalance() {
     {
         sgt.insert(critical_val, "n/a");
     }
-
-    println!("\nAfter inserting {}:\n", critical_val);
-    pretty_print(&sgt);
 
     assert!(sgt.contains_key(&11823668523937575827));
     assert!(sgt.contains_key(&critical_val));

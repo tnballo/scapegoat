@@ -124,9 +124,7 @@ fn test_map_from_iter() {
 fn test_map_from_iter_panic() {
     let sgm_temp: SGMap<isize, isize> = SGMap::new();
     let max_capacity = sgm_temp.capacity();
-    let _ = SGMap::from_iter(
-        (0..(max_capacity + 1)).map(|val| (val, val))
-    );
+    let _ = SGMap::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
 }
 
 #[test]
