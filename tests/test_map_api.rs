@@ -10,11 +10,24 @@ fn test_basic_map_functionality() {
 
     assert!(sgm.is_empty());
 
-    sgm.insert(1, "1");
-    sgm.insert(2, "2");
-    sgm.insert(3, "3");
-    sgm.insert(4, "4");
-    sgm.insert(5, "5");
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgm.insert(1, "1");
+        sgm.insert(2, "2");
+        sgm.insert(3, "3");
+        sgm.insert(4, "4");
+        sgm.insert(5, "5");
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgm.insert(1, "1");
+        sgm.insert(2, "2");
+        sgm.insert(3, "3");
+        sgm.insert(4, "4");
+        sgm.insert(5, "5");
+    }
 
     assert!(!sgm.is_empty());
     assert_eq!(sgm.len(), 5);
@@ -59,9 +72,20 @@ fn test_basic_map_functionality() {
 
     assert_eq!(sgm.len(), 2);
 
-    sgm.insert(0, "0");
-    sgm.insert(3, "3");
-    sgm.insert(10, "10");
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgm.insert(0, "0");
+        sgm.insert(3, "3");
+        sgm.insert(10, "10");
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgm.insert(0, "0");
+        sgm.insert(3, "3");
+        sgm.insert(10, "10");
+    }
 
     assert_eq!(sgm.len(), 5);
 
@@ -92,6 +116,15 @@ fn test_map_from_iter() {
         sgm.into_iter().collect::<Vec<(usize, &str)>>(),
         vec![(1, "1"), (2, "2"), (3, "3")]
     );
+}
+
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_map_from_iter_panic() {
+    let sgm_temp: SGMap<isize, isize> = SGMap::new();
+    let max_capacity = sgm_temp.capacity();
+    let _ = SGMap::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
 }
 
 #[test]
@@ -155,7 +188,14 @@ fn test_map_iter_mut_rand() {
     let mut rng = rand::thread_rng();
 
     for _ in 0..500 {
+        #[cfg(not(feature = "high_assurance"))]
         sgm.insert(rng.gen(), 0);
+
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            sgm.insert(rng.gen(), 0);
+        }
     }
 
     let min_key = *sgm.first_key().unwrap();
@@ -181,16 +221,40 @@ fn test_map_iter_mut_rand() {
 #[test]
 fn test_map_append() {
     let mut a = SGMap::new();
-    a.insert(1, "1");
-    a.insert(2, "2");
-    a.insert(3, "3");
+
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        a.insert(1, "1");
+        a.insert(2, "2");
+        a.insert(3, "3");
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        a.insert(1, "1");
+        a.insert(2, "2");
+        a.insert(3, "3");
+    }
 
     let mut b = SGMap::new();
-    b.insert(4, "4");
-    b.insert(5, "5");
-    b.insert(6, "6");
 
-    a.append(&mut b);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        b.insert(4, "4");
+        b.insert(5, "5");
+        b.insert(6, "6");
+        a.append(&mut b);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        b.insert(4, "4");
+        b.insert(5, "5");
+        b.insert(6, "6");
+        a.append(&mut b);
+    }
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);

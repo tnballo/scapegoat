@@ -1,4 +1,4 @@
-use super::types::SortSwapVec;
+use super::types::{Idx, SortSwapVec};
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
@@ -6,8 +6,8 @@ use super::types::SortSwapVec;
 pub struct Node<K: Ord, V> {
     pub key: K,
     pub val: V,
-    pub left_idx: Option<usize>,
-    pub right_idx: Option<usize>,
+    pub left_idx: Option<Idx>,
+    pub right_idx: Option<Idx>,
 }
 
 impl<K: Ord, V> Node<K, V> {
@@ -26,14 +26,14 @@ impl<K: Ord, V> Node<K, V> {
 
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
 pub struct NodeGetHelper {
-    pub node_idx: Option<usize>,
-    pub parent_idx: Option<usize>,
+    pub node_idx: Option<Idx>,
+    pub parent_idx: Option<Idx>,
     pub is_right_child: bool,
 }
 
 impl NodeGetHelper {
     /// Constructor.
-    pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
+    pub fn new(node_idx: Option<Idx>, parent_idx: Option<Idx>, is_right_child: bool) -> Self {
         NodeGetHelper {
             node_idx,
             parent_idx,
@@ -46,14 +46,14 @@ impl NodeGetHelper {
 
 /// Helper for in-place iterative rebuild.
 pub struct NodeRebuildHelper {
-    pub low_idx: usize,
-    pub high_idx: usize,
-    pub mid_idx: usize,
+    pub low_idx: Idx,
+    pub high_idx: Idx,
+    pub mid_idx: Idx,
 }
 
 impl NodeRebuildHelper {
     /// Constructor.
-    pub fn new(low_idx: usize, high_idx: usize) -> Self {
+    pub fn new(low_idx: Idx, high_idx: Idx) -> Self {
         debug_assert!(
             high_idx >= low_idx,
             "Node rebuild helper low/high index reversed!"
@@ -85,7 +85,7 @@ impl NodeSwapHistHelper {
 
     /// Log the swap of elements at two indexes.
     /// Every swap performed must be logged with this method for the cache to remain accurate.
-    pub fn add(&mut self, pos_1: usize, pos_2: usize) {
+    pub fn add(&mut self, pos_1: Idx, pos_2: Idx) {
         debug_assert_ne!(pos_1, pos_2);
 
         let mut known_pos_1 = false;
@@ -114,7 +114,7 @@ impl NodeSwapHistHelper {
     }
 
     /// Retrieve the current value of an original index from the map.
-    pub fn curr_idx(&self, orig_pos: usize) -> usize {
+    pub fn curr_idx(&self, orig_pos: Idx) -> Idx {
         debug_assert!(self.history.iter().filter(|(k, _)| *k == orig_pos).count() <= 1);
 
         match self
@@ -126,6 +126,33 @@ impl NodeSwapHistHelper {
         {
             Some(curr_idx) => curr_idx,
             None => orig_pos,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Node;
+    use std::mem::size_of;
+
+    #[cfg(feature = "high_assurance")]
+    use crate::MAX_ELEMS;
+
+    #[test]
+    fn test_node_packing() {
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            assert_eq!(size_of::<Node<u32, u32>>(), 40);
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        {
+            // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
+            if MAX_ELEMS < u16::MAX.into() {
+                assert_eq!(size_of::<Node<u32, u32>>(), 16);
+            }
         }
     }
 }

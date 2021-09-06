@@ -6,20 +6,26 @@ use core::ops::Index;
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
-use super::types::{IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec};
+use super::types::{
+    Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
+};
+
+#[cfg(feature = "high_assurance")]
+use super::error::SGErr;
 
 use micromath::F32Ext;
+use smallnum::SmallUnsigned;
 use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGTree<K: Ord, V> {
     pub(crate) arena: NodeArena<K, V>,
-    pub(crate) root_idx: Option<usize>,
-    max_idx: usize,
-    min_idx: usize,
-    curr_size: usize,
-    max_size: usize,
+    pub(crate) root_idx: Option<Idx>,
+    max_idx: Idx,
+    min_idx: Idx,
+    curr_size: Idx,
+    max_size: Idx,
     rebal_cnt: usize,
 }
 
@@ -49,6 +55,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
+    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGTree<K, V>) {
         // Nothing to append!
         if other.is_empty() {
@@ -63,30 +70,64 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
-            if let Some(node) = other.arena.remove(arena_idx) {
+            if let Some(node) = other.arena.remove(arena_idx as Idx) {
                 self.insert(node.key, node.val);
             }
         }
         other.clear();
     }
 
+    /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
+    #[cfg(feature = "high_assurance")]
+    pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), SGErr> {
+        // Nothing to append!
+        if other.is_empty() {
+            return Ok(());
+        }
+
+        // Nothing to append to!
+        if self.is_empty() {
+            mem::swap(self, other);
+            return Ok(());
+        }
+
+        // Rip elements directly out of other's arena and clear it
+        if (self.len() + other.len()) <= self.capacity() {
+            for arena_idx in 0..other.arena.len() {
+                if let Some(node) = other.arena.remove(arena_idx as Idx) {
+                    self.insert(node.key, node.val)?;
+                }
+            }
+            other.clear();
+        } else {
+            // Preemptive - we haven't mutated `self` or `other`!
+            // Caller can assume unchanged state.
+            return Err(SGErr::StackCapacityExceeded);
+        }
+
+        Ok(())
+    }
+
     /// Insert a key-value pair into the tree.
     /// If the tree did not have this key present, `None` is returned.
     /// If the tree did have this key present, the value is updated, the old value is returned,
     /// and the key is updated. This accommodates types that can be `==` without being identical.
+    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
-        let mut path = IdxVec::new();
-        let new_node = Node::new(key, val);
+        self.priv_balancing_insert(key, val)
+    }
 
-        // Optional rebalance
-        let opt_val = self.priv_insert(&mut path, new_node);
-        if path.len() > Self::log_3_2(self.max_size) {
-            if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
-                self.rebuild(scapegoat_idx);
-            }
+    /// Insert a key-value pair into the tree.
+    /// Returns `Err` if tree's stack capacity is full, else the `Ok` contains:
+    /// * `None` if the tree did not have this key present.
+    /// * The old value if the tree did have this key present (both the value and key are updated,
+    /// this accommodates types that can be `==` without being identical).
+    #[cfg(feature = "high_assurance")]
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
+        match self.capacity() > self.len() {
+            true => Ok(self.priv_balancing_insert(key, val)),
+            false => Err(SGErr::StackCapacityExceeded),
         }
-
-        opt_val
     }
 
     /// Gets an iterator over the entries of the tree, sorted by key.
@@ -264,7 +305,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns the number of elements in the tree.
     pub fn len(&self) -> usize {
-        self.curr_size
+        self.curr_size as usize
     }
 
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
@@ -276,7 +317,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Remove a node by index.
     // A wrapper for by-key removal, traversal is still required to determine node parent.
-    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> {
+    pub(crate) fn priv_remove_by_idx(&mut self, idx: Idx) -> Option<Node<K, V>> {
         match self.arena.get(idx) {
             Some(node) => {
                 let ngh = self.priv_get(&node.key);
@@ -291,7 +332,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Flatten subtree into array of node indexs sorted by node key
-    pub(crate) fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
+    pub(crate) fn flatten_subtree_to_sorted_idxs(&self, idx: Idx) -> IdxVec {
         let mut subtree_node_idx_pairs: SortNodeRefIdxPairVec<K, V> =
             smallvec![(self.arena.hard_get(idx), idx)];
         let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
@@ -379,7 +420,24 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    // Sorted insert of node into the tree.
+    // Sorted insert of node into the tree (outer).
+    // Re-balances the tree if necessary.
+    fn priv_balancing_insert(&mut self, key: K, val: V) -> Option<V> {
+        let mut path = IdxVec::new();
+        let new_node = Node::new(key, val);
+
+        // Potential rebalance
+        let opt_val = self.priv_insert(&mut path, new_node);
+        if path.len() > Self::log_3_2(self.max_size) {
+            if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
+                self.rebuild(scapegoat_idx);
+            }
+        }
+
+        opt_val
+    }
+
+    // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
@@ -641,7 +699,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Traverse upward, using path information, to find first unbalanced parent
-    fn find_scapegoat(&self, path: &[usize]) -> Option<usize> {
+    fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
         if path.len() <= 1 {
             return None;
         }
@@ -660,7 +718,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Iterative subtree size computation
-    fn get_subtree_size(&self, idx: usize) -> usize {
+    fn get_subtree_size(&self, idx: Idx) -> Idx {
         let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
@@ -680,7 +738,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Iterative in-place rebuild for balanced subtree
-    fn rebuild(&mut self, idx: usize) {
+    fn rebuild(&mut self, idx: Idx) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
         self.rebal_cnt += 1;
@@ -690,8 +748,8 @@ impl<K: Ord, V> SGTree<K, V> {
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
     fn rebalance_subtree_from_sorted_idxs(
         &mut self,
-        old_subtree_root_idx: usize,
-        sorted_arena_idxs: &[usize],
+        old_subtree_root_idx: Idx,
+        sorted_arena_idxs: &[Idx],
     ) {
         if sorted_arena_idxs.len() <= 1 {
             return;
@@ -702,9 +760,9 @@ impl<K: Ord, V> SGTree<K, V> {
             "Internal invariant failed: rebalance of multi-node tree without root!"
         );
 
-        let sorted_last_idx = sorted_arena_idxs.len() - 1;
+        let sorted_last_idx = (sorted_arena_idxs.len() - 1) as Idx;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
-        let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
+        let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx.usize()];
         let mut subtree_worklist = RebuildMetaVec::new();
 
         // Init worklist with middle node (balanced subtree root)
@@ -737,33 +795,35 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Iteratively re-assign all children
         while let Some((sorted_idx, parent_nrh)) = subtree_worklist.pop() {
-            let parent_node = self.arena.hard_get_mut(sorted_arena_idxs[sorted_idx]);
+            let parent_node = self
+                .arena
+                .hard_get_mut(sorted_arena_idxs[sorted_idx.usize()]);
             parent_node.left_idx = None;
             parent_node.right_idx = None;
 
             // Set left child
             if parent_nrh.low_idx < parent_nrh.mid_idx {
                 let child_nrh = NodeRebuildHelper::new(parent_nrh.low_idx, parent_nrh.mid_idx - 1);
-                parent_node.left_idx = Some(sorted_arena_idxs[child_nrh.mid_idx]);
+                parent_node.left_idx = Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]);
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
 
             // Set right child
             if parent_nrh.mid_idx < parent_nrh.high_idx {
                 let child_nrh = NodeRebuildHelper::new(parent_nrh.mid_idx + 1, parent_nrh.high_idx);
-                parent_node.right_idx = Some(sorted_arena_idxs[child_nrh.mid_idx]);
+                parent_node.right_idx = Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]);
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
         }
 
         debug_assert!(
-            self.get_subtree_size(subtree_root_arena_idx) == sorted_arena_idxs.len(),
+            self.get_subtree_size(subtree_root_arena_idx) == (sorted_arena_idxs.len() as Idx),
             "Internal invariant failed: rebalance dropped node count!"
         );
     }
 
     // Log base 3/2 helper
-    fn log_3_2(val: usize) -> usize {
+    fn log_3_2(val: Idx) -> usize {
         (val as f32).log(3.0 / 2.0).floor() as usize
     }
 }
@@ -794,7 +854,11 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
         let mut sgt = SGTree::new();
 
         for (k, v) in iter {
+            #[cfg(not(feature = "high_assurance"))]
             sgt.insert(k, v);
+
+            #[cfg(feature = "high_assurance")]
+            sgt.insert(k, v).expect("Stack-storage capacity exceeded!");
         }
 
         sgt

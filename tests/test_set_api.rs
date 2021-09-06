@@ -7,11 +7,24 @@ fn test_basic_set_functionality() {
 
     assert!(sgs.is_empty());
 
-    sgs.insert(1);
-    sgs.insert(2);
-    sgs.insert(3);
-    sgs.insert(4);
-    sgs.insert(5);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgs.insert(1);
+        sgs.insert(2);
+        sgs.insert(3);
+        sgs.insert(4);
+        sgs.insert(5);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgs.insert(1);
+        sgs.insert(2);
+        sgs.insert(3);
+        sgs.insert(4);
+        sgs.insert(5);
+    }
 
     assert!(!sgs.is_empty());
     assert_eq!(sgs.len(), 5);
@@ -42,9 +55,20 @@ fn test_basic_set_functionality() {
 
     assert_eq!(sgs.len(), 2);
 
-    sgs.insert(0);
-    sgs.insert(3);
-    sgs.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgs.insert(0);
+        sgs.insert(3);
+        sgs.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgs.insert(0);
+        sgs.insert(3);
+        sgs.insert(10);
+    }
 
     assert_eq!(sgs.len(), 5);
 
@@ -71,6 +95,15 @@ fn test_set_from_iter() {
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
 }
 
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_set_from_iter_panic() {
+    let sgs_temp: SGSet<isize> = SGSet::new();
+    let max_capacity = sgs_temp.capacity();
+    let _ = SGSet::from_iter(0..(max_capacity + 1));
+}
+
 #[test]
 fn test_set_iter() {
     let keys = vec![1, 2, 3];
@@ -86,16 +119,40 @@ fn test_set_iter() {
 #[test]
 fn test_set_append() {
     let mut a = SGSet::new();
-    a.insert(1);
-    a.insert(2);
-    a.insert(3);
+
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        a.insert(1);
+        a.insert(2);
+        a.insert(3);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        a.insert(1);
+        a.insert(2);
+        a.insert(3);
+    }
 
     let mut b = SGSet::new();
-    b.insert(4);
-    b.insert(5);
-    b.insert(6);
 
-    a.append(&mut b);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        b.insert(4);
+        b.insert(5);
+        b.insert(6);
+        a.append(&mut b);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        b.insert(4);
+        b.insert(5);
+        b.insert(6);
+        a.append(&mut b);
+    }
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -110,19 +167,45 @@ fn test_set_append() {
 fn test_set_intersection() {
     let mut a = SGSet::new();
 
-    a.insert(2);
-    a.insert(4);
-    a.insert(6);
-    a.insert(8);
-    a.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        a.insert(2);
+        a.insert(4);
+        a.insert(6);
+        a.insert(8);
+        a.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        a.insert(2);
+        a.insert(4);
+        a.insert(6);
+        a.insert(8);
+        a.insert(10);
+    }
 
     let mut b = SGSet::new();
 
-    b.insert(1);
-    b.insert(2);
-    b.insert(3);
-    b.insert(4);
-    b.insert(10);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        b.insert(1);
+        b.insert(2);
+        b.insert(3);
+        b.insert(4);
+        b.insert(10);
+    }
+
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        b.insert(1);
+        b.insert(2);
+        b.insert(3);
+        b.insert(4);
+        b.insert(10);
+    }
 
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     assert_eq!(intersection, [2, 4, 10]);

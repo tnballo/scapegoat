@@ -3,10 +3,13 @@ use core::ops::Index;
 
 use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
+#[cfg(feature = "high_assurance")]
+use crate::tree::SGErr;
+
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -74,8 +77,42 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGMap<K, V>) {
         self.bst.append(&mut other.bst);
+    }
+
+    /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    ///
+    /// let mut b = SGMap::new();
+    /// b.insert(3, "d");
+    /// b.insert(4, "e");
+    /// b.insert(5, "f");
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&4], "e");
+    /// assert_eq!(a[&5], "f");
+    /// ```
+    #[cfg(feature = "high_assurance")]
+    pub fn append(&mut self, other: &mut SGMap<K, V>) -> Result<(), SGErr> {
+        self.bst.append(&mut other.bst)
     }
 
     /// Insert a key-value pair into the map.
@@ -96,7 +133,40 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[&37], "c");
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, key: K, val: V) -> Option<V> {
+        self.bst.insert(key, val)
+    }
+
+    /// Insert a key-value pair into the map.
+    /// Returns `Err` if map's stack capacity is full, else the `Ok` contains:
+    /// * `None` if the map did not have this key present.
+    /// * The old value if the tree did have this key present (both the value and key are updated,
+    /// this accommodates types that can be `==` without being identical).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::{SGMap, SGErr};
+    ///
+    /// let mut map = SGMap::new();
+    /// assert_eq!(map.insert(37, "a"), Ok(None));
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.insert(37, "c"), Ok(Some("b")));
+    /// assert_eq!(map[&37], "c");
+    ///
+    /// let mut key = 38;
+    /// while map.len() < map.capacity() {
+    ///     map.insert(key, "filler");
+    ///     key += 1;
+    /// }
+    ///
+    /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
+    /// ```
+    #[cfg(feature = "high_assurance")]
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
         self.bst.insert(key, val)
     }
 
@@ -443,7 +513,11 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
 impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
+            #[cfg(not(feature = "high_assurance"))]
             self.insert(k, v);
+
+            #[cfg(feature = "high_assurance")]
+            self.insert(k, v).expect("Stack-storage capacity exceeded!");
         });
     }
 

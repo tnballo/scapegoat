@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
 use rand::Rng;
@@ -35,4 +36,8 @@ lazy_static::lazy_static! {
     pub static ref SGS_100: SGSet<usize> = SGSet::from_iter(RTD_100.keys.clone());
     pub static ref SGS_1_000: SGSet<usize> = SGSet::from_iter(RTD_1_000.keys.clone());
     pub static ref SGS_10_000: SGSet<usize> = SGSet::from_iter(RTD_10_000.keys.clone());
+
+    pub static ref STD_100: BTreeSet<usize> = BTreeSet::from_iter(RTD_100.keys.clone());
+    pub static ref STD_1_000: BTreeSet<usize> = BTreeSet::from_iter(RTD_1_000.keys.clone());
+    pub static ref STD_10_000: BTreeSet<usize> = BTreeSet::from_iter(RTD_10_000.keys.clone());
 }

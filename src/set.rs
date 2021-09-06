@@ -6,9 +6,12 @@ use crate::tree::{
     ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
 };
 
+#[cfg(feature = "high_assurance")]
+use crate::tree::SGErr;
+
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
-#[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
+#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
@@ -74,8 +77,42 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGSet<T>) {
         self.bst.append(&mut other.bst);
+    }
+
+    /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut a = SGSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    ///
+    /// let mut b = SGSet::new();
+    /// b.insert(3);
+    /// b.insert(4);
+    /// b.insert(5);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&3));
+    /// assert!(a.contains(&4));
+    /// assert!(a.contains(&5));
+    /// ```
+    #[cfg(feature = "high_assurance")]
+    pub fn append(&mut self, other: &mut SGSet<T>) -> Result<(), SGErr> {
+        self.bst.append(&mut other.bst)
     }
 
     /// Adds a value to the set.
@@ -93,8 +130,41 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, value: T) -> bool {
         self.bst.insert(value, ()).is_none()
+    }
+
+    /// Adds a value to the set.
+    /// Returns `Err` if sets's stack capacity is full, else the `Ok` contains:
+    /// * `true` if the set did not have this value present.
+    /// * `false` if the set did have this value present (and that old entry is overwritten).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::{SGSet, SGErr};
+    ///
+    /// let mut set = SGSet::new();
+    ///
+    /// assert_eq!(set.insert(2), Ok(true));
+    /// assert_eq!(set.insert(2), Ok(false));
+    /// assert_eq!(set.len(), 1);
+    ///
+    /// let mut elem = 3;
+    /// while set.len() < set.capacity() {
+    ///     set.insert(elem);
+    ///     elem += 1;
+    /// }
+    ///
+    /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
+    /// ```
+    #[cfg(feature = "high_assurance")]
+    pub fn insert(&mut self, value: T) -> Result<bool, SGErr> {
+        match self.bst.insert(value, ()) {
+            Ok(opt_val) => Ok(opt_val.is_none()),
+            Err(_) => Err(SGErr::StackCapacityExceeded),
+        }
     }
 
     /// Gets an iterator that visits the values in the `SGSet` in ascending order.
@@ -522,7 +592,11 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
         let mut sgs = SGSet::new();
 
         for v in iter {
+            #[cfg(not(feature = "high_assurance"))]
             sgs.insert(v);
+
+            #[cfg(feature = "high_assurance")]
+            sgs.insert(v).expect("Stack-storage capacity exceeded!");
         }
 
         sgs
@@ -533,7 +607,11 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
 impl<T: Ord> Extend<T> for SGSet<T> {
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
         iter.into_iter().for_each(move |elem| {
+            #[cfg(not(feature = "high_assurance"))]
             self.insert(elem);
+
+            #[cfg(feature = "high_assurance")]
+            self.insert(elem).expect("Stack-storage capacity exceeded!");
         });
     }
 
