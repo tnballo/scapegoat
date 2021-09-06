@@ -22,11 +22,11 @@ fn test_basic_map_functionality() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgm.checked_insert(1, "1");
-        sgm.checked_insert(2, "2");
-        sgm.checked_insert(3, "3");
-        sgm.checked_insert(4, "4");
-        sgm.checked_insert(5, "5");
+        sgm.insert(1, "1");
+        sgm.insert(2, "2");
+        sgm.insert(3, "3");
+        sgm.insert(4, "4");
+        sgm.insert(5, "5");
     }
 
     assert!(!sgm.is_empty());
@@ -82,9 +82,9 @@ fn test_basic_map_functionality() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgm.checked_insert(0, "0");
-        sgm.checked_insert(3, "3");
-        sgm.checked_insert(10, "10");
+        sgm.insert(0, "0");
+        sgm.insert(3, "3");
+        sgm.insert(10, "10");
     }
 
     assert_eq!(sgm.len(), 5);
@@ -184,7 +184,9 @@ fn test_map_iter_mut_rand() {
 
         #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgm.checked_insert(rng.gen(), 0);
+        {
+            sgm.insert(rng.gen(), 0);
+        }
     }
 
     let min_key = *sgm.first_key().unwrap();
@@ -221,9 +223,9 @@ fn test_map_append() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.checked_insert(1, "1");
-        a.checked_insert(2, "2");
-        a.checked_insert(3, "3");
+        a.insert(1, "1");
+        a.insert(2, "2");
+        a.insert(3, "3");
     }
 
     let mut b = SGMap::new();
@@ -233,17 +235,17 @@ fn test_map_append() {
         b.insert(4, "4");
         b.insert(5, "5");
         b.insert(6, "6");
+        a.append(&mut b);
     }
 
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.checked_insert(4, "4");
-        b.checked_insert(5, "5");
-        b.checked_insert(6, "6");
+        b.insert(4, "4");
+        b.insert(5, "5");
+        b.insert(6, "6");
+        a.append(&mut b);
     }
-
-    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);

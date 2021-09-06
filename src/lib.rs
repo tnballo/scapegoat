@@ -89,7 +89,7 @@ Please note:
 
 For embedded systems that need to survive in the field, the `high_assurance` feature makes two changes:
 
-* **Front-end, API Swap:** `pub fn insert(&mut self, key: K, val: V) -> Option<V>` is replaced with `pub fn checked_insert(&mut self, key: K, val: V) -> Result<Option<V>, ()>`. If the stack-based arena is full, insertion returns `Err` and the caller must handle it. No panics, no heap use.
+* **Front-end, API Swap:** For maps, `pub fn insert(&mut self, key: K, val: V) -> Option<V>` is replaced with `pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, ()>`. If the stack-based arena is full, insertion returns `Err` and the caller must handle it. Similar for set's `insert` method, and all `append` methods. No panics, no heap use.
 
 * **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized using the `small_num` crate. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 

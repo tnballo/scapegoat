@@ -1,16 +1,17 @@
-use std::iter::FromIterator;
 use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use scapegoat::SGSet;
 
 mod rtd;
-use rtd::{RTD_100, RTD_10_000, RTD_1_000, SGS_100, SGS_10_000, SGS_1_000, STD_100, STD_1_000, STD_10_000};
+use rtd::{
+    RTD_100, RTD_10_000, RTD_1_000, SGS_100, SGS_10_000, SGS_1_000, STD_100, STD_10_000, STD_1_000,
+};
 
 // Benches -------------------------------------------------------------------------------------------------------------
 
 fn bench_insert(c: &mut Criterion) {
-
     // SGS vs STD 100 --------------------------------------------------------------------------------------------------
 
     c.bench_function("sgs_insert_100", |b| {
@@ -73,7 +74,6 @@ fn bench_insert(c: &mut Criterion) {
 }
 
 fn bench_get(c: &mut Criterion) {
-
     // SGS vs STD 100 --------------------------------------------------------------------------------------------------
 
     c.bench_function("sgs_get_100", |b| {

@@ -74,8 +74,43 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
     /// ```
+    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGSet<T>) {
         self.bst.append(&mut other.bst);
+    }
+
+    /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
+    /// Returns `Err` if `self`'s stack capacity would be exceeded by the copy, leaving `self` full and `other` partially drained.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut a = SGSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    ///
+    /// let mut b = SGSet::new();
+    /// b.insert(3);
+    /// b.insert(4);
+    /// b.insert(5);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&3));
+    /// assert!(a.contains(&4));
+    /// assert!(a.contains(&5));
+    /// ```
+    #[cfg(feature = "high_assurance")]
+    pub fn append(&mut self, other: &mut SGSet<T>) -> Result<(), ()> {
+        self.bst.append(&mut other.bst)
     }
 
     /// Adds a value to the set.
@@ -98,12 +133,35 @@ impl<T: Ord> SGSet<T> {
         self.bst.insert(value, ()).is_none()
     }
 
-    /// TODO: docs here!
+    /// Adds a value to the set.
+    /// Returns `Err` if sets's stack capacity is full, else the `Ok` contains:
+    /// * `true` if the set did not have this value present.
+    /// * `false` if the set did have this value present (and that old entry is overwritten).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set = SGSet::new();
+    ///
+    /// assert_eq!(set.insert(2), Ok(true));
+    /// assert_eq!(set.insert(2), Ok(false));
+    /// assert_eq!(set.len(), 1);
+    ///
+    /// let mut elem = 3;
+    /// while set.len() < set.capacity() {
+    ///     set.insert(elem);
+    ///     elem += 1;
+    /// }
+    ///
+    /// assert_eq!(set.insert(elem), Err(()));
+    /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn checked_insert(&mut self, value: T) -> Result<bool, ()> {
-        match self.bst.checked_insert(value, ()) {
+    pub fn insert(&mut self, value: T) -> Result<bool, ()> {
+        match self.bst.insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
-            Err(_) => Err(())
+            Err(_) => Err(()),
         }
     }
 
@@ -536,7 +594,7 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
             sgs.insert(v);
 
             #[cfg(feature = "high_assurance")]
-            sgs.checked_insert(v);
+            sgs.insert(v).expect("Stack-storage capacity exceeded!");
         }
 
         sgs
@@ -551,7 +609,7 @@ impl<T: Ord> Extend<T> for SGSet<T> {
             self.insert(elem);
 
             #[cfg(feature = "high_assurance")]
-            self.checked_insert(elem);
+            self.insert(elem).expect("Stack-storage capacity exceeded!");
         });
     }
 

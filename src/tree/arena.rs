@@ -1,7 +1,7 @@
 use core::slice::{Iter, IterMut};
 
 use super::node::{Node, NodeSwapHistHelper};
-use super::types::{Idx, IdxVec, ArenaVec, SortMetaVec};
+use super::types::{ArenaVec, Idx, IdxVec, SortMetaVec};
 
 use crate::MAX_ELEMS;
 

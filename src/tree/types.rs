@@ -1,8 +1,8 @@
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use crate::MAX_ELEMS;
 
-use smallvec::{IntoIter, SmallVec};
 use smallnum::small_unsigned;
+use smallvec::{IntoIter, SmallVec};
 
 // Index Variable ------------------------------------------------------------------------------------------------------
 

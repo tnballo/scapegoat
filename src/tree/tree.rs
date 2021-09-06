@@ -6,11 +6,13 @@ use core::ops::Index;
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
-use super::types::{Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec};
+use super::types::{
+    Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
+};
 
 use micromath::F32Ext;
-use smallvec::smallvec;
 use smallnum::SmallUnsigned;
+use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // Removal == breaking change, e.g. v2.0
@@ -50,6 +52,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
+    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGTree<K, V>) {
         // Nothing to append!
         if other.is_empty() {
@@ -65,15 +68,35 @@ impl<K: Ord, V> SGTree<K, V> {
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
             if let Some(node) = other.arena.remove(arena_idx as Idx) {
-                #[cfg(not(feature = "high_assurance"))]
                 self.insert(node.key, node.val);
-
-                // TODO: need fallible version of append function!
-                #[cfg(feature = "high_assurance")]
-                self.checked_insert(node.key, node.val);
             }
         }
         other.clear();
+    }
+
+    /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
+    /// Returns `Err` if `self`'s stack capacity would be exceeded by the copy, leaving `self` full and `other` partially drained.
+    #[cfg(feature = "high_assurance")]
+    pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), ()> {
+        // Nothing to append!
+        if other.is_empty() {
+            return Ok(());
+        }
+
+        // Nothing to append to!
+        if self.is_empty() {
+            mem::swap(self, other);
+            return Ok(());
+        }
+
+        // Rip elements directly out of other's arena and clear it
+        for arena_idx in 0..other.arena.len() {
+            if let Some(node) = other.arena.remove(arena_idx as Idx) {
+                self.insert(node.key, node.val)?;
+            }
+        }
+        other.clear();
+        Ok(())
     }
 
     /// Insert a key-value pair into the tree.
@@ -86,12 +109,12 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Insert a key-value pair into the tree.
-    /// If arena is full, returns `Err`. Else:
-    /// If the tree did not have this key present, `None` is returned.
-    /// If the tree did have this key present, the value is updated, the old value is returned,
-    /// and the key is updated. This accommodates types that can be `==` without being identical.
+    /// Returns `Err` if tree's stack capacity is full, else the `Ok` contains:
+    /// * `None` if the tree did not have this key present.
+    /// * The old value if the tree did have this key present (both the value and key are updated,
+    /// this accommodates types that can be `==` without being identical).
     #[cfg(feature = "high_assurance")]
-    pub fn checked_insert(&mut self, key: K, val: V) -> Result<Option<V>, ()> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, ()> {
         match self.capacity() > self.len() {
             true => Ok(self.priv_balancing_insert(key, val)),
             false => Err(()),
@@ -763,7 +786,9 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Iteratively re-assign all children
         while let Some((sorted_idx, parent_nrh)) = subtree_worklist.pop() {
-            let parent_node = self.arena.hard_get_mut(sorted_arena_idxs[sorted_idx.usize()]);
+            let parent_node = self
+                .arena
+                .hard_get_mut(sorted_arena_idxs[sorted_idx.usize()]);
             parent_node.left_idx = None;
             parent_node.right_idx = None;
 
@@ -824,7 +849,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
             sgt.insert(k, v);
 
             #[cfg(feature = "high_assurance")]
-            sgt.checked_insert(k, v);
+            sgt.insert(k, v).expect("Stack-storage capacity exceeded!");
         }
 
         sgt

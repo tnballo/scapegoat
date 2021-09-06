@@ -19,11 +19,11 @@ fn test_basic_set_functionality() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgs.checked_insert(1);
-        sgs.checked_insert(2);
-        sgs.checked_insert(3);
-        sgs.checked_insert(4);
-        sgs.checked_insert(5);
+        sgs.insert(1);
+        sgs.insert(2);
+        sgs.insert(3);
+        sgs.insert(4);
+        sgs.insert(5);
     }
 
     assert!(!sgs.is_empty());
@@ -65,9 +65,9 @@ fn test_basic_set_functionality() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgs.checked_insert(0);
-        sgs.checked_insert(3);
-        sgs.checked_insert(10);
+        sgs.insert(0);
+        sgs.insert(3);
+        sgs.insert(10);
     }
 
     assert_eq!(sgs.len(), 5);
@@ -121,9 +121,9 @@ fn test_set_append() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.checked_insert(1);
-        a.checked_insert(2);
-        a.checked_insert(3);
+        a.insert(1);
+        a.insert(2);
+        a.insert(3);
     }
 
     let mut b = SGSet::new();
@@ -133,17 +133,17 @@ fn test_set_append() {
         b.insert(4);
         b.insert(5);
         b.insert(6);
+        a.append(&mut b);
     }
 
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.checked_insert(4);
-        b.checked_insert(5);
-        b.checked_insert(6);
+        b.insert(4);
+        b.insert(5);
+        b.insert(6);
+        a.append(&mut b);
     }
-
-    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -170,11 +170,11 @@ fn test_set_intersection() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.checked_insert(2);
-        a.checked_insert(4);
-        a.checked_insert(6);
-        a.checked_insert(8);
-        a.checked_insert(10);
+        a.insert(2);
+        a.insert(4);
+        a.insert(6);
+        a.insert(8);
+        a.insert(10);
     }
 
     let mut b = SGSet::new();
@@ -191,11 +191,11 @@ fn test_set_intersection() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.checked_insert(1);
-        b.checked_insert(2);
-        b.checked_insert(3);
-        b.checked_insert(4);
-        b.checked_insert(10);
+        b.insert(1);
+        b.insert(2);
+        b.insert(3);
+        b.insert(4);
+        b.insert(10);
     }
 
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();

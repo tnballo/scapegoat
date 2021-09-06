@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;
 
-use super::SGTree;
 use super::types::Idx;
+use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -21,8 +21,11 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(*k, "n/a");
+        {
+            sgt.insert(*k, "n/a");
+        }
 
         assert_logical_invariants(&sgt);
     }
@@ -159,8 +162,11 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(rand_key, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(rand_key, "n/a");
+        {
+            sgt.insert(rand_key, "n/a");
+        }
 
         // Verify internal state post-insert
         if check_invars {
@@ -268,9 +274,9 @@ fn test_append() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.checked_insert(1, "1");
-        a.checked_insert(2, "2");
-        a.checked_insert(3, "3");
+        a.insert(1, "1");
+        a.insert(2, "2");
+        a.insert(3, "3");
     }
 
     let mut b = SGTree::new();
@@ -280,17 +286,17 @@ fn test_append() {
         b.insert(4, "4");
         b.insert(5, "5");
         b.insert(6, "6");
+        a.append(&mut b);
     }
 
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.checked_insert(4, "4");
-        b.checked_insert(5, "5");
-        b.checked_insert(6, "6");
+        b.insert(4, "4");
+        b.insert(5, "5");
+        b.insert(6, "6");
+        a.append(&mut b);
     }
-
-    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -311,8 +317,11 @@ fn test_two_child_removal_case_1() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(*k, "n/a");
+        {
+            sgt.insert(*k, "n/a");
+        }
     }
 
     println!("\nBefore two child removal case 1:\n");
@@ -343,8 +352,11 @@ fn test_two_child_removal_case_2() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(*k, "n/a");
+        {
+            sgt.insert(*k, "n/a");
+        }
     }
 
     println!("\nBefore two child removal case 2:\n");
@@ -375,8 +387,11 @@ fn test_two_child_removal_case_3() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(*k, "n/a");
+        {
+            sgt.insert(*k, "n/a");
+        }
     }
 
     println!("\nBefore two child removal case 3:\n");
@@ -470,8 +485,11 @@ fn test_first_last() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
+        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        sgt.checked_insert(*k, "n/a");
+        {
+            sgt.insert(*k, "n/a");
+        }
 
         assert_logical_invariants(&sgt);
         sgt.contains_key(k);
@@ -505,9 +523,9 @@ fn test_subtree_rebalance() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgt.checked_insert(237197427728999687, "n/a");
-        sgt.checked_insert(2328219650045037451, "n/a");
-        sgt.checked_insert(13658362701324851025, "n/a");
+        sgt.insert(237197427728999687, "n/a");
+        sgt.insert(2328219650045037451, "n/a");
+        sgt.insert(13658362701324851025, "n/a");
     }
 
     sgt.remove(&13658362701324851025);
@@ -535,22 +553,22 @@ fn test_subtree_rebalance() {
     #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgt.checked_insert(2239831466376212988, "n/a");
-        sgt.checked_insert(15954331640746224573, "n/a");
-        sgt.checked_insert(8202281457156668544, "n/a");
-        sgt.checked_insert(5226917524540172628, "n/a");
-        sgt.checked_insert(11823668523937575827, "n/a");
-        sgt.checked_insert(13519144312507908668, "n/a");
-        sgt.checked_insert(17799627035639903362, "n/a");
-        sgt.checked_insert(17491737414383996868, "n/a");
-        sgt.checked_insert(2247619647701733096, "n/a");
-        sgt.checked_insert(15122725631405182851, "n/a");
-        sgt.checked_insert(9837932133859010449, "n/a");
-        sgt.checked_insert(15426779056379992972, "n/a");
-        sgt.checked_insert(1963900452029117196, "n/a");
-        sgt.checked_insert(1328762018325194497, "n/a");
-        sgt.checked_insert(7471075696232724572, "n/a");
-        sgt.checked_insert(9350363297060113585, "n/a");
+        sgt.insert(2239831466376212988, "n/a");
+        sgt.insert(15954331640746224573, "n/a");
+        sgt.insert(8202281457156668544, "n/a");
+        sgt.insert(5226917524540172628, "n/a");
+        sgt.insert(11823668523937575827, "n/a");
+        sgt.insert(13519144312507908668, "n/a");
+        sgt.insert(17799627035639903362, "n/a");
+        sgt.insert(17491737414383996868, "n/a");
+        sgt.insert(2247619647701733096, "n/a");
+        sgt.insert(15122725631405182851, "n/a");
+        sgt.insert(9837932133859010449, "n/a");
+        sgt.insert(15426779056379992972, "n/a");
+        sgt.insert(1963900452029117196, "n/a");
+        sgt.insert(1328762018325194497, "n/a");
+        sgt.insert(7471075696232724572, "n/a");
+        sgt.insert(9350363297060113585, "n/a");
     }
 
     sgt.remove(&9350363297060113585);
@@ -566,7 +584,10 @@ fn test_subtree_rebalance() {
     sgt.insert(critical_val, "n/a");
 
     #[cfg(feature = "high_assurance")]
-    sgt.checked_insert(critical_val, "n/a");
+    #[allow(unused_must_use)]
+    {
+        sgt.insert(critical_val, "n/a");
+    }
 
     println!("\nAfter inserting {}:\n", critical_val);
     pretty_print(&sgt);
