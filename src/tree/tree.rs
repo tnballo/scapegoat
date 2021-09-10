@@ -13,6 +13,7 @@ use super::types::{
 #[cfg(feature = "high_assurance")]
 use super::error::SGErr;
 
+#[allow(unused_imports)]
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use smallvec::smallvec;
@@ -698,7 +699,9 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    // Traverse upward, using path information, to find first unbalanced parent
+    // Traverse upward, using path information, to find first unbalanced parent.
+    // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
+    #[cfg(not(feature = "alt_scapegoat"))]
     fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
         if path.len() <= 1 {
             return None;
@@ -711,7 +714,34 @@ impl<K: Ord, V> SGTree<K, V> {
         while (parent_path_idx > 0) && (3 * node_subtree_size) <= (2 * parent_subtree_size) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
-            parent_subtree_size = self.get_subtree_size(path[parent_path_idx])
+            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+            debug_assert!(parent_subtree_size > node_subtree_size);
+        }
+
+        Some(path[parent_path_idx])
+    }
+
+    // Traverse upward, using path information, to find first unbalanced parent.
+    // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
+    #[cfg(feature = "alt_scapegoat")]
+    fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
+        if path.len() <= 1 {
+            return None;
+        }
+
+        let mut i = 0;
+        let mut node_subtree_size = 1;
+        let mut parent_path_idx = path.len() - 1;
+        let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+        while (parent_path_idx > 0) && (i <= Self::log_3_2(node_subtree_size)) {
+            node_subtree_size = parent_subtree_size;
+            parent_path_idx -= 1;
+            i += 1;
+            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+            debug_assert!(parent_subtree_size > node_subtree_size);
         }
 
         Some(path[parent_path_idx])
