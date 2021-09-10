@@ -13,6 +13,8 @@ use super::types::{
 #[cfg(feature = "high_assurance")]
 use super::error::SGErr;
 
+use crate::{ALPHA_DENOM, ALPHA_NUM};
+
 #[allow(unused_imports)]
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
@@ -429,7 +431,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Potential rebalance
         let opt_val = self.priv_insert(&mut path, new_node);
-        if path.len() > Self::log_3_2(self.max_size) {
+        if path.len() > Self::alpha_balance_depth(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
@@ -711,7 +713,9 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_path_idx = path.len() - 1;
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
-        while (parent_path_idx > 0) && (3 * node_subtree_size) <= (2 * parent_subtree_size) {
+        while (parent_path_idx > 0)
+            && (ALPHA_DENOM * node_subtree_size as f32) <= (ALPHA_NUM * parent_subtree_size as f32)
+        {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
@@ -735,7 +739,7 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_path_idx = path.len() - 1;
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
-        while (parent_path_idx > 0) && (i <= Self::log_3_2(node_subtree_size)) {
+        while (parent_path_idx > 0) && (i <= Self::alpha_balance_depth(node_subtree_size)) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             i += 1;
@@ -852,9 +856,10 @@ impl<K: Ord, V> SGTree<K, V> {
         );
     }
 
-    // Log base 3/2 helper
-    fn log_3_2(val: Idx) -> usize {
-        (val as f32).log(3.0 / 2.0).floor() as usize
+    // Alpha weight balance computation helper.
+    fn alpha_balance_depth(val: Idx) -> usize {
+        // log base (1/alpha), hence (denom/num)
+        (val as f32).log(ALPHA_DENOM / ALPHA_NUM).floor() as usize
     }
 }
 
