@@ -8,10 +8,9 @@ fn main() {
     let env_key_max_items = "SG_MAX_STACK_ELEMS"; // TODO: for v2.0, rename to "SG_MAX_STACK_ITEMS" (to reflect both set elements and map key/val pairs)
     let env_val_max_items_def = "2048";
 
-    // TODO: add alpha tuning documentation
-    // TODO: Same advanced docs should explain "alt_scapegoat" feature
     // Original paper's alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
     // We choose 2/3, i.e. `a = 0.666...`, by default.
+    // Please see CONFIG.md.
     let env_key_alpha_num = "SG_ALPHA_NUMERATOR";
     let env_val_alpha_num_def = "2.0";
     let env_key_alpha_denom = "SG_ALPHA_DENOMINATOR";

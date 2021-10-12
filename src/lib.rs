@@ -84,6 +84,8 @@ Please note:
 * For embedded systems without dynamic memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
     * Use feature `high_assurance` to ensure error handling and avoid panic (see below).
 
+For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md)
+
 ### The `high_assurance` Feature
 
 For embedded use cases prioritizing robustness, enabling the `high_assurance` feature makes two changes:
@@ -93,7 +95,7 @@ For embedded use cases prioritizing robustness, enabling the `high_assurance` fe
 2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 
 That second change is a subtle but interesting one.
-Example of packing saving 53% (but in reality only 61 KB) of RAM usage:
+Example of packing saving 53% (61 KB) of RAM usage:
 
 ```
 use scapegoat::SGMap;
@@ -139,7 +141,7 @@ This library has three dependencies, each of which have no dependencies of their
 ### Considerations
 
 This project is an exercise in safe data structure design.
-It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/).
+It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/) (benchmarks via `cargo bench`).
 It does, however, offer:
 
 * **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported!

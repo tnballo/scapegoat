@@ -31,7 +31,7 @@ lazy_static = "1"
 
 [features]
 high_assurance = []
-alt_scapegoat = []
+alt_impl = []
 
 [lib]
 name = "scapegoat"

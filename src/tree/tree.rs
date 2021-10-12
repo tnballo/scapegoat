@@ -703,7 +703,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
-    #[cfg(not(feature = "alt_scapegoat"))]
+    #[cfg(not(feature = "alt_impl"))]
     fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
         if path.len() <= 1 {
             return None;
@@ -728,7 +728,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
-    #[cfg(feature = "alt_scapegoat")]
+    #[cfg(feature = "alt_impl")]
     fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
         if path.len() <= 1 {
             return None;
