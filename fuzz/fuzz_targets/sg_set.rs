@@ -218,8 +218,8 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             SetMethod::Retain { rand_value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
-                sg_set.retain(|&k| (k % rand_value) % 2 == 0);
-                bt_set.retain(|&k| (k % rand_value) % 2 == 0);
+                sg_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
+                bt_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
 
                 assert!(sg_set.iter().eq(bt_set.iter()));
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);

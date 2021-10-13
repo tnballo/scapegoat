@@ -1,3 +1,5 @@
+## Advanced Configuration
+
 This doc tackles advanced configuration options, it assumed you've read the main [README.md](https://github.com/tnballo/scapegoat/blob/master/README.md).
 
 ### Tuning the the tree's `a` factor

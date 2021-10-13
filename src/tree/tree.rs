@@ -207,6 +207,7 @@ impl<K: Ord, V> SGTree<K, V> {
         self.remove_entry(key).map(|(_, v)| v)
     }
 
+    // TODO: this implementation is inefficient, switch to a smarter drain_filter() and publicly expose that as well.
     /// Retains only the elements specified by the predicate.
     pub fn retain<F>(&mut self, mut f: F)
     where
@@ -215,6 +216,9 @@ impl<K: Ord, V> SGTree<K, V> {
     {
         let mut key_idxs = IdxVec::new();
         let mut remove_idxs = IdxVec::new();
+
+        // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
+        self.sort_arena();
 
         // Safely treat mutable ref as immutable, init list of node's arena indexes
         for (k, _) in &(*self) {

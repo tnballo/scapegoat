@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::mem::size_of;
 
@@ -556,18 +556,6 @@ fn test_retain() {
 
     sg_map.retain(|&k, _| (k % 16766697) % 2 == 0);
     bt_map.retain(|&k, _| (k % 16766697) % 2 == 0);
-
-    // TODO: temp debug
-    println!("BT:");
-    for (k, _) in &bt_map {
-        println!("{:?}", k);
-    }
-
-    // TODO: temp debug
-    println!("SG:");
-    for (k, _) in &sg_map {
-        println!("{:?}", k);
-    }
 
     assert!(sg_map.iter().eq(bt_map.iter()));
 }

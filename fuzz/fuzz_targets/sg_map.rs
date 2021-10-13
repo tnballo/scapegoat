@@ -248,8 +248,8 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             MapMethod::Retain { rand_key } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
-                sg_map.retain(|&k, _| (k % rand_key) % 2 == 0);
-                bt_map.retain(|&k, _| (k % rand_key) % 2 == 0);
+                sg_map.retain(|&k, _| (k.wrapping_add(rand_key) % 2 == 0));
+                bt_map.retain(|&k, _| (k.wrapping_add(rand_key) % 2 == 0));
 
                 assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
