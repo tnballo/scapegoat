@@ -239,6 +239,29 @@ impl<K: Ord, V> SGMap<K, V> {
         self.bst.remove_entry(key)
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in ascending key order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map: SGMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// // Keep only the elements with even-numbered keys.
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert!(map.into_iter().eq(vec![(0, 0), (2, 20), (4, 40), (6, 60)]));
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        K: Ord,
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        self.bst.retain(|k, v| f(k, v));
+    }
+
     /// Removes a key from the map, returning the value at the key if the key was previously in the map.
     ///
     /// # Examples

@@ -215,6 +215,30 @@ impl<T: Ord> SGSet<T> {
         self.bst.remove(value).is_some()
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// The elements are visited in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let xs = [1, 2, 3, 4, 5, 6];
+    /// let mut set: SGSet<i32> = xs.iter().cloned().collect();
+    /// // Keep only the even numbers.
+    /// set.retain(|&k| k % 2 == 0);
+    /// assert!(set.iter().eq([2, 4, 6].iter()));
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        T: Ord,
+        F: FnMut(&T) -> bool,
+    {
+        self.bst.retain(|k, _| f(k));
+    }
+
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
     /// # Examples
@@ -227,10 +251,7 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.get(&4), None);
     /// ```
     pub fn get(&self, value: &T) -> Option<&T> {
-        match self.bst.get_key_value(value) {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.bst.get_key_value(value).map(|(k, _)| k)
     }
 
     /// Clears the set, removing all values.
@@ -666,10 +687,7 @@ impl<'a, T: Ord> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.ref_iter.next() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.ref_iter.next().map(|(k, _)| k)
     }
 }
 

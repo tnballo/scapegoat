@@ -207,6 +207,35 @@ impl<K: Ord, V> SGTree<K, V> {
         self.remove_entry(key).map(|(_, v)| v)
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        K: Ord,
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        let mut key_idxs = IdxVec::new();
+        let mut remove_idxs = IdxVec::new();
+
+        // Safely treat mutable ref as immutable, init list of node's arena indexes
+        for (k, _) in &(*self) {
+            let ngh = self.priv_get(k);
+            debug_assert!(ngh.node_idx.is_some());
+            key_idxs.push(ngh.node_idx.unwrap());
+        }
+
+        // Filter arena index list to those not matching predicate
+        for (i, (k, v)) in self.iter_mut().enumerate() {
+            if !f(k, v) {
+                remove_idxs.push(key_idxs[i]);
+            }
+        }
+
+        // Remove non-matches
+        for i in remove_idxs {
+            self.priv_remove_by_idx(i);
+        }
+    }
+
     /// Returns the key-value pair corresponding to the given key.
     pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
         let ngh = self.priv_get(key);
@@ -221,10 +250,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the value corresponding to the given key.
     pub fn get(&self, key: &K) -> Option<&V> {
-        match self.get_key_value(key) {
-            Some((_, v)) => Some(v),
-            None => None,
-        }
+        self.get_key_value(key).map(|(_, v)| v)
     }
 
     /// Get mutable reference corresponding to key.
@@ -266,10 +292,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the first/minium key in the tree, if any.
     pub fn first_key(&self) -> Option<&K> {
-        match self.first_key_value() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.first_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the first element in the tree.
@@ -291,10 +314,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the last/maximum key in the tree, if any.
     pub fn last_key(&self) -> Option<&K> {
-        match self.last_key_value() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.last_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the last element in the tree.
@@ -900,7 +920,17 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
     }
 }
 
-// Reference iterator
+// Reference iterator, mutable
+impl<'a, K: Ord, V> IntoIterator for &'a mut SGTree<K, V> {
+    type Item = (&'a K, &'a mut V);
+    type IntoIter = IterMut<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+// Reference iterator, immutable
 impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;

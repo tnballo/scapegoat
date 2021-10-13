@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BTreeMap};
 use std::iter::FromIterator;
 use std::mem::size_of;
 
@@ -522,4 +522,52 @@ fn test_logical_fuzz_slow() {
 
     #[cfg(not(feature = "high_assurance"))]
     logical_fuzz(sgt.capacity() + 2_000, true); // Stack + Heap
+}
+
+// TODO: write test for fuzzer's
+/*
+[
+    Append {
+        other: [
+            14987934384537018497,
+            14483576400934207487,
+        ],
+    },
+    Retain {
+        rand_value: 16766697,
+    },
+    Append {
+        other: [],
+    },
+]
+*/
+
+#[test]
+fn test_retain() {
+    let mut bt_map: BTreeMap<usize, usize> = BTreeMap::new();
+    bt_map.insert(14987934384537018497, 0);
+    bt_map.insert(14483576400934207487, 0);
+
+    let mut sg_map: SGTree<usize, usize> = SGTree::new();
+    sg_map.insert(14987934384537018497, 0);
+    sg_map.insert(14483576400934207487, 0);
+
+    assert!(sg_map.iter().eq(bt_map.iter()));
+
+    sg_map.retain(|&k, _| (k % 16766697) % 2 == 0);
+    bt_map.retain(|&k, _| (k % 16766697) % 2 == 0);
+
+    // TODO: temp debug
+    println!("BT:");
+    for (k, _) in &bt_map {
+        println!("{:?}", k);
+    }
+
+    // TODO: temp debug
+    println!("SG:");
+    for (k, _) in &sg_map {
+        println!("{:?}", k);
+    }
+
+    assert!(sg_map.iter().eq(bt_map.iter()));
 }

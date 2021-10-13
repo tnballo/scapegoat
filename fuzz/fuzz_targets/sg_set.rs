@@ -1,5 +1,6 @@
 #![no_main]
 #![feature(map_first_last)]
+#![feature(btree_retain)]
 
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
@@ -33,6 +34,7 @@ enum SetMethod<T: Ord + Debug> {
     PopFirst,
     PopLast,
     Remove { value: T },
+    Retain { rand_value: T },
     SymmetricDifference { other: Vec<T> },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
@@ -211,6 +213,15 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                     bt_set.remove(&value)
                 );
 
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            },
+            SetMethod::Retain { rand_value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                sg_set.retain(|&k| (k % rand_value) % 2 == 0);
+                bt_set.retain(|&k| (k % rand_value) % 2 == 0);
+
+                assert!(sg_set.iter().eq(bt_set.iter()));
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
             SetMethod::SymmetricDifference { other } => {

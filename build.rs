@@ -52,7 +52,7 @@ fn main() {
 
     let alpha = alpha_num.parse::<f32>().unwrap() / alpha_denom.parse::<f32>().unwrap();
     assert!(
-        0.5 <= alpha && alpha < 1.0,
+        (0.5..1.0).contains(&alpha),
         "Invalid alpha! Condition must hold: 0.5 <= (SG_ALPHA_NUMERATOR / SG_ALPHA_DENOMINATOR) < 1"
     );
 
