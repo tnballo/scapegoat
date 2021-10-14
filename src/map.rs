@@ -31,7 +31,7 @@ impl<K: Ord, V> SGMap<K, V> {
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of map pairs.
-    /// Attempting to insert pairs beyond capacity will panic.
+    /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
     /// If using `std`: fast capacity, e.g. number of map pairs stored on the stack.
     /// Pairs inserted beyond capacity will be stored on the heap.

@@ -2,6 +2,7 @@ use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
+//use core::borrow::Borrow;
 
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
@@ -49,7 +50,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of tree pairs.
-    /// Attempting to insert pairs beyond capacity will panic.
+    /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
     /// If using `std`: fast capacity, e.g. number of tree pairs stored on the stack.
     /// Pairs inserted beyond capacity will be stored on the heap.
@@ -59,7 +60,10 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGTree<K, V>) {
+    pub fn append(&mut self, other: &mut SGTree<K, V>)
+    where
+        K: Ord
+    {
         // Nothing to append!
         if other.is_empty() {
             return;
@@ -116,7 +120,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// If the tree did have this key present, the value is updated, the old value is returned,
     /// and the key is updated. This accommodates types that can be `==` without being identical.
     #[cfg(not(feature = "high_assurance"))]
-    pub fn insert(&mut self, key: K, val: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, val: V) -> Option<V>
+    where
+        K: Ord
+    {
         self.priv_balancing_insert(key, val)
     }
 
@@ -188,6 +195,11 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
+    /* TODO: future sig:
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)> where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    */
         match self.priv_remove_by_key(key) {
             Some(node) => {
                 if self.max_size > (2 * self.curr_size) {
@@ -204,6 +216,12 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
     pub fn remove(&mut self, key: &K) -> Option<V> {
+    /* TODO: future sig:
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V> where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+    */
         self.remove_entry(key).map(|(_, v)| v)
     }
 
@@ -211,8 +229,8 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Retains only the elements specified by the predicate.
     pub fn retain<F>(&mut self, mut f: F)
     where
-        K: Ord,
         F: FnMut(&K, &mut V) -> bool,
+        K: Ord,
     {
         let mut key_idxs = IdxVec::new();
         let mut remove_idxs = IdxVec::new();
@@ -242,6 +260,13 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns the key-value pair corresponding to the given key.
     pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
+    /*
+    pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&K, &V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+    */
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -254,11 +279,26 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the value corresponding to the given key.
     pub fn get(&self, key: &K) -> Option<&V> {
+    /* TODO: future sig:
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+    */
+
         self.get_key_value(key).map(|(_, v)| v)
     }
 
     /// Get mutable reference corresponding to key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    /* TODO: future sig:
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+    */
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -278,6 +318,13 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns `true` if the tree contains a value for the given key.
     pub fn contains_key(&self, key: &K) -> bool {
+    /* TODO: future sig
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+    */
         self.get(key).is_some()
     }
 
@@ -288,20 +335,29 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the first key-value pair in the tree.
     /// The key in this pair is the minimum key in the tree.
-    pub fn first_key_value(&self) -> Option<(&K, &V)> {
+    pub fn first_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord
+    {
         self.arena
             .get(self.min_idx)
             .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
-    pub fn first_key(&self) -> Option<&K> {
+    pub fn first_key(&self) -> Option<&K>
+    where
+        K: Ord
+    {
         self.first_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the first element in the tree.
     /// The key of this element is the minimum key that was in the tree.
-    pub fn pop_first(&mut self) -> Option<(K, V)> {
+    pub fn pop_first(&mut self) -> Option<(K, V)>
+    where
+        K: Ord
+    {
         match self.priv_remove_by_idx(self.min_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
@@ -310,20 +366,29 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the last key-value pair in the tree.
     /// The key in this pair is the maximum key in the tree.
-    pub fn last_key_value(&self) -> Option<(&K, &V)> {
+    pub fn last_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord
+    {
         self.arena
             .get(self.max_idx)
             .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
-    pub fn last_key(&self) -> Option<&K> {
+    pub fn last_key(&self) -> Option<&K>
+    where
+        K: Ord
+    {
         self.last_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the last element in the tree.
     /// The key of this element is the maximum key that was in the tree.
-    pub fn pop_last(&mut self) -> Option<(K, V)> {
+    pub fn pop_last(&mut self) -> Option<(K, V)>
+    where
+        K: Ord
+    {
         match self.priv_remove_by_idx(self.max_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
@@ -336,6 +401,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
+    /// This count will wrap if `usize::MAX` is exceeded.
     pub fn rebal_cnt(&self) -> usize {
         self.rebal_cnt
     }
@@ -799,7 +865,7 @@ impl<K: Ord, V> SGTree<K, V> {
     fn rebuild(&mut self, idx: Idx) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
-        self.rebal_cnt += 1;
+        self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
     }
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).

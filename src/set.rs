@@ -1,6 +1,7 @@
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
+//use core::borrow::Borrow;
 
 use crate::tree::{
     ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
@@ -31,7 +32,7 @@ impl<T: Ord> SGSet<T> {
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
-    /// Attempting to insert elements beyond capacity will panic.
+    /// Attempting to insert elements beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
     /// If using `std`: fast capacity, e.g. number of set elements stored on the stack.
     /// Elements inserted beyond capacity will be stored on the heap.
@@ -214,6 +215,31 @@ impl<T: Ord> SGSet<T> {
     pub fn remove(&mut self, value: &T) -> bool {
         self.bst.remove(value).is_some()
     }
+
+    /*
+    /// Removes and returns the value in the set, if any, that is equal to the given one.
+    ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.take(&2), Some(2));
+    /// assert_eq!(set.take(&2), None);
+    /// ```
+    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        self.bst.remove_entry(value).map(|(k, v)| k)
+    }
+    */
 
     /// Retains only the elements specified by the predicate.
     ///

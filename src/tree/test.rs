@@ -549,8 +549,17 @@ fn test_retain() {
     bt_map.insert(14483576400934207487, 0);
 
     let mut sg_map: SGTree<usize, usize> = SGTree::new();
-    sg_map.insert(14987934384537018497, 0);
-    sg_map.insert(14483576400934207487, 0);
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sg_map.insert(14987934384537018497, 0);
+        sg_map.insert(14483576400934207487, 0);
+    }
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sg_map.insert(14987934384537018497, 0);
+        sg_map.insert(14483576400934207487, 0);
+    }
 
     assert!(sg_map.iter().eq(bt_map.iter()));
 
