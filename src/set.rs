@@ -217,6 +217,32 @@ impl<T: Ord> SGSet<T> {
     }
 
     /*
+    // TODO v2.0: impl and add fuzz test
+    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
+    /// one. Returns the replaced value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set = SGSet::new();
+    /// set.insert(Vec::<i32>::new());
+    ///
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
+    /// set.replace(Vec::with_capacity(10));
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
+    /// ```
+    pub fn replace(&mut self, value: T) -> Option<T>
+    where
+        T: Ord,
+    {
+        self.bst.remove_entry(&value).map(|(k, _)| k)
+    }
+    */
+
+    /*
+    // TODO v2.0: impl and add fuzz test
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
     /// The value may be any borrowed form of the set's value type,
@@ -226,9 +252,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeSet;
+    /// use scapegoat::SGSet;
     ///
-    /// let mut set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set: SGSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```

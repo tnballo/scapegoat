@@ -524,24 +524,6 @@ fn test_logical_fuzz_slow() {
     logical_fuzz(sgt.capacity() + 2_000, true); // Stack + Heap
 }
 
-// TODO: write test for fuzzer's
-/*
-[
-    Append {
-        other: [
-            14987934384537018497,
-            14483576400934207487,
-        ],
-    },
-    Retain {
-        rand_value: 16766697,
-    },
-    Append {
-        other: [],
-    },
-]
-*/
-
 #[test]
 fn test_retain() {
     let mut bt_map: BTreeMap<usize, usize> = BTreeMap::new();

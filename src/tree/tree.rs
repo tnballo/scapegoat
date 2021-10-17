@@ -195,7 +195,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
-    /* TODO: future sig:
+    /* TODO: v2.0 signature:
     pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)> where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -216,7 +216,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
     pub fn remove(&mut self, key: &K) -> Option<V> {
-    /* TODO: future sig:
+    /* TODO: v2.0 signature:
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V> where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -279,7 +279,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the value corresponding to the given key.
     pub fn get(&self, key: &K) -> Option<&V> {
-    /* TODO: future sig:
+    /* TODO: v2.0 signature:
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
         K: Borrow<Q> + Ord,
@@ -292,7 +292,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Get mutable reference corresponding to key.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-    /* TODO: future sig:
+    /* TODO: v2.0 signature:
     pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
     where
         K: Borrow<Q> + Ord,
@@ -318,7 +318,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns `true` if the tree contains a value for the given key.
     pub fn contains_key(&self, key: &K) -> bool {
-    /* TODO: future sig
+    /* TODO: v2.0 signature
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
     where
         K: Borrow<Q> + Ord,

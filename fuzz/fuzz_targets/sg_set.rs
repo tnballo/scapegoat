@@ -34,6 +34,7 @@ enum SetMethod<T: Ord + Debug> {
     PopFirst,
     PopLast,
     Remove { value: T },
+    //Replace { value: T },
     Retain { rand_value: T },
     SymmetricDifference { other: Vec<T> },
     //Take { value: T },
@@ -216,6 +217,18 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
+            /*
+            SetMethod::Replace { value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                assert_eq!(
+                    sg_set.replace(value),
+                    bt_set.replace(value)
+                );
+
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            },
+            */
             SetMethod::Retain { rand_value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
