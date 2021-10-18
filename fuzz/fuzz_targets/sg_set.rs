@@ -36,6 +36,7 @@ enum SetMethod<T: Ord + Debug> {
     Remove { value: T },
     //Replace { value: T },
     Retain { rand_value: T },
+    SplitOff { value: T },
     SymmetricDifference { other: Vec<T> },
     //Take { value: T },
     Union { other: Vec<T> },
@@ -234,6 +235,14 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 sg_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
                 bt_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
+
+                assert!(sg_set.iter().eq(bt_set.iter()));
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            },
+            SetMethod::SplitOff { value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                assert!(sg_set.split_off(&value).iter().eq(bt_set.split_off(&value).iter()));
 
                 assert!(sg_set.iter().eq(bt_set.iter()));
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);

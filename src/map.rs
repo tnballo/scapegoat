@@ -262,6 +262,41 @@ impl<K: Ord, V> SGMap<K, V> {
         self.bst.retain(|k, v| f(k, v));
     }
 
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// assert_eq!(b[&41], "e");
+    /// ```
+    pub fn split_off(&mut self, key: &K) -> SGMap<K, V> {
+        SGMap {
+            bst: self.bst.split_off(key),
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key was previously in the map.
     ///
     /// # Examples

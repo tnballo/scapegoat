@@ -216,6 +216,41 @@ impl<T: Ord> SGSet<T> {
         self.bst.remove(value).is_some()
     }
 
+    /// Splits the collection into two at the given value. Returns everything after the given value,
+    /// including the value.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut a = SGSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    ///
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&17));
+    /// assert!(b.contains(&41));
+    /// ```
+    pub fn split_off(&mut self, value: &T) -> SGSet<T> {
+        SGSet {
+            bst: self.bst.split_off(value),
+        }
+    }
+
     /*
     // TODO v2.0: impl and add fuzz test
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
