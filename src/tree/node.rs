@@ -3,14 +3,14 @@ use super::types::{Idx, SortSwapVec};
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
 /// Binary tree node.
-pub struct Node<K: Ord, V> {
+pub struct Node<K, V> {
     pub key: K,
     pub val: V,
     pub left_idx: Option<Idx>,
     pub right_idx: Option<Idx>,
 }
 
-impl<K: Ord, V> Node<K, V> {
+impl<K, V> Node<K, V> {
     /// Constructor.
     pub fn new(key: K, val: V) -> Self {
         Node {
