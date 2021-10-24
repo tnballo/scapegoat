@@ -550,3 +550,35 @@ fn test_retain() {
 
     assert!(sg_map.iter().eq(bt_map.iter()));
 }
+
+#[test]
+fn test_slice_search() {
+    let bad_code: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xC, 0x0, 0xD, 0xE];
+    let bad_food: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
+
+    assert_eq!(std::mem::size_of_val(&bad_code), 8);
+    assert_eq!(std::mem::size_of_val(&bad_food), 8);
+
+    let mut sgt = SGTree::new();
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        sgt.insert(bad_code, "badcode");
+        sgt.insert(bad_food, "badfood");
+    }
+    #[allow(unused_must_use)]
+    #[cfg(feature = "high_assurance")]
+    {
+        sgt.insert(bad_code, "badcode");
+        sgt.insert(bad_food, "badfood");
+    }
+
+    let bad_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD];
+    let bad_food_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
+    let bad_dude_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD];
+
+    assert_eq!(sgt.get(&bad_food_vec[..]), Some(&"badfood"));
+
+    assert_eq!(sgt.get(&bad_vec[..]), None);
+
+    assert_eq!(sgt.get(&bad_dude_vec[..]), None);
+}

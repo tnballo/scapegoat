@@ -1,8 +1,8 @@
+use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
-//use core::borrow::Borrow;
 
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
@@ -194,12 +194,14 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
-    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
-        /* TODO: v2.0 signature:
-        pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)> where
-            K: Borrow<Q> + Ord,
-            Q: Ord + ?Sized,
-        */
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         match self.priv_remove_by_key(key) {
             Some(node) => {
                 if self.max_size > (2 * self.curr_size) {
@@ -215,69 +217,15 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        /* TODO: v2.0 signature:
-        pub fn remove<Q>(&mut self, key: &Q) -> Option<V> where
-            K: Borrow<Q> + Ord,
-            Q: Ord + ?Sized,
-        {
-        */
-        self.remove_entry(key).map(|(_, v)| v)
-    }
-
-    /// Temporary internal drain_filter() implementation. To be replaced with a public implementation.
-    pub(crate) fn drain_filter<F>(&mut self, mut pred: F) -> Self
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
     where
-        K: Ord,
-        F: FnMut(&K, &mut V) -> bool,
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
     {
-        /* TODO: v2.0 signature:
-        // TODO: make public with this signature
-        pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
-        where
-            K: Ord,
-            F: FnMut(&K, &mut V) -> bool,
-        {
-        */
-        // TODO: this implementation is very inefficient!
-
-        let mut key_idxs = IdxVec::new();
-        let mut remove_idxs = IdxVec::new();
-
-        // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
-        self.sort_arena();
-
-        // Safely treat mutable ref as immutable, init list of node's arena indexes
-        for (k, _) in &(*self) {
-            let ngh = self.priv_get(k);
-            debug_assert!(ngh.node_idx.is_some());
-            key_idxs.push(ngh.node_idx.unwrap());
-        }
-
-        // Filter arena index list to those not matching predicate
-        for (i, (k, v)) in self.iter_mut().enumerate() {
-            if pred(k, v) {
-                remove_idxs.push(key_idxs[i]);
-            }
-        }
-
-        // Drain non-matches
-        let mut drained_sgt = Self::new();
-        for i in remove_idxs {
-            if let Some(node) = self.priv_remove_by_idx(i) {
-                #[cfg(not(feature = "high_assurance"))]
-                {
-                    drained_sgt.insert(node.key, node.val);
-                }
-                #[allow(unused_must_use)]
-                #[cfg(feature = "high_assurance")]
-                {
-                    drained_sgt.insert(node.key, node.val);
-                }
-            }
-        }
-
-        drained_sgt
+        self.remove_entry(key).map(|(_, v)| v)
     }
 
     /// Retains only the elements specified by the predicate.
@@ -286,29 +234,27 @@ impl<K: Ord, V> SGTree<K, V> {
         F: FnMut(&K, &mut V) -> bool,
         K: Ord,
     {
-        self.drain_filter(|k, v| !f(k, v));
+        self.priv_drain_filter(|k, v| !f(k, v));
     }
 
     /// Splits the collection into two at the given key. Returns everything after the given key, including the key.
-    pub fn split_off(&mut self, key: &K) -> Self {
-        /* TODO: v2.0 signature:
-        pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
-        where
-            K: Borrow<Q> + Ord,
-        {
-        */
-        self.drain_filter(|k, _| k >= key)
+    pub fn split_off<Q>(&mut self, key: &Q) -> Self
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.priv_drain_filter(|k, _| k >= key)
     }
 
     /// Returns the key-value pair corresponding to the given key.
-    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
-        /* TODO: v2.0 signature:
-        pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&K, &V)>
-        where
-            K: Borrow<Q> + Ord,
-            Q: Ord + ?Sized,
-        {
-        */
+    ///
+    /// The supplied key may be any borrowed form of the map’s key type,
+    /// but the ordering on the borrowed form must match the ordering on the key type.
+    pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&K, &V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -320,27 +266,26 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Returns a reference to the value corresponding to the given key.
-    pub fn get(&self, key: &K) -> Option<&V> {
-        /* TODO: v2.0 signature:
-        pub fn get<Q>(&self, key: &Q) -> Option<&V>
-        where
-            K: Borrow<Q> + Ord,
-            Q: Ord + ?Sized,
-        {
-        */
-
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.get_key_value(key).map(|(_, v)| v)
     }
 
     /// Get mutable reference corresponding to key.
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        /* TODO: v2.0 signature:
-        pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
-        where
-            K: Borrow<Q> + Ord,
-            Q: Ord + ?Sized,
-        {
-        */
+    ///
+    /// The key may be any borrowed form of the map’s key type,
+    /// but the ordering on the borrowed form must match the ordering on the key type.
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -359,14 +304,14 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Returns `true` if the tree contains a value for the given key.
-    pub fn contains_key(&self, key: &K) -> bool {
-        /* TODO: v2.0 signature
-        pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
-        where
-            K: Borrow<Q> + Ord,
-            Q: Ord,
-        {
-        */
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the
+    /// ordering on the borrowed form must match the ordering on the key type.
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.get(key).is_some()
     }
 
@@ -516,7 +461,11 @@ impl<K: Ord, V> SGTree<K, V> {
     // Private API -----------------------------------------------------------------------------------------------------
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
-    fn priv_get(&self, key: &K) -> NodeGetHelper {
+    fn priv_get<Q>(&self, key: &Q) -> NodeGetHelper
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         match self.root_idx {
             Some(root_idx) => {
                 let mut opt_parent_idx = None;
@@ -524,7 +473,7 @@ impl<K: Ord, V> SGTree<K, V> {
                 let mut is_right_child = false;
                 loop {
                     let node = self.arena.hard_get(curr_idx);
-                    match key.cmp(&node.key) {
+                    match key.cmp(&node.key.borrow()) {
                         Ordering::Less => match node.left_idx {
                             Some(lt_idx) => {
                                 opt_parent_idx = Some(curr_idx);
@@ -687,7 +636,11 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Remove a node by key.
-    fn priv_remove_by_key(&mut self, key: &K) -> Option<Node<K, V>> {
+    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         self.priv_remove(ngh)
     }
@@ -791,6 +744,63 @@ impl<K: Ord, V> SGTree<K, V> {
             }
             None => None,
         }
+    }
+
+    /// Temporary internal drain_filter() implementation. To be replaced/supplemented with a public implementation.
+    fn priv_drain_filter<Q, F>(&mut self, mut pred: F) -> Self
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+        F: FnMut(&Q, &mut V) -> bool,
+    {
+        /*
+        // TODO: make public version with this signature
+        pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
+        where
+            K: Ord,
+            F: FnMut(&K, &mut V) -> bool,
+        {
+        */
+
+        // TODO: this implementation is rather inefficient!
+
+        let mut key_idxs = IdxVec::new();
+        let mut remove_idxs = IdxVec::new();
+
+        // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
+        self.sort_arena();
+
+        // Safely treat mutable ref as immutable, init list of node's arena indexes
+        for (k, _) in &(*self) {
+            let ngh = self.priv_get(k.borrow());
+            debug_assert!(ngh.node_idx.is_some());
+            key_idxs.push(ngh.node_idx.unwrap());
+        }
+
+        // Filter arena index list to those not matching predicate
+        for (i, (k, v)) in self.iter_mut().enumerate() {
+            if pred(k.borrow(), v) {
+                remove_idxs.push(key_idxs[i]);
+            }
+        }
+
+        // Drain non-matches
+        let mut drained_sgt = Self::new();
+        for i in remove_idxs {
+            if let Some(node) = self.priv_remove_by_idx(i) {
+                #[cfg(not(feature = "high_assurance"))]
+                {
+                    drained_sgt.insert(node.key, node.val);
+                }
+                #[allow(unused_must_use)]
+                #[cfg(feature = "high_assurance")]
+                {
+                    drained_sgt.insert(node.key, node.val);
+                }
+            }
+        }
+
+        drained_sgt
     }
 
     /// Minimum update without recursion
