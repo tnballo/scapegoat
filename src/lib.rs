@@ -140,7 +140,7 @@ This library has three dependencies, each of which have no dependencies of their
 
 ### Considerations
 
-This project is an exercise in safe data structure design.
+This project is an exercise in safe, portable data structure design.
 It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/) (benchmarks via `cargo bench`).
 It does, however, offer:
 

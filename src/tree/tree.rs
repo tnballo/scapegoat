@@ -16,7 +16,7 @@ use super::error::SGErr;
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
-#[allow(unused_imports)]
+#[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use smallvec::smallvec;
@@ -36,7 +36,7 @@ pub struct SGTree<K: Ord, V> {
 impl<K: Ord, V> SGTree<K, V> {
     // Public API ------------------------------------------------------------------------------------------------------
 
-    /// Constructor.
+    /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
             arena: NodeArena::new(),
@@ -133,7 +133,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// * The old value if the tree did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    where
+        K: Ord,
+    {
         match self.capacity() > self.len() {
             true => Ok(self.priv_balancing_insert(key, val)),
             false => Err(SGErr::StackCapacityExceeded),

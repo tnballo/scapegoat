@@ -1,3 +1,4 @@
+use core::borrow::Borrow;
 use core::iter::FromIterator;
 use core::ops::Index;
 
@@ -15,7 +16,7 @@ pub struct SGMap<K: Ord, V> {
 }
 
 impl<K: Ord, V> SGMap<K, V> {
-    /// Constructor.
+    /// Makes a new, empty `SGMap`.
     ///
     /// # Examples
     ///
@@ -134,7 +135,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[cfg(not(feature = "high_assurance"))]
-    pub fn insert(&mut self, key: K, val: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, val: V) -> Option<V>
+    where
+        K: Ord,
+    {
         self.bst.insert(key, val)
     }
 
@@ -166,7 +170,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    where
+        K: Ord,
+    {
         self.bst.insert(key, val)
     }
 
@@ -223,7 +230,11 @@ impl<K: Ord, V> SGMap<K, V> {
         IterMut::new(&mut self.bst)
     }
 
-    /// Removes a key from the map, returning the stored key and value if the key was previously in the map.
+    /// Removes a key from the map, returning the stored key and value if the key
+    /// was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
     ///
@@ -235,7 +246,11 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove_entry(&1), None);
     /// ```
-    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.remove_entry(key)
     }
 
@@ -291,13 +306,21 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(b[&17], "d");
     /// assert_eq!(b[&41], "e");
     /// ```
-    pub fn split_off(&mut self, key: &K) -> SGMap<K, V> {
+    pub fn split_off<Q>(&mut self, key: &Q) -> SGMap<K, V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         SGMap {
             bst: self.bst.split_off(key),
         }
     }
 
-    /// Removes a key from the map, returning the value at the key if the key was previously in the map.
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
     ///
@@ -309,11 +332,18 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.remove(key)
     }
 
-    /// Returns the key-value pair corresponding to the given key.
+    /// Returns the key-value pair corresponding to the supplied key.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
     ///
@@ -325,11 +355,18 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
     /// assert_eq!(map.get_key_value(&2), None);
     /// ```
-    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
+    pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&K, &V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.get_key_value(key)
     }
 
-    /// Returns a reference to the value corresponding to the given key.
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
     ///
@@ -341,11 +378,18 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.get(key)
     }
 
-    /// Get mutable reference corresponding to key.
+    // Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
     ///
@@ -359,7 +403,11 @@ impl<K: Ord, V> SGMap<K, V> {
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.get_mut(key)
     }
 
@@ -379,8 +427,10 @@ impl<K: Ord, V> SGMap<K, V> {
         self.bst.clear()
     }
 
-    /// Returns `true` if the map contains a value for the given key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
     /// # Examples
     ///
     /// ```
@@ -391,7 +441,11 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
-    pub fn contains_key(&self, key: &K) -> bool {
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.contains_key(key)
     }
 
@@ -425,7 +479,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    pub fn first_key_value(&self) -> Option<(&K, &V)> {
+    pub fn first_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord,
+    {
         self.bst.first_key_value()
     }
 
@@ -442,7 +499,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key(), Some(&1));
     /// ```
-    pub fn first_key(&self) -> Option<&K> {
+    pub fn first_key(&self) -> Option<&K>
+    where
+        K: Ord,
+    {
         self.bst.first_key()
     }
 
@@ -464,7 +524,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    pub fn pop_first(&mut self) -> Option<(K, V)> {
+    pub fn pop_first(&mut self) -> Option<(K, V)>
+    where
+        K: Ord,
+    {
         self.bst.pop_first()
     }
 
@@ -481,7 +544,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    pub fn last_key_value(&self) -> Option<(&K, &V)> {
+    pub fn last_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord,
+    {
         self.bst.last_key_value()
     }
 
@@ -497,7 +563,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key(), Some(&2));
     /// ```
-    pub fn last_key(&self) -> Option<&K> {
+    pub fn last_key(&self) -> Option<&K>
+    where
+        K: Ord,
+    {
         self.bst.last_key()
     }
 
@@ -519,7 +588,10 @@ impl<K: Ord, V> SGMap<K, V> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    pub fn pop_last(&mut self) -> Option<(K, V)> {
+    pub fn pop_last(&mut self) -> Option<(K, V)>
+    where
+        K: Ord,
+    {
         self.bst.pop_last()
     }
 
