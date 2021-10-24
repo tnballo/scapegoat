@@ -20,9 +20,9 @@ include = [
 ]
 
 [dependencies]
-smallvec = "1.6.1"  # Has no dependencies of it's own
-micromath = "2.0.0" # Has no dependenceis of it's own
-smallnum = "0.2.0"  # Has no dependencies of it's own
+smallvec = "1.7"  # Has no dependencies of it's own
+micromath = "2.0" # Has no dependenceis of it's own
+smallnum = "0.2"  # Has no dependencies of it's own
 
 [dev-dependencies]
 criterion = "0.3"

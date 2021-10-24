@@ -71,22 +71,27 @@ assert_eq!(
 ### Configuring a Stack Storage Limit
 
 The maximum number of stack-stored elements (set) or key-value pairs (map/tree) is determined at compile-time, via the environment variable `SG_MAX_STACK_ELEMS`.
-Valid values are in the range `[0, 32]` and powers of 2 up to `2048`.
-For example, to store up to `1024` items on the stack:
+[Valid values](https://docs.rs/smallvec/1.7.0/smallvec/trait.Array.html#foreign-impls) include the range `[0, 32]` and powers of 2 up to `1,048,576`.
+For example, to store up to `2048` items on the stack:
 
 ```bash
-export SG_MAX_STACK_ELEMS=1024
+export SG_MAX_STACK_ELEMS=2048
 cargo build --release
 ```
 
 Please note:
 
-* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `2048`.
+* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
 
 * For any system with dynamic (heap) memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
 
 * For embedded systems without dynamic memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
     * Use feature `high_assurance` to ensure error handling and avoid panic (see below).
+
+> **Warning:**
+> Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `SG_MAX_STACK_ELEMS` (configurable) and/or the stored item type (generic) is too large.
+> You must test to ensure you don't exceed the stack frame size limit of your target platform.
+> Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
 
@@ -99,7 +104,7 @@ For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.or
 2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 
 That second change is a subtle but interesting one.
-Example of packing saving 53% (61 KB) of RAM usage:
+Example of packing saving 53% (31 KB) of RAM usage:
 
 ```rust
 use scapegoat::SGMap;
@@ -115,22 +120,23 @@ use core::mem::size_of;
 // Internally, this compile time struct packing is done with the `smallnum` crate:
 // https://crates.io/crates/smallnum
 
-// This code assumes `SG_MAX_STACK_ELEMS == 2048` (default)
+// This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)
 let temp: SGMap<u64, u64> = SGMap::new();
-assert!(temp.capacity() == 2048);
+if temp.capacity() == 1024 {
 
-// Without packing
-#[cfg(target_pointer_width = "64")]
-#[cfg(not(feature = "high_assurance"))]
-{
-    assert_eq!(size_of::<SGMap<u64, u64>>(), 114_776);
-}
+    // Without packing
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
+    }
 
-// With packing
-#[cfg(target_pointer_width = "64")]
-#[cfg(feature = "high_assurance")]
-{
-    assert_eq!(size_of::<SGMap<u64, u64>>(), 53_304);
+    // With packing
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(feature = "high_assurance")]
+    {
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
+    }
 }
 ```
 

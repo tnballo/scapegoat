@@ -2,11 +2,12 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-const ELEM_LIMIT: usize = 2048;
+// https://docs.rs/smallvec/1.7.0/smallvec/trait.Array.html#implementors
+const ELEM_MAX: usize = 1_048_576;
 
 fn main() {
     let env_key_max_items = "SG_MAX_STACK_ELEMS"; // TODO: for v2.0, rename to "SG_MAX_STACK_ITEMS" (to reflect both set elements and map key/val pairs)
-    let env_val_max_items_def = "2048";
+    let env_val_max_items_def = "1024";
 
     // Original paper's alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
     // We choose 2/3, i.e. `a = 0.666...`, by default.
@@ -35,9 +36,8 @@ fn main() {
     };
 
     assert!(
-        max_elems.parse::<usize>().unwrap() <= ELEM_LIMIT,
-        "Exceeded max item limit! Depending on OS and item size, this could risk stack overflow.
-        Comment out this check in \'build.rs\' at your own risk."
+        max_elems.parse::<usize>().unwrap() <= ELEM_MAX,
+        "Exceeded maximum stack item limit!"
     );
 
     let alpha_num = match env::var(env_key_alpha_num) {
