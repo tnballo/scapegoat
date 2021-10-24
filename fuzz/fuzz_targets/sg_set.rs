@@ -38,7 +38,7 @@ enum SetMethod<T: Ord + Debug> {
     Retain { rand_value: T },
     SplitOff { value: T },
     SymmetricDifference { other: Vec<T> },
-    //Take { value: T },
+    Take { value: T },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
     // TODO
@@ -251,7 +251,6 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert_eq!(sg_sym_diff, bt_sym_diff);
             },
-            /*
             SetMethod::Take { value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
@@ -262,7 +261,6 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
-            */
             SetMethod::Union { other } => {
                 let sg_union: Vec<_>= sg_set.union(&SGSet::from_iter(other.clone())).cloned().collect();
                 let bt_union: Vec<_> = bt_set.union(&BTreeSet::from_iter(other)).cloned().collect();

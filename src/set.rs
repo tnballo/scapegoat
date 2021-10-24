@@ -307,7 +307,6 @@ impl<T: Ord> SGSet<T> {
         removed
     }
 
-    /*
     // TODO v2.0: impl and add fuzz test
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
@@ -324,14 +323,13 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
-    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+    pub fn take<Q>(&mut self, value: &Q) -> Option<T>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
+        Q: Ord + ?Sized,
     {
-        self.bst.remove_entry(value).map(|(k, v)| k)
+        self.bst.remove_entry(value).map(|(k, _)| k)
     }
-    */
 
     /// Retains only the elements specified by the predicate.
     ///
