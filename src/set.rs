@@ -18,7 +18,7 @@ pub struct SGSet<T: Ord> {
 }
 
 impl<T: Ord> SGSet<T> {
-    /// Constructor.
+    /// Makes a new, empty `SGSet`.
     ///
     /// # Examples
     ///
@@ -273,8 +273,6 @@ impl<T: Ord> SGSet<T> {
         }
     }
 
-    /*
-    // TODO v2.0: impl and add fuzz test
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
     ///
@@ -294,9 +292,20 @@ impl<T: Ord> SGSet<T> {
     where
         T: Ord,
     {
-        self.bst.remove_entry(&value).map(|(k, _)| k)
+        let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
+
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            self.insert(value);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            self.insert(value);
+        }
+
+        removed
     }
-    */
 
     /*
     // TODO v2.0: impl and add fuzz test

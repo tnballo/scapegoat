@@ -476,7 +476,7 @@ impl<K: Ord, V> SGTree<K, V> {
                 let mut is_right_child = false;
                 loop {
                     let node = self.arena.hard_get(curr_idx);
-                    match key.cmp(&node.key.borrow()) {
+                    match key.cmp(node.key.borrow()) {
                         Ordering::Less => match node.left_idx {
                             Some(lt_idx) => {
                                 opt_parent_idx = Some(curr_idx);
