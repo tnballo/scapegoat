@@ -1,9 +1,9 @@
 /*!
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-* Embedded-friendly: `!#[no_std]` by default.
 * Safe: `#![forbid(unsafe_code)]`.
-* Validated via differential fuzzing, against the standard library `BTreeSet` and `BTreeMap`.
+* Embedded-friendly: `!#[no_std]` by default.
+* Validated via differential fuzzing, against the standard library's `BTreeSet` and `BTreeMap`.
 
 ### About
 
@@ -15,12 +15,12 @@ Three APIs:
 
 Strives for two properties:
 
-* **Maximal safety:** strong [memory safety](https://tiemoko.com/blog/blue-team-rust/) guarantees.
+* **Maximal safety:** strong [memory safety](https://tiemoko.com/blog/blue-team-rust/) guarantees, hence `#![forbid(unsafe_code)]`.
     * **Compile-time safety:** no `unsafe` (no raw pointer dereference, etc.).
     * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
     * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 
-* **Minimal footprint:** low resource use.
+* **Minimal footprint:** low resource use, hence `!#[no_std]`.
     * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
     * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
@@ -32,38 +32,58 @@ Other features:
 
 ### Usage
 
-`SGMap` non-exhaustive API example (would work identically for `std::collections::BTreeMap`):
+`SGMap` non-exhaustive, `!#[no_std]` API example (would work identically for `std::collections::BTreeMap`):
 
 ```rust
 use scapegoat::SGMap;
+use smallvec::{smallvec, SmallVec};
+
+const FIXED_BUF_LEN: usize = 5;
 
 let mut example = SGMap::new();
+let mut stack_str = "your friend the";
 
-example.insert(3, String::from("the"));
-example.insert(2, String::from("don't blame"));
-example.insert(1, String::from("Please"));
-example.insert(4, String::from("borrow checker"));
+// Insert "dynamically" (as if heap)
+example.insert(3, "the");
+example.insert(2, "don't blame");
+example.insert(1, "Please");
+example.insert(4, "borrow checker");
 
-assert_eq!(
-    example.iter().map(|(_, v)| v).collect::<Vec<&String>>(),
-    vec!["Please","don't blame","the","borrow checker"]
-);
+// Ordered reference iterator
+assert!(example
+    .iter()
+    .map(|(_, v)| *v)
+    .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+    .iter()
+    .eq(["Please","don't blame","the","borrow checker"].iter()));
 
+// Container indexing
 assert_eq!(example[&3], "the");
 
+// Fast (no search) head removal
 let please_tuple = example.pop_first().unwrap();
-assert_eq!(please_tuple, (1, String::from("Please")));
+assert_eq!(please_tuple, (1, "Please"));
 
-example.insert(5, String::from("! :P"));
+// By-predicate removal (iterates all entries)
+example.retain(|_, v| !v.contains("a"));
 
-let dont_blame = example.get_mut(&2).unwrap();
-dont_blame.remove(0);
-dont_blame.insert(0, 'D');
+// Extension
+let iterable: SmallVec<[(isize, &str); 3]> =
+    smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
+example.extend(iterable.into_iter());
 
-assert_eq!(
-    example.into_iter().map(|(_, v)| v).collect::<Vec<String>>(),
-    vec!["Don't blame","the","borrow checker","! :P"]
-);
+// Value mutation
+if let Some(three_val) = example.get_mut(&3) {
+    *three_val = &mut stack_str;
+}
+
+// New message :)
+assert!(example
+    .iter()
+    .map(|(_, v)| *v)
+    .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+    .iter()
+    .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```
 
 ### Configuring a Stack Storage Limit
@@ -156,6 +176,11 @@ It does, however, offer:
 * **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported!
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
+
+### License and Contributing
+
+Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/master/LICENSE).
+Contributions are welcome!
 
 */
 
