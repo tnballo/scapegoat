@@ -1,5 +1,6 @@
 #![no_main]
 #![feature(map_first_last)]
+#![feature(btree_retain)]
 
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
@@ -33,7 +34,11 @@ enum SetMethod<T: Ord + Debug> {
     PopFirst,
     PopLast,
     Remove { value: T },
+    Replace { value: T },
+    Retain { rand_value: T },
+    SplitOff { value: T },
     SymmetricDifference { other: Vec<T> },
+    Take { value: T },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
     // TODO
@@ -213,11 +218,48 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
+            SetMethod::Replace { value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                assert_eq!(
+                    sg_set.replace(value),
+                    bt_set.replace(value)
+                );
+
+                assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
+            },
+            SetMethod::Retain { rand_value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                sg_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
+                bt_set.retain(|&k| (k.wrapping_add(rand_value) % 2 == 0));
+
+                assert!(sg_set.iter().eq(bt_set.iter()));
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            },
+            SetMethod::SplitOff { value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                assert!(sg_set.split_off(&value).iter().eq(bt_set.split_off(&value).iter()));
+
+                assert!(sg_set.iter().eq(bt_set.iter()));
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            },
             SetMethod::SymmetricDifference { other } => {
                 let sg_sym_diff: Vec<_> = sg_set.symmetric_difference(&SGSet::from_iter(other.clone())).cloned().collect();
                 let bt_sym_diff: Vec<_> = bt_set.symmetric_difference(&BTreeSet::from_iter(other)).cloned().collect();
 
                 assert_eq!(sg_sym_diff, bt_sym_diff);
+            },
+            SetMethod::Take { value } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                assert_eq!(
+                    sg_set.take(&value),
+                    bt_set.take(&value)
+                );
+
+                assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
             SetMethod::Union { other } => {
                 let sg_union: Vec<_>= sg_set.union(&SGSet::from_iter(other.clone())).cloned().collect();

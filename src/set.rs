@@ -1,3 +1,4 @@
+use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
@@ -17,7 +18,7 @@ pub struct SGSet<T: Ord> {
 }
 
 impl<T: Ord> SGSet<T> {
-    /// Constructor.
+    /// Makes a new, empty `SGSet`.
     ///
     /// # Examples
     ///
@@ -31,7 +32,7 @@ impl<T: Ord> SGSet<T> {
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
-    /// Attempting to insert elements beyond capacity will panic.
+    /// Attempting to insert elements beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
     /// If using `std`: fast capacity, e.g. number of set elements stored on the stack.
     /// Elements inserted beyond capacity will be stored on the heap.
@@ -78,7 +79,10 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&5));
     /// ```
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGSet<T>) {
+    pub fn append(&mut self, other: &mut SGSet<T>)
+    where
+        T: Ord,
+    {
         self.bst.append(&mut other.bst);
     }
 
@@ -131,7 +135,10 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.len(), 1);
     /// ```
     #[cfg(not(feature = "high_assurance"))]
-    pub fn insert(&mut self, value: T) -> bool {
+    pub fn insert(&mut self, value: T) -> bool
+    where
+        T: Ord,
+    {
         self.bst.insert(value, ()).is_none()
     }
 
@@ -160,7 +167,10 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, value: T) -> Result<bool, SGErr> {
+    pub fn insert(&mut self, value: T) -> Result<bool, SGErr>
+    where
+        T: Ord,
+    {
         match self.bst.insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
             Err(_) => Err(SGErr::StackCapacityExceeded),
@@ -198,7 +208,12 @@ impl<T: Ord> SGSet<T> {
         Iter::new(self)
     }
 
-    /// Removes a value from the set. Returns whether the value was present in the set.
+    /// Removes a value from the set. Returns whether the value was
+    /// present in the set.
+    ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
     ///
     /// # Examples
     ///
@@ -211,11 +226,140 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
-    pub fn remove(&mut self, value: &T) -> bool {
+    pub fn remove<Q>(&mut self, value: &Q) -> bool
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.remove(value).is_some()
     }
 
+    /// Splits the collection into two at the given value. Returns everything after the given value,
+    /// including the value.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut a = SGSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    ///
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&17));
+    /// assert!(b.contains(&41));
+    /// ```
+    pub fn split_off<Q>(&mut self, value: &Q) -> SGSet<T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        SGSet {
+            bst: self.bst.split_off(value),
+        }
+    }
+
+    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
+    /// one. Returns the replaced value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set = SGSet::new();
+    /// set.insert(Vec::<i32>::new());
+    ///
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
+    /// set.replace(Vec::with_capacity(10));
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
+    /// ```
+    pub fn replace(&mut self, value: T) -> Option<T>
+    where
+        T: Ord,
+    {
+        let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
+
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            self.insert(value);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            self.insert(value);
+        }
+
+        removed
+    }
+
+    // TODO v2.0: impl and add fuzz test
+    /// Removes and returns the value in the set, if any, that is equal to the given one.
+    ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set: SGSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.take(&2), Some(2));
+    /// assert_eq!(set.take(&2), None);
+    /// ```
+    pub fn take<Q>(&mut self, value: &Q) -> Option<T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.bst.remove_entry(value).map(|(k, _)| k)
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// The elements are visited in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let xs = [1, 2, 3, 4, 5, 6];
+    /// let mut set: SGSet<i32> = xs.iter().cloned().collect();
+    /// // Keep only the even numbers.
+    /// set.retain(|&k| k % 2 == 0);
+    /// assert!(set.iter().eq([2, 4, 6].iter()));
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        T: Ord,
+        F: FnMut(&T) -> bool,
+    {
+        self.bst.retain(|k, _| f(k));
+    }
+
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
     ///
     /// # Examples
     ///
@@ -226,11 +370,12 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
-    pub fn get(&self, value: &T) -> Option<&T> {
-        match self.bst.get_key_value(value) {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+    pub fn get<Q>(&self, value: &Q) -> Option<&T>
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.bst.get_key_value(value).map(|(k, _)| k)
     }
 
     /// Clears the set, removing all values.
@@ -251,6 +396,10 @@ impl<T: Ord> SGSet<T> {
 
     /// Returns `true` if the set contains a value.
     ///
+    /// The value may be any borrowed form of the set's value type,
+    /// but the ordering on the borrowed form *must* match the
+    /// ordering on the value type.
+    ///
     /// # Examples
     ///
     /// ```
@@ -260,7 +409,11 @@ impl<T: Ord> SGSet<T> {
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
-    pub fn contains(&self, value: &T) -> bool {
+    pub fn contains<Q>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.bst.contains_key(value)
     }
 
@@ -278,7 +431,10 @@ impl<T: Ord> SGSet<T> {
     /// map.insert(2);
     /// assert_eq!(map.first(), Some(&1));
     /// ```
-    pub fn first(&self) -> Option<&T> {
+    pub fn first(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
         self.bst.first_key()
     }
 
@@ -298,7 +454,10 @@ impl<T: Ord> SGSet<T> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    pub fn pop_first(&mut self) -> Option<T> {
+    pub fn pop_first(&mut self) -> Option<T>
+    where
+        T: Ord,
+    {
         self.bst.pop_first().map(|(k, _)| k)
     }
 
@@ -316,7 +475,10 @@ impl<T: Ord> SGSet<T> {
     /// map.insert(2);
     /// assert_eq!(map.last(), Some(&2));
     /// ```
-    pub fn last(&self) -> Option<&T> {
+    pub fn last(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
         self.bst.last_key()
     }
 
@@ -336,7 +498,10 @@ impl<T: Ord> SGSet<T> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    pub fn pop_last(&mut self) -> Option<T> {
+    pub fn pop_last(&mut self) -> Option<T>
+    where
+        T: Ord,
+    {
         self.bst.pop_last().map(|(k, _)| k)
     }
 
@@ -374,7 +539,10 @@ impl<T: Ord> SGSet<T> {
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference(&self, other: &SGSet<T>) -> ElemRefIter<T> {
+    pub fn difference(&self, other: &SGSet<T>) -> ElemRefIter<T>
+    where
+        T: Ord,
+    {
         let mut diff = ElemRefVec::new();
         for val in self {
             if !other.contains(val) {
@@ -402,7 +570,10 @@ impl<T: Ord> SGSet<T> {
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
-    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T>
+    where
+        T: Ord,
+    {
         let mut sym_diff = ElemRefVec::new();
         for val in self {
             if !other.contains(val) {
@@ -438,7 +609,10 @@ impl<T: Ord> SGSet<T> {
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection(&self, other: &SGSet<T>) -> ElemRefIter<T> {
+    pub fn intersection(&self, other: &SGSet<T>) -> ElemRefIter<T>
+    where
+        T: Ord,
+    {
         let mut self_iter = self.into_iter();
         let mut other_iter = other.into_iter();
         let mut opt_self_val = self_iter.next();
@@ -481,7 +655,10 @@ impl<T: Ord> SGSet<T> {
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T> {
+    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T>
+    where
+        T: Ord,
+    {
         let mut union = ElemRefVec::new();
 
         for val in self {
@@ -529,7 +706,10 @@ impl<T: Ord> SGSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    pub fn is_disjoint(&self, other: &SGSet<T>) -> bool {
+    pub fn is_disjoint(&self, other: &SGSet<T>) -> bool
+    where
+        T: Ord,
+    {
         self.intersection(other).count() == 0
     }
 
@@ -549,7 +729,10 @@ impl<T: Ord> SGSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    pub fn is_subset(&self, other: &SGSet<T>) -> bool {
+    pub fn is_subset(&self, other: &SGSet<T>) -> bool
+    where
+        T: Ord,
+    {
         self.intersection(other).count() == self.len()
     }
 
@@ -572,7 +755,10 @@ impl<T: Ord> SGSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
-    pub fn is_superset(&self, other: &SGSet<T>) -> bool {
+    pub fn is_superset(&self, other: &SGSet<T>) -> bool
+    where
+        T: Ord,
+    {
         other.is_subset(self)
     }
 }
@@ -666,10 +852,7 @@ impl<'a, T: Ord> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.ref_iter.next() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+        self.ref_iter.next().map(|(k, _)| k)
     }
 }
 

@@ -1,3 +1,4 @@
+use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::mem;
@@ -13,6 +14,9 @@ use super::types::{
 #[cfg(feature = "high_assurance")]
 use super::error::SGErr;
 
+use crate::{ALPHA_DENOM, ALPHA_NUM};
+
+#[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use smallvec::smallvec;
@@ -32,7 +36,7 @@ pub struct SGTree<K: Ord, V> {
 impl<K: Ord, V> SGTree<K, V> {
     // Public API ------------------------------------------------------------------------------------------------------
 
-    /// Constructor.
+    /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
             arena: NodeArena::new(),
@@ -46,7 +50,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of tree pairs.
-    /// Attempting to insert pairs beyond capacity will panic.
+    /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
     /// If using `std`: fast capacity, e.g. number of tree pairs stored on the stack.
     /// Pairs inserted beyond capacity will be stored on the heap.
@@ -56,7 +60,10 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGTree<K, V>) {
+    pub fn append(&mut self, other: &mut SGTree<K, V>)
+    where
+        K: Ord,
+    {
         // Nothing to append!
         if other.is_empty() {
             return;
@@ -113,7 +120,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// If the tree did have this key present, the value is updated, the old value is returned,
     /// and the key is updated. This accommodates types that can be `==` without being identical.
     #[cfg(not(feature = "high_assurance"))]
-    pub fn insert(&mut self, key: K, val: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, val: V) -> Option<V>
+    where
+        K: Ord,
+    {
         self.priv_balancing_insert(key, val)
     }
 
@@ -123,7 +133,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// * The old value if the tree did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr> {
+    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    where
+        K: Ord,
+    {
         match self.capacity() > self.len() {
             true => Ok(self.priv_balancing_insert(key, val)),
             false => Err(SGErr::StackCapacityExceeded),
@@ -184,7 +197,14 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Removes a key from the tree, returning the stored key and value if the key was previously in the tree.
-    pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         match self.priv_remove_by_key(key) {
             Some(node) => {
                 if self.max_size > (2 * self.curr_size) {
@@ -200,12 +220,44 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Removes a key from the tree, returning the value at the key if the key was previously in the tree.
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.remove_entry(key).map(|(_, v)| v)
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+        K: Ord,
+    {
+        self.priv_drain_filter(|k, v| !f(k, v));
+    }
+
+    /// Splits the collection into two at the given key. Returns everything after the given key, including the key.
+    pub fn split_off<Q>(&mut self, key: &Q) -> Self
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.priv_drain_filter(|k, _| k >= key)
+    }
+
     /// Returns the key-value pair corresponding to the given key.
-    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
+    ///
+    /// The supplied key may be any borrowed form of the map’s key type,
+    /// but the ordering on the borrowed form must match the ordering on the key type.
+    pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&K, &V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -217,15 +269,26 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Returns a reference to the value corresponding to the given key.
-    pub fn get(&self, key: &K) -> Option<&V> {
-        match self.get_key_value(key) {
-            Some((_, v)) => Some(v),
-            None => None,
-        }
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the ordering
+    /// on the borrowed form must match the ordering on the key type.
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.get_key_value(key).map(|(_, v)| v)
     }
 
     /// Get mutable reference corresponding to key.
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    ///
+    /// The key may be any borrowed form of the map’s key type,
+    /// but the ordering on the borrowed form must match the ordering on the key type.
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         match ngh.node_idx {
             Some(idx) => {
@@ -244,7 +307,14 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Returns `true` if the tree contains a value for the given key.
-    pub fn contains_key(&self, key: &K) -> bool {
+    ///
+    /// The key may be any borrowed form of the map’s key type, but the
+    /// ordering on the borrowed form must match the ordering on the key type.
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         self.get(key).is_some()
     }
 
@@ -255,23 +325,29 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the first key-value pair in the tree.
     /// The key in this pair is the minimum key in the tree.
-    pub fn first_key_value(&self) -> Option<(&K, &V)> {
+    pub fn first_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord,
+    {
         self.arena
             .get(self.min_idx)
             .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
-    pub fn first_key(&self) -> Option<&K> {
-        match self.first_key_value() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+    pub fn first_key(&self) -> Option<&K>
+    where
+        K: Ord,
+    {
+        self.first_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the first element in the tree.
     /// The key of this element is the minimum key that was in the tree.
-    pub fn pop_first(&mut self) -> Option<(K, V)> {
+    pub fn pop_first(&mut self) -> Option<(K, V)>
+    where
+        K: Ord,
+    {
         match self.priv_remove_by_idx(self.min_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
@@ -280,23 +356,29 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Returns a reference to the last key-value pair in the tree.
     /// The key in this pair is the maximum key in the tree.
-    pub fn last_key_value(&self) -> Option<(&K, &V)> {
+    pub fn last_key_value(&self) -> Option<(&K, &V)>
+    where
+        K: Ord,
+    {
         self.arena
             .get(self.max_idx)
             .map(|node| (&node.key, &node.val))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
-    pub fn last_key(&self) -> Option<&K> {
-        match self.last_key_value() {
-            Some((k, _)) => Some(k),
-            None => None,
-        }
+    pub fn last_key(&self) -> Option<&K>
+    where
+        K: Ord,
+    {
+        self.last_key_value().map(|(k, _)| k)
     }
 
     /// Removes and returns the last element in the tree.
     /// The key of this element is the maximum key that was in the tree.
-    pub fn pop_last(&mut self) -> Option<(K, V)> {
+    pub fn pop_last(&mut self) -> Option<(K, V)>
+    where
+        K: Ord,
+    {
         match self.priv_remove_by_idx(self.max_idx) {
             Some(node) => Some((node.key, node.val)),
             None => None,
@@ -309,6 +391,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
+    /// This count will wrap if `usize::MAX` is exceeded.
     pub fn rebal_cnt(&self) -> usize {
         self.rebal_cnt
     }
@@ -381,7 +464,11 @@ impl<K: Ord, V> SGTree<K, V> {
     // Private API -----------------------------------------------------------------------------------------------------
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
-    fn priv_get(&self, key: &K) -> NodeGetHelper {
+    fn priv_get<Q>(&self, key: &Q) -> NodeGetHelper
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         match self.root_idx {
             Some(root_idx) => {
                 let mut opt_parent_idx = None;
@@ -389,7 +476,7 @@ impl<K: Ord, V> SGTree<K, V> {
                 let mut is_right_child = false;
                 loop {
                     let node = self.arena.hard_get(curr_idx);
-                    match key.cmp(&node.key) {
+                    match key.cmp(node.key.borrow()) {
                         Ordering::Less => match node.left_idx {
                             Some(lt_idx) => {
                                 opt_parent_idx = Some(curr_idx);
@@ -428,7 +515,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Potential rebalance
         let opt_val = self.priv_insert(&mut path, new_node);
-        if path.len() > Self::log_3_2(self.max_size) {
+        if path.len() > Self::alpha_balance_depth(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
@@ -552,7 +639,11 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Remove a node by key.
-    fn priv_remove_by_key(&mut self, key: &K) -> Option<Node<K, V>> {
+    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
         let ngh = self.priv_get(key);
         self.priv_remove(ngh)
     }
@@ -658,6 +749,63 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
+    /// Temporary internal drain_filter() implementation. To be replaced/supplemented with a public implementation.
+    fn priv_drain_filter<Q, F>(&mut self, mut pred: F) -> Self
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+        F: FnMut(&Q, &mut V) -> bool,
+    {
+        /*
+        // TODO: make public version with this signature
+        pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
+        where
+            K: Ord,
+            F: FnMut(&K, &mut V) -> bool,
+        {
+        */
+
+        // TODO: this implementation is rather inefficient!
+
+        let mut key_idxs = IdxVec::new();
+        let mut remove_idxs = IdxVec::new();
+
+        // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
+        self.sort_arena();
+
+        // Safely treat mutable ref as immutable, init list of node's arena indexes
+        for (k, _) in &(*self) {
+            let ngh = self.priv_get(k.borrow());
+            debug_assert!(ngh.node_idx.is_some());
+            key_idxs.push(ngh.node_idx.unwrap());
+        }
+
+        // Filter arena index list to those not matching predicate
+        for (i, (k, v)) in self.iter_mut().enumerate() {
+            if pred(k.borrow(), v) {
+                remove_idxs.push(key_idxs[i]);
+            }
+        }
+
+        // Drain non-matches
+        let mut drained_sgt = Self::new();
+        for i in remove_idxs {
+            if let Some(node) = self.priv_remove_by_idx(i) {
+                #[cfg(not(feature = "high_assurance"))]
+                {
+                    drained_sgt.insert(node.key, node.val);
+                }
+                #[allow(unused_must_use)]
+                #[cfg(feature = "high_assurance")]
+                {
+                    drained_sgt.insert(node.key, node.val);
+                }
+            }
+        }
+
+        drained_sgt
+    }
+
     /// Minimum update without recursion
     fn update_min_idx(&mut self) {
         match self.root_idx {
@@ -698,7 +846,9 @@ impl<K: Ord, V> SGTree<K, V> {
         }
     }
 
-    // Traverse upward, using path information, to find first unbalanced parent
+    // Traverse upward, using path information, to find first unbalanced parent.
+    // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
+    #[cfg(not(feature = "alt_impl"))]
     fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
         if path.len() <= 1 {
             return None;
@@ -708,10 +858,39 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_path_idx = path.len() - 1;
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
-        while (parent_path_idx > 0) && (3 * node_subtree_size) <= (2 * parent_subtree_size) {
+        while (parent_path_idx > 0)
+            && (ALPHA_DENOM * node_subtree_size as f32) <= (ALPHA_NUM * parent_subtree_size as f32)
+        {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
-            parent_subtree_size = self.get_subtree_size(path[parent_path_idx])
+            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+            debug_assert!(parent_subtree_size > node_subtree_size);
+        }
+
+        Some(path[parent_path_idx])
+    }
+
+    // Traverse upward, using path information, to find first unbalanced parent.
+    // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
+    #[cfg(feature = "alt_impl")]
+    fn find_scapegoat(&self, path: &[Idx]) -> Option<Idx> {
+        if path.len() <= 1 {
+            return None;
+        }
+
+        let mut i = 0;
+        let mut node_subtree_size = 1;
+        let mut parent_path_idx = path.len() - 1;
+        let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+        while (parent_path_idx > 0) && (i <= Self::alpha_balance_depth(node_subtree_size)) {
+            node_subtree_size = parent_subtree_size;
+            parent_path_idx -= 1;
+            i += 1;
+            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+
+            debug_assert!(parent_subtree_size > node_subtree_size);
         }
 
         Some(path[parent_path_idx])
@@ -741,7 +920,7 @@ impl<K: Ord, V> SGTree<K, V> {
     fn rebuild(&mut self, idx: Idx) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
-        self.rebal_cnt += 1;
+        self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
     }
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
@@ -822,9 +1001,10 @@ impl<K: Ord, V> SGTree<K, V> {
         );
     }
 
-    // Log base 3/2 helper
-    fn log_3_2(val: Idx) -> usize {
-        (val as f32).log(3.0 / 2.0).floor() as usize
+    // Alpha weight balance computation helper.
+    fn alpha_balance_depth(val: Idx) -> usize {
+        // log base (1/alpha), hence (denom/num)
+        (val as f32).log(ALPHA_DENOM / ALPHA_NUM).floor() as usize
     }
 }
 
@@ -865,7 +1045,17 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
     }
 }
 
-// Reference iterator
+// Reference iterator, mutable
+impl<'a, K: Ord, V> IntoIterator for &'a mut SGTree<K, V> {
+    type Item = (&'a K, &'a mut V);
+    type IntoIter = IterMut<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+// Reference iterator, immutable
 impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;

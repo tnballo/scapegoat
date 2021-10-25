@@ -26,3 +26,8 @@ jobs:
       with:
         command: test
         args: --all-features
+
+    - uses: actions-rs/cargo@v1
+      with:
+        command: run
+        args: --example static_strs

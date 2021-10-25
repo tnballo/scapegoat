@@ -1,5 +1,6 @@
 #![no_main]
 #![feature(map_first_last)]
+#![feature(btree_retain)]
 
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
@@ -34,6 +35,8 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     PopLast,
     Remove { key: K },
     RemoveEntry { key: K },
+    Retain { rand_key: K },
+    SplitOff { key: K },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
     // TODO
 }
@@ -241,6 +244,23 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                     bt_map.remove(&key)
                 );
 
+                assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
+            },
+            MapMethod::Retain { rand_key } => {
+                let len_old = checked_get_len(&sg_map, &bt_map);
+
+                sg_map.retain(|&k, _| (k.wrapping_add(rand_key) % 2 == 0));
+                bt_map.retain(|&k, _| (k.wrapping_add(rand_key) % 2 == 0));
+
+                assert!(sg_map.iter().eq(bt_map.iter()));
+                assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
+            },
+            MapMethod::SplitOff { key } => {
+                let len_old = checked_get_len(&sg_map, &bt_map);
+
+                assert!(sg_map.split_off(&key).iter().eq(bt_map.split_off(&key).iter()));
+
+                assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             },
             MapMethod::RemoveEntry { key } => {

@@ -54,6 +54,7 @@ fn bench_insert(c: &mut Criterion) {
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_insert_10_000", |b| {
         b.iter(|| {
             let mut sgs = SGSet::new();
@@ -63,6 +64,7 @@ fn bench_insert(c: &mut Criterion) {
         })
     });
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_insert_10_000", |b| {
         b.iter(|| {
             let mut std = BTreeSet::new();
@@ -79,7 +81,7 @@ fn bench_get(c: &mut Criterion) {
     c.bench_function("sgs_get_100", |b| {
         b.iter(|| {
             for k in &RTD_100.get_idxs {
-                &SGS_100.get(k);
+                let _ = &SGS_100.get(k);
             }
         })
     });
@@ -87,7 +89,7 @@ fn bench_get(c: &mut Criterion) {
     c.bench_function("std_get_100", |b| {
         b.iter(|| {
             for k in &RTD_100.get_idxs {
-                &STD_100.get(k);
+                let _ = &STD_100.get(k);
             }
         })
     });
@@ -97,7 +99,7 @@ fn bench_get(c: &mut Criterion) {
     c.bench_function("sgs_get_1_000", |b| {
         b.iter(|| {
             for k in &RTD_1_000.get_idxs {
-                &SGS_1_000.get(k);
+                let _ = &SGS_1_000.get(k);
             }
         })
     });
@@ -105,25 +107,27 @@ fn bench_get(c: &mut Criterion) {
     c.bench_function("std_get_1_000", |b| {
         b.iter(|| {
             for k in &RTD_1_000.get_idxs {
-                &STD_1_000.get(k);
+                let _ = &STD_1_000.get(k);
             }
         })
     });
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_get_10_000", |b| {
         b.iter(|| {
             for k in &RTD_10_000.get_idxs {
-                &SGS_10_000.get(k);
+                let _ = &SGS_10_000.get(k);
             }
         })
     });
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_get_10_000", |b| {
         b.iter(|| {
             for k in &RTD_10_000.get_idxs {
-                &STD_10_000.get(k);
+                let _ = &STD_10_000.get(k);
             }
         })
     });
@@ -132,10 +136,14 @@ fn bench_get(c: &mut Criterion) {
 fn bench_remove(c: &mut Criterion) {
     let mut sgs_100: SGSet<usize> = SGSet::from_iter(RTD_100.keys.clone());
     let mut sgs_1_000: SGSet<usize> = SGSet::from_iter(RTD_1_000.keys.clone());
+
+    #[cfg(not(feature = "high_assurance"))]
     let mut sgs_10_000: SGSet<usize> = SGSet::from_iter(RTD_10_000.keys.clone());
 
     let mut std_100: BTreeSet<usize> = BTreeSet::from_iter(RTD_100.keys.clone());
     let mut std_1_000: BTreeSet<usize> = BTreeSet::from_iter(RTD_1_000.keys.clone());
+
+    #[cfg(not(feature = "high_assurance"))]
     let mut std_10_000: BTreeSet<usize> = BTreeSet::from_iter(RTD_10_000.keys.clone());
 
     // SGS vs STD 100 --------------------------------------------------------------------------------------------------
@@ -176,6 +184,7 @@ fn bench_remove(c: &mut Criterion) {
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_remove_10_000", |b| {
         b.iter(|| {
             for k in &RTD_10_000.remove_idxs {
@@ -184,6 +193,7 @@ fn bench_remove(c: &mut Criterion) {
         })
     });
 
+    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_remove_10_000", |b| {
         b.iter(|| {
             for k in &RTD_10_000.remove_idxs {
