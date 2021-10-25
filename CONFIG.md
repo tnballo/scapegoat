@@ -4,7 +4,7 @@ This doc tackles advanced configuration options, it assumed you've read the main
 
 ### Tuning the the tree's `a` factor
 
-Original scapegoat tree paper's alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
+The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
 `a` tunes how "aggressively" the data structure self-balances.
 
 * As `a` approaches `0.5`, the library will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
@@ -13,13 +13,13 @@ Original scapegoat tree paper's alpha, `a`, can be chosen in the range `0.5 <= a
 * As `a` approaches `1.0`, the library will rebalance less. This means quicker insertions, but slower lookups and deletions.
 	* An `a` nearly equal to `1.0` means a tree that never rebalances.
 
-We choose 2/3, i.e. `a = 0.666...`, by default.
+We choose 2/3, e.g. `a = 0.666...`, by default.
 This default was not empirically chosen, it's just the one used in the [Open Data Structures textbook implementation](https://opendatastructures.org/ods-java/8_Scapegoat_Trees.html) of a scapegoat tree.
-But that implementation is quite different from this library (one major difference being that it uses recursion), so an `a` of 2/3 may not be optimal for the majority of workloads (testing needed!).
+But that implementation is quite different from this library (one major difference being that it uses recursion), so an `a` of 2/3 may not be optimal for the majority of our workloads (testing needed!).
 
 Just like with stack arena size, `a` can be compile-timed configured by exporting environment variables before build.
-The alpha denominator is the floating point string assigned to env var `SG_ALPHA_NUMERATOR`.
-The alpha denominator is the floating point string assigned to env var `SG_ALPHA_DENOMINATOR`.
+The `a` denominator is the floating point string assigned to env var `SG_ALPHA_NUMERATOR`.
+The `a` denominator is the floating point string assigned to env var `SG_ALPHA_DENOMINATOR`.
 
 For example, manually setting the default 2/3 would be:
 
@@ -42,5 +42,3 @@ The `alt_impl` feature enables optimizations proposed in the subsequent PhD thes
 
 The main optimization is eliminating recursion.
 This library already does that, but likely in a way inferior to the "official" algorithm (implemented prior to find/reading the thesis). Please see thesis pages 95 and 97 for the algorithm's pseudo code (needs translation to Rust!).
-
->

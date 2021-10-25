@@ -1,15 +1,17 @@
 /*!
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-This library is `#![no_std]` compatible by default, strictly `#![forbid(unsafe_code)]`, and validated using differential fuzzing.
+* Embedded-friendly: `!#[no_std]` by default.
+* Safe: `#![forbid(unsafe_code)]`.
+* Validated via differential fuzzing, against the standard library `BTreeSet` and `BTreeMap`.
 
 ### About
 
 Three APIs:
 
-* Ordered Set API ([`SGSet`](crate::SGSet))
-* Ordered Map API ([`SGMap`](crate::SGMap))
-* Binary Tree API ([`SGTree`](crate::SGTree))
+* Ordered Set API ([`SGSet`](crate::SGSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
+* Ordered Map API ([`SGMap`](crate::SGMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
+* Binary Tree API ([`SGTree`](crate::SGTree)) - backend for the previous two.
 
 Strives for two properties:
 
@@ -18,7 +20,7 @@ Strives for two properties:
     * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
     * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 
-* **Minimal footprint:** small binary with low resource use.
+* **Minimal footprint:** low resource use.
     * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
     * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
@@ -79,14 +81,15 @@ Please note:
 
 * If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
 
-* For any system with dynamic (heap) memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
+* For any system with heap memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
 
-* For embedded systems without dynamic memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
+* For embedded systems with only stack memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
     * Use feature `high_assurance` to ensure error handling and avoid panic (see below).
 
 > **Warning:**
 > Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `SG_MAX_STACK_ELEMS` (configurable) and/or the stored item type (generic) is too large.
-> You must test to ensure you don't exceed the stack frame size limit of your target platform.
+> Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
+> Regardless, you must test to ensure you don't exceed the stack frame size limit of your target platform.
 > Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
