@@ -41,7 +41,7 @@ enum SetMethod<T: Ord + Debug> {
     Take { value: T },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
-    // TODO
+    Extend { other: Vec<T> },
 }
 
 fn checked_get_len<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>) -> usize {
@@ -267,6 +267,15 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert_eq!(sg_union, bt_union);
                 assert!(sg_union.len() >= sg_set.len());
+            },
+            SetMethod::Extend { other } => {
+                let len_old = checked_get_len(&sg_set, &bt_set);
+
+                sg_set.extend(other.clone().into_iter());
+                bt_set.extend(other.into_iter());
+
+                assert!(sg_set.iter().eq(bt_set.iter()));
+                assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
             },
         }
     }

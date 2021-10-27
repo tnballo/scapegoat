@@ -780,51 +780,23 @@ impl<T: Ord> Default for SGSet<T> {
 impl<T: Ord> FromIterator<T> for SGSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut sgs = SGSet::new();
-
-        for v in iter {
-            #[cfg(not(feature = "high_assurance"))]
-            sgs.insert(v);
-
-            #[cfg(feature = "high_assurance")]
-            sgs.insert(v).expect("Stack-storage capacity exceeded!");
-        }
-
+        sgs.bst = SGTree::from_iter(iter.into_iter().map(|e| (e, ())));
         sgs
     }
 }
 
-// Extension from iterator
+// Extension from iterator.
 impl<T: Ord> Extend<T> for SGSet<T> {
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
-        iter.into_iter().for_each(move |elem| {
-            #[cfg(not(feature = "high_assurance"))]
-            self.insert(elem);
-
-            #[cfg(feature = "high_assurance")]
-            self.insert(elem).expect("Stack-storage capacity exceeded!");
-        });
+        self.bst.extend(iter.into_iter().map(|e| (e, ())));
     }
-
-    /*
-    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, elem: T) {
-        self.insert(elem);
-    }
-    */
 }
 
-// Extension from reference iterator
+// Extension from reference iterator.
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for SGSet<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
-
-    /*
-    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, &elem: &'a T) {
-        self.insert(elem);
-    }
-    */
 }
 
 // Iterators -----------------------------------------------------------------------------------------------------------

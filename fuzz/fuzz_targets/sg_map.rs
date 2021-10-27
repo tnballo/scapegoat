@@ -38,7 +38,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Retain { rand_key: K },
     SplitOff { key: K },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
-    // TODO
+    Extend { other: Vec<(K, V)> },
 }
 
 fn checked_get_len<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>) -> usize {
@@ -246,6 +246,16 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
 
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             },
+            MapMethod::RemoveEntry { key } => {
+                let len_old = checked_get_len(&sg_map, &bt_map);
+
+                assert_eq!(
+                    sg_map.remove_entry(&key),
+                    bt_map.remove_entry(&key)
+                );
+
+                assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
+            },
             MapMethod::Retain { rand_key } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -263,16 +273,15 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             },
-            MapMethod::RemoveEntry { key } => {
+            MapMethod::Extend { other } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
-                assert_eq!(
-                    sg_map.remove_entry(&key),
-                    bt_map.remove_entry(&key)
-                );
+                sg_map.extend(other.clone().into_iter());
+                bt_map.extend(other.into_iter());
 
-                assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
-            }
+                assert!(sg_map.iter().eq(bt_map.iter()));
+                assert!(checked_get_len(&sg_map, &bt_map) >= len_old);
+            },
         }
     }
 });

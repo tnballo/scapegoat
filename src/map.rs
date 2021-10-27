@@ -643,38 +643,18 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
     }
 }
 
-// Extension from iterator
+// Extension from iterator.
 impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |(k, v)| {
-            #[cfg(not(feature = "high_assurance"))]
-            self.insert(k, v);
-
-            #[cfg(feature = "high_assurance")]
-            self.insert(k, v).expect("Stack-storage capacity exceeded!");
-        });
+        self.bst.extend(iter);
     }
-
-    /*
-    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, (k, v): (K, V)) {
-        self.insert(k, v);
-    }
-    */
 }
 
-// Extension from reference iterator
+// Extension from reference iterator.
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
-
-    /*
-    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
-        self.insert(k, v);
-    }
-    */
 }
 
 /*

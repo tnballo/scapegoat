@@ -1028,6 +1028,35 @@ impl<K: Ord, V> Index<&K> for SGTree<K, V> {
     }
 }
 
+// Extension from iterator.
+impl<K: Ord, V> Extend<(K, V)> for SGTree<K, V> {
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+        iter.into_iter().for_each(move |(k, v)| {
+            #[cfg(not(feature = "high_assurance"))]
+            self.insert(k, v);
+
+            #[cfg(feature = "high_assurance")]
+            self.insert(k, v).expect("Stack-storage capacity exceeded!");
+
+            /*
+            TODO v2.0: should from_iter() and extend() short-circuit?
+            #[cfg(feature = "high_assurance")]
+            if self.len() < self.capacity() {
+                assert!(self.insert(k, v).is_ok());
+            }
+            */
+
+       });
+    }
+}
+
+// Extension from reference iterator.
+impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGTree<K, V> {
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+}
+
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construction iterator

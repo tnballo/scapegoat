@@ -7,6 +7,7 @@ use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use smallvec::{smallvec, SmallVec};
 
 use crate::MAX_ELEMS;
 
@@ -578,6 +579,63 @@ fn test_retain() {
 }
 
 #[test]
+fn test_extend() {
+    let mut sgt_1 = SGTree::new();
+    let mut sgt_2 = SGTree::new();
+
+    for i in 0..5 {
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            sgt_1.insert(i, i);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            sgt_1.insert(i, i);
+        }
+    }
+
+    let iterable_1: SmallVec<[(&usize, &usize); 5]> =
+        smallvec![(&0, &0), (&1, &1), (&2, &2), (&3, &3), (&4, &4)];
+
+    assert!(sgt_1.iter().eq(iterable_1.into_iter()));
+
+    for i in 5..10 {
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            sgt_2.insert(i, i);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            sgt_2.insert(i, i);
+        }
+    }
+
+    let iterable_2: SmallVec<[(&usize, &usize); 5]> =
+        smallvec![(&5, &5), (&6, &6), (&7, &7), (&8, &8), (&9, &9)];
+
+    assert!(sgt_2.iter().eq(iterable_2.into_iter()));
+
+    let iterable_3: SmallVec<[(&usize, &usize); 10]> = smallvec![
+        (&0, &0),
+        (&1, &1),
+        (&2, &2),
+        (&3, &3),
+        (&4, &4),
+        (&5, &5),
+        (&6, &6),
+        (&7, &7),
+        (&8, &8),
+        (&9, &9)
+    ];
+
+    sgt_1.extend(sgt_2.iter());
+    assert_eq!(sgt_2.len(), 5);
+    assert!(sgt_1.iter().eq(iterable_3.into_iter()));
+}
+
+#[test]
 fn test_slice_search() {
     let bad_code: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xC, 0x0, 0xD, 0xE];
     let bad_food: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
@@ -611,7 +669,7 @@ fn test_slice_search() {
 
 #[cfg(feature = "high_assurance")]
 #[test]
-fn test_high_assurance() {
+fn test_high_assurance_insert() {
     let mut sgt: SGTree<usize, usize> = SGTree::new();
     id_perm_fill(&mut sgt);
 
@@ -620,6 +678,21 @@ fn test_high_assurance() {
         sgt.insert(usize::MAX, usize::MAX),
         Err(super::error::SGErr::StackCapacityExceeded)
     );
+}
 
-    // TODO: Fallible extend
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_high_assurance_extend_panic() {
+    let mut sgt: SGTree<usize, usize> = SGTree::new();
+    id_perm_fill(&mut sgt);
+
+    let mut sgt_2: SGTree<usize, usize> = SGTree::new();
+    for i in sgt_2.capacity()..(sgt_2.capacity() + 10) {
+        assert!(sgt_2.insert(i, i).is_ok());
+    }
+
+    // Attempt to extend already full tree
+    assert_eq!(sgt.len(), sgt.capacity());
+    sgt.extend(sgt_2.into_iter()); // Should panic
 }
