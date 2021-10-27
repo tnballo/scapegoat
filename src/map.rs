@@ -167,6 +167,10 @@ impl<K: Ord, V> SGMap<K, V> {
     ///     key += 1;
     /// }
     ///
+    /// assert_eq!(map.first_key(), Some(&37));
+    /// assert_eq!(map.last_key(), Some(&(37 + (map.capacity() - 1))));
+    /// assert_eq!(map.len(), map.capacity());
+    ///
     /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]

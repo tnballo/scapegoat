@@ -301,9 +301,11 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Clears the tree, removing all elements.
     pub fn clear(&mut self) {
-        let rebal_cnt = self.rebal_cnt;
-        *self = SGTree::new();
-        self.rebal_cnt = rebal_cnt;
+        if !self.is_empty() {
+            let rebal_cnt = self.rebal_cnt;
+            *self = SGTree::new();
+            self.rebal_cnt = rebal_cnt;
+        }
     }
 
     /// Returns `true` if the tree contains a value for the given key.

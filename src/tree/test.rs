@@ -1,6 +1,7 @@
+use core::iter::FromIterator;
+use core::mem::size_of;
+use core::fmt::Debug;
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::FromIterator;
-use std::mem::size_of;
 
 use super::SGTree;
 
@@ -140,6 +141,31 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         );
         panic!("Keys do not match shadow set!");
     }
+}
+
+// Identity permutation fill: (0, 0), (1, 1), (2, 2), ... , (n, n)
+// This does a bunch of dynamic checks for testing purposes.
+#[allow(dead_code)]
+fn id_perm_fill<K, V>(sgt: &mut SGTree<K, V>)
+where
+    K: From<usize> + Eq + Debug + Ord,
+    V: From<usize> + Eq + Debug,
+{
+    sgt.clear();
+    for i in 0..sgt.capacity() {
+        #[cfg(not(feature = "high_assurance"))]
+        assert!(sgt.insert(K::from(i), V::from(i)).is_none());
+
+        #[cfg(feature = "high_assurance")]
+        assert!(sgt.insert(K::from(i), V::from(i)).is_ok());
+    }
+
+    assert_eq!(sgt.len(), sgt.capacity());
+    assert_eq!(sgt.first_key_value(), Some((&K::from(0), &V::from(0))));
+    assert_eq!(
+        sgt.last_key_value(),
+        Some((&K::from(sgt.capacity() - 1), &V::from(sgt.capacity() - 1)))
+    );
 }
 
 // Tests ---------------------------------------------------------------------------------------------------------------
@@ -581,4 +607,19 @@ fn test_slice_search() {
     assert_eq!(sgt.get(&bad_vec[..]), None);
 
     assert_eq!(sgt.get(&bad_dude_vec[..]), None);
+}
+
+#[cfg(feature = "high_assurance")]
+#[test]
+fn test_high_assurance() {
+    let mut sgt: SGTree<usize, usize> = SGTree::new();
+    id_perm_fill(&mut sgt);
+
+    // Fallible insert
+    assert_eq!(
+        sgt.insert(usize::MAX, usize::MAX),
+        Err(super::error::SGErr::StackCapacityExceeded)
+    );
+
+    // TODO: Fallible extend
 }

@@ -164,6 +164,10 @@ impl<T: Ord> SGSet<T> {
     ///     elem += 1;
     /// }
     ///
+    /// assert_eq!(set.first(), Some(&2));
+    /// assert_eq!(set.last(), Some(&(2 + (set.capacity() - 1))));
+    /// assert_eq!(set.len(), set.capacity());
+    ///
     /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]

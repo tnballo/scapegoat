@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+    - name: code checkout
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
       with:
@@ -18,16 +19,26 @@ jobs:
         toolchain: stable
         override: true
 
+    - name: test
     - uses: actions-rs/cargo@v1
       with:
         command: test
 
+    - name: test --all-features
+    - uses: actions-rs/cargo@v1
     - uses: actions-rs/cargo@v1
       with:
         command: test
         args: --all-features
 
+    - name: run --example static_strs
     - uses: actions-rs/cargo@v1
       with:
         command: run
         args: --example static_strs
+
+    - name: run --example ha_insert --features="high_assurance"
+    - uses: actions-rs/cargo@v1
+      with:
+        command: run
+        args: --example ha_insert --features="high_assurance"

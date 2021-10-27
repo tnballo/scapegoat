@@ -1,7 +1,7 @@
 use scapegoat::SGMap;
 use smallvec::{smallvec, SmallVec};
 
-const FIXED_BUF_LEN: usize = 5;
+const REF_BUF_LEN: usize = 5;
 
 // !#[no_std] demo mutable manipulation of SGMap<isize, &str>
 fn main() {
@@ -29,7 +29,7 @@ fn main() {
     assert!(example
         .iter()
         .map(|(_, v)| *v)
-        .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
         .iter()
         .eq(["Please", "don't blame", "the", "borrow checker"].iter()));
 
@@ -44,7 +44,7 @@ fn main() {
     example.retain(|_, v| !v.contains("a"));
 
     // Extension
-    let iterable: SmallVec<[(isize, &str); 3]> =
+    let iterable: SmallVec<[(isize, &str); REF_BUF_LEN]> =
         smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
     example.extend(iterable.into_iter());
 
@@ -57,7 +57,7 @@ fn main() {
     assert!(example
         .iter()
         .map(|(_, v)| *v)
-        .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
         .iter()
         .eq([
             "Leverage",
