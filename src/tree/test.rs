@@ -1,6 +1,6 @@
+use core::fmt::Debug;
 use core::iter::FromIterator;
 use core::mem::size_of;
-use core::fmt::Debug;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::SGTree;

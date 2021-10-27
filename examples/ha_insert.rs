@@ -1,4 +1,3 @@
-
 #[cfg(not(feature = "high_assurance"))]
 use scapegoat::SGMap;
 
@@ -29,10 +28,7 @@ fn main() {
     #[cfg(not(feature = "high_assurance"))]
     {
         // Would be panic if !#[no_std]
-        assert_eq!(
-            sgm.insert(usize::MAX, usize::MAX),
-            None
-        );
+        assert_eq!(sgm.insert(usize::MAX, usize::MAX), None);
     }
     #[cfg(feature = "high_assurance")]
     {

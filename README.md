@@ -113,7 +113,7 @@ Please note:
 > **Warning:**
 > Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `SG_MAX_STACK_ELEMS` (configurable) and/or the stored item type (generic) is too large.
 > Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
-> Regardless, you must test to ensure you don't exceed the stack frame size limit of your target platform.
+> Regardless, you must test to ensure you don't exceed the stack frame(s) size limit of your target platform.
 > Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
@@ -130,8 +130,8 @@ That second change is a subtle but interesting one.
 Example of packing saving 53% (31 KB) of RAM usage:
 
 ```rust
-use scapegoat::SGMap;
 use core::mem::size_of;
+use scapegoat::SGMap;
 
 // If you're on a 64-bit system, you can compile-time check the below numbers yourself!
 // Just do:
