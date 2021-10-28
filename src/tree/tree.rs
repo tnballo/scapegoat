@@ -3,6 +3,7 @@ use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
+use core::fmt::Debug;
 
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
@@ -1012,10 +1013,33 @@ impl<K: Ord, V> SGTree<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
+/*
+// Debug
+impl<K: Debug, V: Debug> Debug for SGTree<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
+    }
+}
+*/
+
+// Default constructor.
 impl<K: Ord, V> Default for SGTree<K, V> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Construct from array.
+impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGTree<K, V> {
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let tree1 = SGTree::from([(1, 2), (3, 4)]);
+    /// let tree2: SGTree<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(tree1, tree2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 
@@ -1059,7 +1083,7 @@ impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGTree<K, V> {
 
 // Iterators -----------------------------------------------------------------------------------------------------------
 
-// Construction iterator
+// Construct from iterator.
 impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgt = SGTree::new();

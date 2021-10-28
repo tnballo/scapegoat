@@ -1,13 +1,12 @@
 use core::mem::size_of;
 use scapegoat::{SGMap, SGSet};
 
-// Index packing saving 75% (9KB) of stack usage (the extreme case!).
-//
-// Usage:
-//
-// $ export SG_MAX_STACK_ELEMS=256
-// $ cargo run --example tiny_map
-// $ cargo run --example tiny_map --features="high_assurance"
+// About:
+// * Index packing saving 75% (9KB) of stack usage (the extreme case!).
+// * Usage:
+//      $ export SG_MAX_STACK_ELEMS=256
+//      $ cargo run --example tiny_map
+//      $ cargo run --example tiny_map --features="high_assurance"
 fn main() {
     // This code assumes `SG_MAX_STACK_ELEMS == 256` (non-default)
     let temp: SGMap<u8, u8> = SGMap::new();

@@ -769,14 +769,28 @@ impl<T: Ord> SGSet<T> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
+// Default constructor.
 impl<T: Ord> Default for SGSet<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// Construction iterator
+// Construct from array.
+impl<T: Ord, const N: usize> From<[T; N]> for SGSet<T> {
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let set1 = SGSet::from([1, 2, 3, 4]);
+    /// let set2: SGSet<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(set1, set2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
+    }
+}
+
+// Construct from iterator.
 impl<T: Ord> FromIterator<T> for SGSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut sgs = SGSet::new();

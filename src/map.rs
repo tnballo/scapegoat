@@ -618,10 +618,24 @@ impl<K: Ord, V> SGMap<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
+// Default constructor.
 impl<K: Ord, V> Default for SGMap<K, V> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Construct from array.
+impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGMap<K, V> {
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let map1 = SGMap::from([(1, 2), (3, 4)]);
+    /// let map2: SGMap<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(map1, map2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 
@@ -634,7 +648,7 @@ impl<K: Ord, V> Index<&K> for SGMap<K, V> {
     }
 }
 
-// Construction iterator
+// Construct from iterator.
 impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgm = SGMap::new();

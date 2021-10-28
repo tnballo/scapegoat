@@ -86,6 +86,8 @@ assert!(example
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```
 
+Additional [examples here](https://github.com/tnballo/scapegoat/blob/master/examples/README.md).
+
 ### Configuring a Stack Storage Limit
 
 The maximum number of stack-stored elements (set) or key-value pairs (map/tree) is determined at compile-time, via the environment variable `SG_MAX_STACK_ELEMS`.
