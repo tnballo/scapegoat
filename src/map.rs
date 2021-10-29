@@ -621,14 +621,21 @@ impl<K: Ord, V> SGMap<K, V> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<K: Ord + Debug, V: Debug> Debug for SGMap<K, V> {
+impl<K, V> Debug for SGMap<K, V>
+where
+    K: Ord + Debug,
+    V: Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.bst.iter()).finish()
     }
 }
 
 // From array.
-impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGMap<K, V> {
+impl<K, V, const N: usize> From<[(K, V); N]> for SGMap<K, V>
+where
+    K: Ord
+{
     /// ```
     /// use scapegoat::SGMap;
     ///
@@ -660,7 +667,10 @@ where
 }
 
 // Construct from iterator.
-impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
+impl<K, V> FromIterator<(K, V)> for SGMap<K, V>
+where
+    K: Ord
+{
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgm = SGMap::new();
         sgm.bst = SGTree::from_iter(iter);
@@ -669,14 +679,21 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
 }
 
 // Extension from iterator.
-impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
+impl<K, V> Extend<(K, V)> for SGMap<K, V>
+where
+    K: Ord
+{
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.bst.extend(iter);
     }
 }
 
 // Extension from reference iterator.
-impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
+impl<'a, K, V> Extend<(&'a K, &'a V)> for SGMap<K, V>
+where
+    K: Ord + Copy,
+    V: Copy,
+{
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }

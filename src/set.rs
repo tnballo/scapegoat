@@ -772,14 +772,22 @@ impl<T: Ord> SGSet<T> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<T: Ord + Debug> Debug for SGSet<T> {
+impl<T> Debug for SGSet<T>
+where
+    T: Ord + Debug
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_set().entries(self.bst.iter().map(|(k, _)| k)).finish()
+        f.debug_set()
+            .entries(self.bst.iter().map(|(k, _)| k))
+            .finish()
     }
 }
 
 // From array.
-impl<T: Ord, const N: usize> From<[T; N]> for SGSet<T> {
+impl<T, const N: usize> From<[T; N]> for SGSet<T>
+where
+    T: Ord
+{
     /// ```
     /// use scapegoat::SGSet;
     ///
@@ -793,7 +801,10 @@ impl<T: Ord, const N: usize> From<[T; N]> for SGSet<T> {
 }
 
 // Construct from iterator.
-impl<T: Ord> FromIterator<T> for SGSet<T> {
+impl<T> FromIterator<T> for SGSet<T>
+where
+    T: Ord
+{
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut sgs = SGSet::new();
         sgs.bst = SGTree::from_iter(iter.into_iter().map(|e| (e, ())));
@@ -802,14 +813,20 @@ impl<T: Ord> FromIterator<T> for SGSet<T> {
 }
 
 // Extension from iterator.
-impl<T: Ord> Extend<T> for SGSet<T> {
+impl<T> Extend<T> for SGSet<T>
+where
+    T: Ord
+{
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
         self.bst.extend(iter.into_iter().map(|e| (e, ())));
     }
 }
 
 // Extension from reference iterator.
-impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for SGSet<T> {
+impl<'a, T> Extend<&'a T> for SGSet<T>
+where
+    T: 'a + Ord + Copy
+{
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }

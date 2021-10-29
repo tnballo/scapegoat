@@ -1,5 +1,5 @@
-use std::iter::FromIterator;
 use std::collections::BTreeMap;
+use std::iter::FromIterator;
 
 use scapegoat::SGMap;
 
@@ -16,6 +16,13 @@ fn test_debug() {
     assert_eq!(sgt_str, btm_str);
 
     println!("DEBUG:\n{}", sgt_str);
+}
+
+#[test]
+fn test_clone() {
+    let sgm_1 = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let sgm_2 = sgm_1.clone();
+    assert_eq!(sgm_1, sgm_2);
 }
 
 #[test]

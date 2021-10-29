@@ -38,7 +38,10 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Retain { rand_key: K },
     SplitOff { key: K },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
+    Clone,
+    Debug,
     Extend { other: Vec<(K, V)> },
+    Ord { other: Vec<(K, V)> },
 }
 
 fn checked_get_len<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>) -> usize {
@@ -65,6 +68,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
 
     for m in methods {
         match m {
+            // API Equivalence -----------------------------------------------------------------------------------------
             MapMethod::Append { other } => {
                 let mut sg_other = SGMap::from_iter(other.clone());
                 let mut bt_other = BTreeMap::from_iter(other);
@@ -273,6 +277,16 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             },
+            // Trait Equivalence ---------------------------------------------------------------------------------------
+            MapMethod::Clone => {
+                assert!(sg_map.clone().iter().eq(bt_map.clone().iter()));
+            },
+            MapMethod::Debug => {
+                assert_eq!(
+                    format!("{:?}", sg_map),
+                    format!("{:?}", bt_map),
+                );
+            },
             MapMethod::Extend { other } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -281,6 +295,15 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
 
                 assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) >= len_old);
+            },
+            MapMethod::Ord { other } => {
+                let sg_map_new = SGMap::from_iter(other.clone().into_iter());
+                let bt_map_new = BTreeMap::from_iter(other.into_iter());
+
+                assert_eq!(
+                    sg_map.cmp(&sg_map_new),
+                    bt_map.cmp(&bt_map_new),
+                );
             },
         }
     }

@@ -1,6 +1,6 @@
 use scapegoat::SGSet;
-use std::iter::FromIterator;
 use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 #[test]
 fn test_debug() {
@@ -13,6 +13,13 @@ fn test_debug() {
     assert_eq!(sgt_str, bts_str);
 
     println!("DEBUG:\n{}", sgt_str);
+}
+
+#[test]
+fn test_clone() {
+    let sgs_1 = SGSet::from([3, 4, 1, 2, 5, 6]);
+    let sgs_2 = sgs_1.clone();
+    assert_eq!(sgs_1, sgs_2);
 }
 
 #[test]

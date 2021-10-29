@@ -41,7 +41,10 @@ enum SetMethod<T: Ord + Debug> {
     Take { value: T },
     Union { other: Vec<T> },
     // Trait Equivalence -----------------------------------------------------------------------------------------------
+    Clone,
+    Debug,
     Extend { other: Vec<T> },
+    Ord { other: Vec<T> },
 }
 
 fn checked_get_len<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>) -> usize {
@@ -68,6 +71,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
     for m in methods {
         match m {
+            // API Equivalence -----------------------------------------------------------------------------------------
             SetMethod::Append { other } => {
                 let mut sg_other = SGSet::from_iter(other.clone());
                 let mut bt_other = BTreeSet::from_iter(other);
@@ -268,6 +272,16 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert_eq!(sg_union, bt_union);
                 assert!(sg_union.len() >= sg_set.len());
             },
+            // Trait Equivalence ---------------------------------------------------------------------------------------
+            SetMethod::Clone => {
+                assert!(sg_set.clone().iter().eq(bt_set.clone().iter()));
+            },
+            SetMethod::Debug => {
+                assert_eq!(
+                    format!("{:?}", sg_set),
+                    format!("{:?}", bt_set),
+                );
+            }
             SetMethod::Extend { other } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
@@ -276,6 +290,15 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert!(sg_set.iter().eq(bt_set.iter()));
                 assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
+            },
+            SetMethod::Ord { other } => {
+                let sg_set_new = SGSet::from_iter(other.clone().into_iter());
+                let bt_set_new = BTreeSet::from_iter(other.into_iter());
+
+                assert_eq!(
+                    sg_set.cmp(&sg_set_new),
+                    bt_set.cmp(&bt_set_new),
+                );
             },
         }
     }

@@ -1016,21 +1016,31 @@ impl<K: Ord, V> SGTree<K, V> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<K: Ord + Debug, V: Debug> Debug for SGTree<K, V> {
+impl<K, V> Debug for SGTree<K, V>
+where
+    K: Ord + Debug,
+    V: Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
 // Default
-impl<K: Ord, V> Default for SGTree<K, V> {
+impl<K, V> Default for SGTree<K, V>
+where
+    K: Ord,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
 // From array
-impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGTree<K, V> {
+impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V>
+where
+    K: Ord,
+{
     /// ```
     /// use scapegoat::SGTree;
     ///
@@ -1062,7 +1072,10 @@ where
 }
 
 // Extension from iterator.
-impl<K: Ord, V> Extend<(K, V)> for SGTree<K, V> {
+impl<K, V> Extend<(K, V)> for SGTree<K, V>
+where
+    K: Ord,
+{
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         iter.into_iter().for_each(move |(k, v)| {
             #[cfg(not(feature = "high_assurance"))]
@@ -1075,38 +1088,63 @@ impl<K: Ord, V> Extend<(K, V)> for SGTree<K, V> {
 }
 
 // Extension from reference iterator.
-impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGTree<K, V> {
+impl<'a, K, V> Extend<(&'a K, &'a V)> for SGTree<K, V>
+where
+    K: Ord + Copy,
+    V: Copy,
+{
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
 }
 
 // PartialEq
-impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGTree<K, V> {
+impl<K, V> PartialEq for SGTree<K, V>
+where
+    K: Ord + PartialEq,
+    V: PartialEq,
+{
     fn eq(&self, other: &SGTree<K, V>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
 // Eq
-impl<K: Ord + Eq, V: Eq> Eq for SGTree<K, V> {}
+impl<K, V> Eq for SGTree<K, V>
+where
+    K: Ord + Eq,
+    V: Eq,
+{
+}
 
 // PartialOrd
-impl<K: Ord + PartialOrd, V: PartialOrd> PartialOrd for SGTree<K, V> {
+impl<K, V> PartialOrd for SGTree<K, V>
+where
+    K: Ord + PartialOrd,
+    V: PartialOrd,
+{
     fn partial_cmp(&self, other: &SGTree<K, V>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 // Ord
-impl<K: Ord, V: Ord> Ord for SGTree<K, V> {
+impl<K, V> Ord for SGTree<K, V>
+where
+    K: Ord,
+    V: Ord,
+{
     fn cmp(&self, other: &SGTree<K, V>) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
 // Hash
-impl<K: Ord + Hash, V: Hash> Hash for SGTree<K, V> {
+impl<K, V> Hash for SGTree<K, V>
+where
+    K: Ord + Hash,
+    V: Hash,
+{
     fn hash<H: Hasher>(&self, state: &mut H) {
         for i in self {
             i.hash(state);
