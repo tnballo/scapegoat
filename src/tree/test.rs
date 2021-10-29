@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use core::iter::FromIterator;
 use core::mem::size_of;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::SGTree;
 
@@ -695,4 +695,47 @@ fn test_high_assurance_extend_panic() {
     // Attempt to extend already full tree
     assert_eq!(sgt.len(), sgt.capacity());
     sgt.extend(sgt_2.into_iter()); // Should panic
+}
+
+#[test]
+fn test_from_arr() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2: SGTree<_, _> = [(1, 2), (3, 4), (5, 6)].into();
+    assert_eq!(sgt_1, sgt_2);
+
+    let btm_1 = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
+    assert!(sgt_1.iter().eq(btm_1.iter()));
+}
+
+#[test]
+fn test_debug() {
+    let sgt = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let btm = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
+    assert!(sgt.iter().eq(btm.iter()));
+
+    let sgt_str = format!("{:#?}", sgt);
+    let btm_str = format!("{:#?}", sgt);
+    assert_eq!(sgt_str, btm_str);
+
+    println!("DEBUG:\n{}", sgt_str);
+}
+
+#[test]
+fn test_hash() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2: SGTree<_, _> = [(1, 2), (3, 4), (5, 6)].into();
+    assert_eq!(sgt_1, sgt_2);
+
+    let mut hash_set = HashSet::new();
+    hash_set.insert(sgt_1);
+    hash_set.insert(sgt_2);
+
+    assert_eq!(hash_set.len(), 1);
+}
+
+#[test]
+fn test_clone() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2 = sgt_1.clone();
+    assert_eq!(sgt_1, sgt_2);
 }
