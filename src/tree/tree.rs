@@ -1043,10 +1043,19 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGTree<K, V> {
 }
 
 // Indexing
-impl<K: Ord, V> Index<&K> for SGTree<K, V> {
+impl<K, V, Q> Index<&Q> for SGTree<K, V>
+where
+    K: Borrow<Q> + Ord,
+    Q: Ord + ?Sized,
+{
     type Output = V;
 
-    fn index(&self, key: &K) -> &Self::Output {
+    /// Returns a reference to the value corresponding to the supplied key.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key is not present in the `SGTree`.
+    fn index(&self, key: &Q) -> &Self::Output {
         self.get(key).expect("No value found for key")
     }
 }

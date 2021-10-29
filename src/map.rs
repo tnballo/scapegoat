@@ -649,10 +649,19 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGMap<K, V> {
 }
 
 // Indexing
-impl<K: Ord, V> Index<&K> for SGMap<K, V> {
+impl<K, V, Q> Index<&Q> for SGMap<K, V>
+where
+    K: Borrow<Q> + Ord,
+    Q: Ord + ?Sized,
+{
     type Output = V;
 
-    fn index(&self, key: &K) -> &Self::Output {
+    /// Returns a reference to the value corresponding to the supplied key.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key is not present in the `SGMap`.
+    fn index(&self, key: &Q) -> &Self::Output {
         &self.bst[key]
     }
 }
