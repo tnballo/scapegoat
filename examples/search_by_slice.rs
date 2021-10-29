@@ -8,8 +8,7 @@ const U8_BUF_LEN: usize = 32;
 // About:
 // * Store 8-byte hexspeak words, e.g. values of type [u8; 8], in a set.
 // * Query by hexspeak words of varying sizes, e.g. values of type &[u8].
-fn main () {
-
+fn main() {
     // Two hexspeak words
     let bad_code: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xC, 0x0, 0xD, 0xE];
     let bad_food: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
@@ -38,24 +37,26 @@ fn main () {
     //     &my_vec[0..5] is the first 5 elements
     //     &my_vec[1..] is all but the first element
     //     &my_vec[..] is all elements
-    let bad_food_vec: SmallVec<[u8; U8_BUF_LEN]> = smallvec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
-    let bad_dude_vec: SmallVec<[u8; U8_BUF_LEN]> = smallvec![0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD];
+    let bad_food_vec: SmallVec<[u8; U8_BUF_LEN]> =
+        smallvec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
+    let bad_dude_vec: SmallVec<[u8; U8_BUF_LEN]> =
+        smallvec![0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD];
 
     // We're effectively searching for a [u8; 8] present
     assert_eq!(
-        set.get(&bad_food_vec[..]),     // 0xBAADFOOD
+        set.get(&bad_food_vec[..]), // 0xBAADFOOD
         Some(&[0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD])
     );
 
     // We're effectively searching for a [u8; 4] not present
     assert_eq!(
-        set.get(&bad_food_vec[..4]),    // 0xBAAD
+        set.get(&bad_food_vec[..4]), // 0xBAAD
         None
     );
 
     // We're effectively searching for an [u8; 8] not present
     assert_eq!(
-        set.get(&bad_dude_vec[..]),     // 0xBAADDUDE
+        set.get(&bad_dude_vec[..]), // 0xBAADDUDE
         None
     );
 }

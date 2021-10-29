@@ -1,9 +1,9 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
-use core::fmt::{self, Debug};
 
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
@@ -1021,14 +1021,14 @@ impl<K: Ord + Debug, V: Debug> Debug for SGTree<K, V> {
     }
 }
 
-// Default constructor.
+// Default
 impl<K: Ord, V> Default for SGTree<K, V> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// Construct from array.
+// From array
 impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGTree<K, V> {
     /// ```
     /// use scapegoat::SGTree;
@@ -1060,16 +1060,7 @@ impl<K: Ord, V> Extend<(K, V)> for SGTree<K, V> {
 
             #[cfg(feature = "high_assurance")]
             self.insert(k, v).expect("Stack-storage capacity exceeded!");
-
-            /*
-            TODO v2.0: should from_iter() and extend() short-circuit?
-            #[cfg(feature = "high_assurance")]
-            if self.len() < self.capacity() {
-                assert!(self.insert(k, v).is_ok());
-            }
-            */
-
-       });
+        });
     }
 }
 
@@ -1077,6 +1068,30 @@ impl<K: Ord, V> Extend<(K, V)> for SGTree<K, V> {
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGTree<K, V> {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+}
+
+// PartialEq
+impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGTree<K, V> {
+    fn eq(&self, other: &SGTree<K, V>) -> bool {
+        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
+    }
+}
+
+// Eq
+impl<K: Ord + Eq, V: Eq> Eq for SGTree<K, V> {}
+
+// PartialOrd
+impl<K: Ord + PartialOrd, V: PartialOrd> PartialOrd for SGTree<K, V> {
+    fn partial_cmp(&self, other: &SGTree<K, V>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+// Ord
+impl<K: Ord, V: Ord> Ord for SGTree<K, V> {
+    fn cmp(&self, other: &SGTree<K, V>) -> Ordering {
+        self.iter().cmp(other.iter())
     }
 }
 

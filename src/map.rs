@@ -1,7 +1,7 @@
 use core::borrow::Borrow;
+use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
-use core::fmt::{self, Debug};
 
 use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
@@ -12,7 +12,7 @@ use crate::tree::SGErr;
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -634,7 +634,7 @@ impl<K: Ord + Debug, V: Debug> Debug for SGMap<K, V> {
     }
 }
 
-// Construct from array.
+// From array.
 impl<K: Ord, V, const N: usize> From<[(K, V); N]> for SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
@@ -679,24 +679,6 @@ impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
 }
-
-/*
-TODO: investigate
-impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGMap<K, V> {
-    fn eq(&self, other: &SGMap<K, V>) -> bool {
-        (self.len() == other.len()) && (self.iter().zip(other).all(|(a, b)| a == b))
-    }
-}
-*/
-
-/*
-TODO: investigate
-impl<K: PartialOrd, V: PartialOrd> PartialOrd for SGMap<K, V> {
-    fn partial_cmp(&self, other: &SGMap<K, V>) -> Option<core::cmp::Ordering> {
-        self.iter().partial_cmp(other.iter())
-    }
-}
-*/
 
 // Iterators -----------------------------------------------------------------------------------------------------------
 
