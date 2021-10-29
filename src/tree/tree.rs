@@ -1,6 +1,7 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
+use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
@@ -1101,6 +1102,15 @@ impl<K: Ord + PartialOrd, V: PartialOrd> PartialOrd for SGTree<K, V> {
 impl<K: Ord, V: Ord> Ord for SGTree<K, V> {
     fn cmp(&self, other: &SGTree<K, V>) -> Ordering {
         self.iter().cmp(other.iter())
+    }
+}
+
+// Hash
+impl<K: Ord + Hash, V: Hash> Hash for SGTree<K, V> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for i in self {
+            i.hash(state);
+        }
     }
 }
 
