@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 
 use super::arena::NodeArena;
 use super::iter::{ConsumingIter, Iter, IterMut};
@@ -24,6 +24,7 @@ use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Clone)]
 pub struct SGTree<K: Ord, V> {
     pub(crate) arena: NodeArena<K, V>,
     pub(crate) root_idx: Option<Idx>,
@@ -1013,14 +1014,12 @@ impl<K: Ord, V> SGTree<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-/*
 // Debug
-impl<K: Debug, V: Debug> Debug for SGTree<K, V> {
+impl<K: Ord + Debug, V: Debug> Debug for SGTree<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
-*/
 
 // Default constructor.
 impl<K: Ord, V> Default for SGTree<K, V> {

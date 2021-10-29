@@ -1,6 +1,7 @@
 use core::borrow::Borrow;
 use core::iter::FromIterator;
 use core::ops::Index;
+use core::fmt::{self, Debug};
 
 use crate::tree::{ConsumingIter, Iter, IterMut, SGTree};
 
@@ -11,6 +12,7 @@ use crate::tree::SGErr;
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Clone)]
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -622,6 +624,13 @@ impl<K: Ord, V> SGMap<K, V> {
 impl<K: Ord, V> Default for SGMap<K, V> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Debug
+impl<K: Ord + Debug, V: Debug> Debug for SGMap<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
     }
 }
 

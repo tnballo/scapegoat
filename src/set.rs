@@ -2,6 +2,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
+use core::fmt::{self, Debug};
 
 use crate::tree::{
     ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
@@ -13,6 +14,7 @@ use crate::tree::SGErr;
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Clone)]
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
@@ -773,6 +775,13 @@ impl<T: Ord> SGSet<T> {
 impl<T: Ord> Default for SGSet<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Debug
+impl<T: Ord + Debug> Debug for SGSet<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self.iter()).finish()
     }
 }
 

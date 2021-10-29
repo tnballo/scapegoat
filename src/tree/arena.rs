@@ -8,6 +8,7 @@ use crate::MAX_ELEMS;
 use smallnum::SmallUnsigned;
 
 /// A simple arena allocator.
+#[derive(Clone)]
 pub struct NodeArena<K, V> {
     arena: ArenaVec<K, V>,
     free_list: IdxVec,
