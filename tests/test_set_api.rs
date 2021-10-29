@@ -1,5 +1,19 @@
 use scapegoat::SGSet;
 use std::iter::FromIterator;
+use std::collections::BTreeSet;
+
+#[test]
+fn test_debug() {
+    let sgs = SGSet::from([3, 4, 1, 2, 5, 6]);
+    let bts = BTreeSet::from([3, 4, 1, 2, 5, 6]);
+    assert!(sgs.iter().eq(bts.iter()));
+
+    let sgt_str = format!("{:#?}", sgs);
+    let bts_str = format!("{:#?}", bts);
+    assert_eq!(sgt_str, bts_str);
+
+    println!("DEBUG:\n{}", sgt_str);
+}
 
 #[test]
 fn test_basic_set_functionality() {

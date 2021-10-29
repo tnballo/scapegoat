@@ -12,7 +12,7 @@ use crate::tree::SGErr;
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
-#[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -620,17 +620,10 @@ impl<K: Ord, V> SGMap<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor.
-impl<K: Ord, V> Default for SGMap<K, V> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 // Debug
 impl<K: Ord + Debug, V: Debug> Debug for SGMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_map().entries(self.iter()).finish()
+        f.debug_map().entries(self.bst.iter()).finish()
     }
 }
 

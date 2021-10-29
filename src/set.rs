@@ -14,7 +14,7 @@ use crate::tree::SGErr;
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
-#[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
@@ -771,17 +771,10 @@ impl<T: Ord> SGSet<T> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default
-impl<T: Ord> Default for SGSet<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 // Debug
 impl<T: Ord + Debug> Debug for SGSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_set().entries(self.iter()).finish()
+        f.debug_set().entries(self.bst.iter().map(|(k, _)| k)).finish()
     }
 }
 

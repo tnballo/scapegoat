@@ -714,7 +714,7 @@ fn test_debug() {
     assert!(sgt.iter().eq(btm.iter()));
 
     let sgt_str = format!("{:#?}", sgt);
-    let btm_str = format!("{:#?}", sgt);
+    let btm_str = format!("{:#?}", btm);
     assert_eq!(sgt_str, btm_str);
 
     println!("DEBUG:\n{}", sgt_str);

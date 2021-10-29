@@ -1,8 +1,22 @@
 use std::iter::FromIterator;
+use std::collections::BTreeMap;
 
 use scapegoat::SGMap;
 
 use rand::Rng;
+
+#[test]
+fn test_debug() {
+    let sgm = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let btm = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
+    assert!(sgm.iter().eq(btm.iter()));
+
+    let sgt_str = format!("{:#?}", sgm);
+    let btm_str = format!("{:#?}", btm);
+    assert_eq!(sgt_str, btm_str);
+
+    println!("DEBUG:\n{}", sgt_str);
+}
 
 #[test]
 fn test_basic_map_functionality() {
