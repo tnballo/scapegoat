@@ -22,7 +22,7 @@ Strives for two properties:
 
 * **Minimal footprint:** low resource use, hence `!#[no_std]`.
     * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
-    * **Recursion-free:** all operations are iterative, so stack use and runtime are both minimized.
+    * **Recursion-free:** all operations are iterative, so stack use is fixed and runtime is minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
 
 Other features:
@@ -38,7 +38,7 @@ Other features:
 use scapegoat::SGMap;
 use smallvec::{smallvec, SmallVec};
 
-const FIXED_BUF_LEN: usize = 5;
+const REF_BUF_LEN: usize = 5;
 
 let mut example = SGMap::new();
 let mut stack_str = "your friend the";
@@ -53,7 +53,7 @@ example.insert(4, "borrow checker");
 assert!(example
     .iter()
     .map(|(_, v)| *v)
-    .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+    .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
     .iter()
     .eq(["Please","don't blame","the","borrow checker"].iter()));
 
@@ -68,7 +68,7 @@ assert_eq!(please_tuple, (1, "Please"));
 example.retain(|_, v| !v.contains("a"));
 
 // Extension
-let iterable: SmallVec<[(isize, &str); 3]> =
+let iterable: SmallVec<[(isize, &str); REF_BUF_LEN]> =
     smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
 example.extend(iterable.into_iter());
 
@@ -81,10 +81,12 @@ if let Some(three_val) = example.get_mut(&3) {
 assert!(example
     .iter()
     .map(|(_, v)| *v)
-    .collect::<SmallVec<[&str; FIXED_BUF_LEN]>>()
+    .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```
+
+Additional [examples here](https://github.com/tnballo/scapegoat/blob/master/examples/README.md).
 
 ### Configuring a Stack Storage Limit
 
@@ -109,7 +111,7 @@ Please note:
 > **Warning:**
 > Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `SG_MAX_STACK_ELEMS` (configurable) and/or the stored item type (generic) is too large.
 > Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
-> Regardless, you must test to ensure you don't exceed the stack frame size limit of your target platform.
+> Regardless, you must test to ensure you don't exceed the stack frame(s) size limit of your target platform.
 > Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
@@ -126,8 +128,8 @@ That second change is a subtle but interesting one.
 Example of packing saving 53% (31 KB) of RAM usage:
 
 ```rust
-use scapegoat::SGMap;
 use core::mem::size_of;
+use scapegoat::SGMap;
 
 // If you're on a 64-bit system, you can compile-time check the below numbers yourself!
 // Just do:
@@ -136,7 +138,7 @@ use core::mem::size_of;
 // $ cargo test --doc --features="high_assurance"
 //
 // One command per set of `cfg` macros below.
-// Internally, this compile time struct packing is done with the `smallnum` crate:
+// Internally, this compile-time struct packing is done with the `smallnum` crate:
 // https://crates.io/crates/smallnum
 
 // This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)

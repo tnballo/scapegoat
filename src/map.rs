@@ -1,4 +1,5 @@
 use core::borrow::Borrow;
+use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
@@ -11,6 +12,7 @@ use crate::tree::SGErr;
 /// A wrapper interface for `SGTree`.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGMap<K: Ord, V> {
     bst: SGTree<K, V>,
 }
@@ -166,6 +168,10 @@ impl<K: Ord, V> SGMap<K, V> {
     ///     map.insert(key, "filler");
     ///     key += 1;
     /// }
+    ///
+    /// assert_eq!(map.first_key(), Some(&37));
+    /// assert_eq!(map.last_key(), Some(&(37 + (map.capacity() - 1))));
+    /// assert_eq!(map.len(), map.capacity());
     ///
     /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
     /// ```
@@ -614,24 +620,57 @@ impl<K: Ord, V> SGMap<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
-impl<K: Ord, V> Default for SGMap<K, V> {
-    fn default() -> Self {
-        Self::new()
+// Debug
+impl<K, V> Debug for SGMap<K, V>
+where
+    K: Ord + Debug,
+    V: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.bst.iter()).finish()
+    }
+}
+
+// From array.
+impl<K, V, const N: usize> From<[(K, V); N]> for SGMap<K, V>
+where
+    K: Ord
+{
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let map1 = SGMap::from([(1, 2), (3, 4)]);
+    /// let map2: SGMap<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(map1, map2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 
 // Indexing
-impl<K: Ord, V> Index<&K> for SGMap<K, V> {
+impl<K, V, Q> Index<&Q> for SGMap<K, V>
+where
+    K: Borrow<Q> + Ord,
+    Q: Ord + ?Sized,
+{
     type Output = V;
 
-    fn index(&self, key: &K) -> &Self::Output {
+    /// Returns a reference to the value corresponding to the supplied key.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key is not present in the `SGMap`.
+    fn index(&self, key: &Q) -> &Self::Output {
         &self.bst[key]
     }
 }
 
-// Construction iterator
-impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
+// Construct from iterator.
+impl<K, V> FromIterator<(K, V)> for SGMap<K, V>
+where
+    K: Ord
+{
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgm = SGMap::new();
         sgm.bst = SGTree::from_iter(iter);
@@ -639,57 +678,26 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGMap<K, V> {
     }
 }
 
-// Extension from iterator
-impl<K: Ord, V> Extend<(K, V)> for SGMap<K, V> {
+// Extension from iterator.
+impl<K, V> Extend<(K, V)> for SGMap<K, V>
+where
+    K: Ord
+{
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |(k, v)| {
-            #[cfg(not(feature = "high_assurance"))]
-            self.insert(k, v);
-
-            #[cfg(feature = "high_assurance")]
-            self.insert(k, v).expect("Stack-storage capacity exceeded!");
-        });
+        self.bst.extend(iter);
     }
-
-    /*
-    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, (k, v): (K, V)) {
-        self.insert(k, v);
-    }
-    */
 }
 
-// Extension from reference iterator
-impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for SGMap<K, V> {
+// Extension from reference iterator.
+impl<'a, K, V> Extend<(&'a K, &'a V)> for SGMap<K, V>
+where
+    K: Ord + Copy,
+    V: Copy,
+{
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
-
-    /*
-    // TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
-        self.insert(k, v);
-    }
-    */
 }
-
-/*
-TODO: investigate
-impl<K: Ord + PartialEq, V: PartialEq> PartialEq for SGMap<K, V> {
-    fn eq(&self, other: &SGMap<K, V>) -> bool {
-        (self.len() == other.len()) && (self.iter().zip(other).all(|(a, b)| a == b))
-    }
-}
-*/
-
-/*
-TODO: investigate
-impl<K: PartialOrd, V: PartialOrd> PartialOrd for SGMap<K, V> {
-    fn partial_cmp(&self, other: &SGMap<K, V>) -> Option<core::cmp::Ordering> {
-        self.iter().partial_cmp(other.iter())
-    }
-}
-*/
 
 // Iterators -----------------------------------------------------------------------------------------------------------
 

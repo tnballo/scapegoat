@@ -1,5 +1,6 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
@@ -13,6 +14,7 @@ use crate::tree::SGErr;
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGSet<T: Ord> {
     bst: SGTree<T, ()>,
 }
@@ -163,6 +165,10 @@ impl<T: Ord> SGSet<T> {
     ///     set.insert(elem);
     ///     elem += 1;
     /// }
+    ///
+    /// assert_eq!(set.first(), Some(&2));
+    /// assert_eq!(set.last(), Some(&(2 + (set.capacity() - 1))));
+    /// assert_eq!(set.len(), set.capacity());
     ///
     /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
     /// ```
@@ -765,62 +771,65 @@ impl<T: Ord> SGSet<T> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
-impl<T: Ord> Default for SGSet<T> {
-    fn default() -> Self {
-        Self::new()
+// Debug
+impl<T> Debug for SGSet<T>
+where
+    T: Ord + Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_set()
+            .entries(self.bst.iter().map(|(k, _)| k))
+            .finish()
     }
 }
 
-// Construction iterator
-impl<T: Ord> FromIterator<T> for SGSet<T> {
+// From array.
+impl<T, const N: usize> From<[T; N]> for SGSet<T>
+where
+    T: Ord
+{
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let set1 = SGSet::from([1, 2, 3, 4]);
+    /// let set2: SGSet<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(set1, set2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
+    }
+}
+
+// Construct from iterator.
+impl<T> FromIterator<T> for SGSet<T>
+where
+    T: Ord
+{
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut sgs = SGSet::new();
-
-        for v in iter {
-            #[cfg(not(feature = "high_assurance"))]
-            sgs.insert(v);
-
-            #[cfg(feature = "high_assurance")]
-            sgs.insert(v).expect("Stack-storage capacity exceeded!");
-        }
-
+        sgs.bst = SGTree::from_iter(iter.into_iter().map(|e| (e, ())));
         sgs
     }
 }
 
-// Extension from iterator
-impl<T: Ord> Extend<T> for SGSet<T> {
+// Extension from iterator.
+impl<T> Extend<T> for SGSet<T>
+where
+    T: Ord
+{
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
-        iter.into_iter().for_each(move |elem| {
-            #[cfg(not(feature = "high_assurance"))]
-            self.insert(elem);
-
-            #[cfg(feature = "high_assurance")]
-            self.insert(elem).expect("Stack-storage capacity exceeded!");
-        });
+        self.bst.extend(iter.into_iter().map(|e| (e, ())));
     }
-
-    /*
-    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, elem: T) {
-        self.insert(elem);
-    }
-    */
 }
 
-// Extension from reference iterator
-impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for SGSet<T> {
+// Extension from reference iterator.
+impl<'a, T> Extend<&'a T> for SGSet<T>
+where
+    T: 'a + Ord + Copy
+{
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
-
-    /*
-    TODO: currently unstable: https://github.com/rust-lang/rust/issues/72631
-    fn extend_one(&mut self, &elem: &'a T) {
-        self.insert(elem);
-    }
-    */
 }
 
 // Iterators -----------------------------------------------------------------------------------------------------------

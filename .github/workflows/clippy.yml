@@ -17,7 +17,8 @@ jobs:
       - uses: actions/checkout@v2
       - run: rustup component add clippy
 
-      - uses: actions-rs/clippy-check@v1
+      - name: clippy --all-features
+        uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features

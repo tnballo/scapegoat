@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "1.4.0"
+version = "1.5.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -10,7 +10,7 @@ repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
 keywords = ["scapegoat", "tree", "set", "map", "no_std"]
 categories = ["algorithms", "data-structures", "no-std", "embedded"]
-description = "Embedded-friendly ordered set and map data structures via an arena-based scapegoat tree."
+description = "Safe, embedded-friendly ordered set/map via a scapegoat tree."
 include = [
     "**/*.rs",
     "**/*.md",

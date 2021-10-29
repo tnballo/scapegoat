@@ -3,6 +3,7 @@ use super::types::{Idx, SortSwapVec};
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
 /// Binary tree node.
+#[derive(Clone)]
 pub struct Node<K, V> {
     pub key: K,
     pub val: V,

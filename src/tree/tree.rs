@@ -1,5 +1,7 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::fmt::{self, Debug};
+use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::Index;
@@ -23,6 +25,7 @@ use smallvec::smallvec;
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+#[derive(Clone)]
 pub struct SGTree<K: Ord, V> {
     pub(crate) arena: NodeArena<K, V>,
     pub(crate) root_idx: Option<Idx>,
@@ -301,9 +304,11 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Clears the tree, removing all elements.
     pub fn clear(&mut self) {
-        let rebal_cnt = self.rebal_cnt;
-        *self = SGTree::new();
-        self.rebal_cnt = rebal_cnt;
+        if !self.is_empty() {
+            let rebal_cnt = self.rebal_cnt;
+            *self = SGTree::new();
+            self.rebal_cnt = rebal_cnt;
+        }
     }
 
     /// Returns `true` if the tree contains a value for the given key.
@@ -1010,25 +1015,146 @@ impl<K: Ord, V> SGTree<K, V> {
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
-// Default constructor
-impl<K: Ord, V> Default for SGTree<K, V> {
+// Debug
+impl<K, V> Debug for SGTree<K, V>
+where
+    K: Ord + Debug,
+    V: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
+    }
+}
+
+// Default
+impl<K, V> Default for SGTree<K, V>
+where
+    K: Ord,
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
+// From array
+impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V>
+where
+    K: Ord,
+{
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let tree1 = SGTree::from([(1, 2), (3, 4)]);
+    /// let tree2: SGTree<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(tree1, tree2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
+    }
+}
+
 // Indexing
-impl<K: Ord, V> Index<&K> for SGTree<K, V> {
+impl<K, V, Q> Index<&Q> for SGTree<K, V>
+where
+    K: Borrow<Q> + Ord,
+    Q: Ord + ?Sized,
+{
     type Output = V;
 
-    fn index(&self, key: &K) -> &Self::Output {
+    /// Returns a reference to the value corresponding to the supplied key.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key is not present in the `SGTree`.
+    fn index(&self, key: &Q) -> &Self::Output {
         self.get(key).expect("No value found for key")
+    }
+}
+
+// Extension from iterator.
+impl<K, V> Extend<(K, V)> for SGTree<K, V>
+where
+    K: Ord,
+{
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+        iter.into_iter().for_each(move |(k, v)| {
+            #[cfg(not(feature = "high_assurance"))]
+            self.insert(k, v);
+
+            #[cfg(feature = "high_assurance")]
+            self.insert(k, v).expect("Stack-storage capacity exceeded!");
+        });
+    }
+}
+
+// Extension from reference iterator.
+impl<'a, K, V> Extend<(&'a K, &'a V)> for SGTree<K, V>
+where
+    K: Ord + Copy,
+    V: Copy,
+{
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+}
+
+// PartialEq
+impl<K, V> PartialEq for SGTree<K, V>
+where
+    K: Ord + PartialEq,
+    V: PartialEq,
+{
+    fn eq(&self, other: &SGTree<K, V>) -> bool {
+        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
+    }
+}
+
+// Eq
+impl<K, V> Eq for SGTree<K, V>
+where
+    K: Ord + Eq,
+    V: Eq,
+{
+}
+
+// PartialOrd
+impl<K, V> PartialOrd for SGTree<K, V>
+where
+    K: Ord + PartialOrd,
+    V: PartialOrd,
+{
+    fn partial_cmp(&self, other: &SGTree<K, V>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+// Ord
+impl<K, V> Ord for SGTree<K, V>
+where
+    K: Ord,
+    V: Ord,
+{
+    fn cmp(&self, other: &SGTree<K, V>) -> Ordering {
+        self.iter().cmp(other.iter())
+    }
+}
+
+// Hash
+impl<K, V> Hash for SGTree<K, V>
+where
+    K: Ord + Hash,
+    V: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for i in self {
+            i.hash(state);
+        }
     }
 }
 
 // Iterators -----------------------------------------------------------------------------------------------------------
 
-// Construction iterator
+// Construct from iterator.
 impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgt = SGTree::new();

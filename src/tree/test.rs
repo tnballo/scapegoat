@@ -1,11 +1,13 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::iter::FromIterator;
-use std::mem::size_of;
+use core::fmt::Debug;
+use core::iter::FromIterator;
+use core::mem::size_of;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::SGTree;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use smallvec::{smallvec, SmallVec};
 
 use crate::MAX_ELEMS;
 
@@ -140,6 +142,31 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         );
         panic!("Keys do not match shadow set!");
     }
+}
+
+// Identity permutation fill: (0, 0), (1, 1), (2, 2), ... , (n, n)
+// This does a bunch of dynamic checks for testing purposes.
+#[allow(dead_code)]
+fn id_perm_fill<K, V>(sgt: &mut SGTree<K, V>)
+where
+    K: From<usize> + Eq + Debug + Ord,
+    V: From<usize> + Eq + Debug,
+{
+    sgt.clear();
+    for i in 0..sgt.capacity() {
+        #[cfg(not(feature = "high_assurance"))]
+        assert!(sgt.insert(K::from(i), V::from(i)).is_none());
+
+        #[cfg(feature = "high_assurance")]
+        assert!(sgt.insert(K::from(i), V::from(i)).is_ok());
+    }
+
+    assert_eq!(sgt.len(), sgt.capacity());
+    assert_eq!(sgt.first_key_value(), Some((&K::from(0), &V::from(0))));
+    assert_eq!(
+        sgt.last_key_value(),
+        Some((&K::from(sgt.capacity() - 1), &V::from(sgt.capacity() - 1)))
+    );
 }
 
 // Tests ---------------------------------------------------------------------------------------------------------------
@@ -552,6 +579,63 @@ fn test_retain() {
 }
 
 #[test]
+fn test_extend() {
+    let mut sgt_1 = SGTree::new();
+    let mut sgt_2 = SGTree::new();
+
+    for i in 0..5 {
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            sgt_1.insert(i, i);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            sgt_1.insert(i, i);
+        }
+    }
+
+    let iterable_1: SmallVec<[(&usize, &usize); 5]> =
+        smallvec![(&0, &0), (&1, &1), (&2, &2), (&3, &3), (&4, &4)];
+
+    assert!(sgt_1.iter().eq(iterable_1.into_iter()));
+
+    for i in 5..10 {
+        #[cfg(not(feature = "high_assurance"))]
+        {
+            sgt_2.insert(i, i);
+        }
+        #[allow(unused_must_use)]
+        #[cfg(feature = "high_assurance")]
+        {
+            sgt_2.insert(i, i);
+        }
+    }
+
+    let iterable_2: SmallVec<[(&usize, &usize); 5]> =
+        smallvec![(&5, &5), (&6, &6), (&7, &7), (&8, &8), (&9, &9)];
+
+    assert!(sgt_2.iter().eq(iterable_2.into_iter()));
+
+    let iterable_3: SmallVec<[(&usize, &usize); 10]> = smallvec![
+        (&0, &0),
+        (&1, &1),
+        (&2, &2),
+        (&3, &3),
+        (&4, &4),
+        (&5, &5),
+        (&6, &6),
+        (&7, &7),
+        (&8, &8),
+        (&9, &9)
+    ];
+
+    sgt_1.extend(sgt_2.iter());
+    assert_eq!(sgt_2.len(), 5);
+    assert!(sgt_1.iter().eq(iterable_3.into_iter()));
+}
+
+#[test]
 fn test_slice_search() {
     let bad_code: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xC, 0x0, 0xD, 0xE];
     let bad_food: [u8; 8] = [0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
@@ -581,4 +665,77 @@ fn test_slice_search() {
     assert_eq!(sgt.get(&bad_vec[..]), None);
 
     assert_eq!(sgt.get(&bad_dude_vec[..]), None);
+}
+
+#[cfg(feature = "high_assurance")]
+#[test]
+fn test_high_assurance_insert() {
+    let mut sgt: SGTree<usize, usize> = SGTree::new();
+    id_perm_fill(&mut sgt);
+
+    // Fallible insert
+    assert_eq!(
+        sgt.insert(usize::MAX, usize::MAX),
+        Err(super::error::SGErr::StackCapacityExceeded)
+    );
+}
+
+#[cfg(feature = "high_assurance")]
+#[should_panic(expected = "Stack-storage capacity exceeded!")]
+#[test]
+fn test_high_assurance_extend_panic() {
+    let mut sgt: SGTree<usize, usize> = SGTree::new();
+    id_perm_fill(&mut sgt);
+
+    let mut sgt_2: SGTree<usize, usize> = SGTree::new();
+    for i in sgt_2.capacity()..(sgt_2.capacity() + 10) {
+        assert!(sgt_2.insert(i, i).is_ok());
+    }
+
+    // Attempt to extend already full tree
+    assert_eq!(sgt.len(), sgt.capacity());
+    sgt.extend(sgt_2.into_iter()); // Should panic
+}
+
+#[test]
+fn test_from_arr() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2: SGTree<_, _> = [(1, 2), (3, 4), (5, 6)].into();
+    assert_eq!(sgt_1, sgt_2);
+
+    let btm_1 = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
+    assert!(sgt_1.iter().eq(btm_1.iter()));
+}
+
+#[test]
+fn test_debug() {
+    let sgt = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let btm = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
+    assert!(sgt.iter().eq(btm.iter()));
+
+    let sgt_str = format!("{:#?}", sgt);
+    let btm_str = format!("{:#?}", btm);
+    assert_eq!(sgt_str, btm_str);
+
+    println!("DEBUG:\n{}", sgt_str);
+}
+
+#[test]
+fn test_hash() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2: SGTree<_, _> = [(1, 2), (3, 4), (5, 6)].into();
+    assert_eq!(sgt_1, sgt_2);
+
+    let mut hash_set = HashSet::new();
+    hash_set.insert(sgt_1);
+    hash_set.insert(sgt_2);
+
+    assert_eq!(hash_set.len(), 1);
+}
+
+#[test]
+fn test_clone() {
+    let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let sgt_2 = sgt_1.clone();
+    assert_eq!(sgt_1, sgt_2);
 }

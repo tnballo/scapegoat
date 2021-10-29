@@ -11,23 +11,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - name: code checkout
+      uses: actions/checkout@v2
+
+    - name: install stable
+      uses: actions-rs/toolchain@v1
       with:
         profile: minimal
         toolchain: stable
         override: true
 
-    - uses: actions-rs/cargo@v1
+    - name: test
+      uses: actions-rs/cargo@v1
       with:
         command: test
 
-    - uses: actions-rs/cargo@v1
+    - name: test --all-features
+      uses: actions-rs/cargo@v1
       with:
         command: test
         args: --all-features
 
-    - uses: actions-rs/cargo@v1
+    - name: run --example static_strs
+      uses: actions-rs/cargo@v1
       with:
         command: run
         args: --example static_strs
+
+    - name: run --example ha_insert --all-features
+      uses: actions-rs/cargo@v1
+      with:
+        command: run
+        args: --example ha_insert --all-features
