@@ -634,7 +634,7 @@ where
 // From array.
 impl<K, V, const N: usize> From<[(K, V); N]> for SGMap<K, V>
 where
-    K: Ord
+    K: Ord,
 {
     /// ```
     /// use scapegoat::SGMap;
@@ -669,7 +669,7 @@ where
 // Construct from iterator.
 impl<K, V> FromIterator<(K, V)> for SGMap<K, V>
 where
-    K: Ord
+    K: Ord,
 {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgm = SGMap::new();
@@ -681,7 +681,7 @@ where
 // Extension from iterator.
 impl<K, V> Extend<(K, V)> for SGMap<K, V>
 where
-    K: Ord
+    K: Ord,
 {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.bst.extend(iter);

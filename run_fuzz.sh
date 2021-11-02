@@ -8,6 +8,10 @@ FLAGS_ARR=(
     -s address
 )
 
+LIBFUZZER_OPTS_ARR=(
+    -max_len=65536 # Default is 4096 if no corpus, 16x for more interesting API call sequences
+)
+
 cd "$(dirname "$0")"
 mapfile -t TARGET_ARR < <(cargo fuzz list)
 
@@ -21,4 +25,4 @@ else
 fi
 
 set -x
-cargo fuzz run "$TARGET" "${FLAGS_ARR[@]}"
+cargo fuzz run "$TARGET" "${FLAGS_ARR[@]}" -- "${LIBFUZZER_OPTS_ARR[@]}"

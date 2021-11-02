@@ -774,7 +774,7 @@ impl<T: Ord> SGSet<T> {
 // Debug
 impl<T> Debug for SGSet<T>
 where
-    T: Ord + Debug
+    T: Ord + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set()
@@ -786,7 +786,7 @@ where
 // From array.
 impl<T, const N: usize> From<[T; N]> for SGSet<T>
 where
-    T: Ord
+    T: Ord,
 {
     /// ```
     /// use scapegoat::SGSet;
@@ -803,7 +803,7 @@ where
 // Construct from iterator.
 impl<T> FromIterator<T> for SGSet<T>
 where
-    T: Ord
+    T: Ord,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut sgs = SGSet::new();
@@ -815,7 +815,7 @@ where
 // Extension from iterator.
 impl<T> Extend<T> for SGSet<T>
 where
-    T: Ord
+    T: Ord,
 {
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
         self.bst.extend(iter.into_iter().map(|e| (e, ())));
@@ -825,7 +825,7 @@ where
 // Extension from reference iterator.
 impl<'a, T> Extend<&'a T> for SGSet<T>
 where
-    T: 'a + Ord + Copy
+    T: 'a + Ord + Copy,
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
