@@ -179,6 +179,14 @@ It does, however, offer:
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
 
+### Memory Footprint Demos
+
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: just under 20KB for an x86-64 binary.
+    * Disclaimer: you'll likely want to use more than 3 functions, resulting in more executable code getting included. 20KB is a floor.
+
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: just over 3KB.
+    * Disclaimer: 2-3x more stack space is required for runtime book keeping in operations like rebalancing. 3KB is the arena size.
+
 ### License and Contributing
 
 Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/master/LICENSE).
