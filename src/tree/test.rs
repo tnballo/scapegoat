@@ -177,14 +177,30 @@ fn test_tree_packing() {
     if MAX_ELEMS == 1024 {
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
+        #[cfg(feature = "fast_insert")]
         {
             assert_eq!(size_of::<SGTree<u32, u32>>(), 49_240);
         }
 
         #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        #[cfg(not(feature = "fast_insert"))]
+        {
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 41_032);
+        }
+
+        #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
+        #[cfg(feature = "fast_insert")]
         {
             assert_eq!(size_of::<SGTree<u32, u32>>(), 18_488);
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        #[cfg(not(feature = "fast_insert"))]
+        {
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 16_424);
         }
     }
 }

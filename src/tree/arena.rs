@@ -1,7 +1,12 @@
 use core::slice::{Iter, IterMut};
 
 use super::node::{Node, NodeSwapHistHelper};
+
+#[cfg(feature = "fast_insert")]
 use super::types::{ArenaVec, Idx, IdxVec, SortMetaVec};
+
+#[cfg(not(feature = "fast_insert"))]
+use super::types::{ArenaVec, Idx, SortMetaVec};
 
 use crate::MAX_ELEMS;
 
@@ -11,6 +16,8 @@ use smallnum::SmallUnsigned;
 #[derive(Clone)]
 pub struct NodeArena<K, V> {
     arena: ArenaVec<K, V>,
+
+    #[cfg(feature = "fast_insert")]
     free_list: IdxVec,
 }
 
@@ -21,6 +28,8 @@ impl<K, V> NodeArena<K, V> {
     pub fn new() -> Self {
         NodeArena {
             arena: ArenaVec::new(),
+
+            #[cfg(feature = "fast_insert")]
             free_list: IdxVec::new(),
         }
     }
@@ -46,7 +55,16 @@ impl<K, V> NodeArena<K, V> {
 
     /// Add node to area, growing if necessary, and return addition index.
     pub fn add(&mut self, node: Node<K, V>) -> Idx {
-        match self.free_list.pop() {
+
+        // O(1) find, constant time
+        #[cfg(feature = "fast_insert")]
+        let opt_free_idx = self.free_list.pop();
+
+        // O(n) find, linear search
+        #[cfg(not(feature = "fast_insert"))]
+        let opt_free_idx = self.arena.iter().position(|x| x.is_none()).map(|i| i as Idx);
+
+        match opt_free_idx {
             Some(free_idx) => {
                 debug_assert!(
                     self.arena[free_idx.usize()].is_none(),
@@ -75,6 +93,7 @@ impl<K, V> NodeArena<K, V> {
             self.arena.swap(idx.usize(), len - 1);
 
             // Append removed index to free list
+            #[cfg(feature = "fast_insert")]
             self.free_list.push(idx);
 
             // Retrieve node
@@ -110,6 +129,8 @@ impl<K, V> NodeArena<K, V> {
             if curr_idx != sorted_idx {
                 self.arena.swap(curr_idx.usize(), sorted_idx.usize());
                 swap_history.add(curr_idx, sorted_idx);
+
+                #[cfg(feature = "fast_insert")]
                 self.free_list.retain(|i| *i != sorted_idx);
             }
         }

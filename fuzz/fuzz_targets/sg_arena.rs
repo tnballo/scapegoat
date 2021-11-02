@@ -1,6 +1,7 @@
 #![no_main]
 
 use std::collections::BTreeSet;
+use std::convert::TryInto;
 use std::fmt;
 
 use arbitrary::Arbitrary;
@@ -47,15 +48,15 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
                 let _ = arena.iter_mut();
             },
             ArenaMethod::HardRemove { idx } => {
-                match idx_set.remove(&idx) {
+                match idx_set.remove(&idx.try_into().unwrap()) {
                     false => continue,
                     true => {
-                        let _ = arena.hard_remove(idx);
+                        let _ = arena.hard_remove(idx.try_into().unwrap());
                     }
                 }
             },
             ArenaMethod::HardGet { idx } => {
-                match idx_set.get(&idx) {
+                match idx_set.get(&idx.try_into().unwrap()) {
                     Some(valid_idx) => {
                         let _ = arena.hard_get(*valid_idx);
                     },
@@ -63,7 +64,7 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
                 }
             },
             ArenaMethod::HardGetMut { idx } => {
-                match idx_set.get(&idx) {
+                match idx_set.get(&idx.try_into().unwrap()) {
                     Some(valid_idx) => {
                         let _ = arena.hard_get_mut(*valid_idx);
                     },

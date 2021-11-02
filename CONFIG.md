@@ -1,6 +1,8 @@
-## Advanced Configuration
+# Advanced Configuration
 
 This doc tackles advanced configuration options, it assumed you've read the main [README.md](https://github.com/tnballo/scapegoat/blob/master/README.md).
+
+## Additional Environment Variables
 
 ### Tuning the the tree's `a` factor
 
@@ -11,11 +13,15 @@ The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/G
 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
 
 * As `a` approaches `1.0`, the library will rebalance less. This means quicker insertions, but slower lookups and deletions.
-	* An `a` nearly equal to `1.0` means a tree that never rebalances.
+	* If `a` reached `1.0`, it'd mean a tree that never rebalances.
 
 We choose 2/3, e.g. `a = 0.666...`, by default.
-This default was not empirically chosen, it's just the one used in the [Open Data Structures textbook implementation](https://opendatastructures.org/ods-java/8_Scapegoat_Trees.html) of a scapegoat tree.
-But that implementation is quite different from this library (one major difference being that it uses recursion), so an `a` of 2/3 may not be optimal for the majority of our workloads (testing needed!).
+
+* This is the same  default used in the [recursive] [Open Data Structures textbook implementation](https://opendatastructures.org/ods-java/8_Scapegoat_Trees.html) of a scapegoat tree.
+
+* The original paper does not recommend any specific value for `a`, but Figure 4 shows comparative results for values in the range `0.55 <= a < 0.75`. The authors recommend tuning `a` for your expected workload.
+
+Note our default is almost exactly in the middle of the paper's range, suggesting it's a balanced choice (pun intended).
 
 Just like with stack arena size, `a` can be compile-timed configured by exporting environment variables before build.
 The `a` denominator is the floating point string assigned to env var `SG_ALPHA_NUMERATOR`.
@@ -29,6 +35,18 @@ export SG_ALPHA_DENOMINATOR=3.0
 cargo build --release
 ```
 
+## Additional Features
+
+### The `fast_insert` feature
+
+If this feature is enabled, the internal arena maintains a free list.
+This additional metadata costs stack space (higher memory footprint) but significantly speeds up insertion (lower runtime) for large arenas.
+
+* **Runtime gain if enabled:** `insert` becomes `O(log n)` instead of `O(n log n)`.
+* **Memory penalty if enabled:** up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
+
+In practice, this may only be worth enabling for large arenas (e.g. the set/map is storing multiple thousand items).
+But you're encouraged to perform your own benchmarking and make the best choice for your usecase!
 
 ### The `alt_impl` feature
 
