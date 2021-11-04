@@ -9,6 +9,9 @@ pub struct Node<K, V> {
     pub val: V,
     pub left_idx: Option<Idx>,
     pub right_idx: Option<Idx>,
+
+    #[cfg(feature = "fast_rebalance")]
+    pub subtree_size: Idx,
 }
 
 impl<K, V> Node<K, V> {
@@ -19,6 +22,9 @@ impl<K, V> Node<K, V> {
             val,
             left_idx: None,
             right_idx: None,
+
+            #[cfg(feature = "fast_rebalance")]
+            subtree_size: 0,
         }
     }
 }

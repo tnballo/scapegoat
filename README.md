@@ -136,7 +136,7 @@ Enabling this feature makes two changes:
 2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
 
 That second change is a subtle but interesting one.
-Example of packing saving 50% (24 KB) of RAM usage:
+Example of packing saving 53% (31 KB) of RAM usage:
 
 ```rust
 use core::mem::size_of;
@@ -159,17 +159,17 @@ if temp.capacity() == 1024 {
     // Without packing
     #[cfg(target_pointer_width = "64")]
     #[cfg(not(feature = "high_assurance"))]
-    #[cfg(not(feature = "fast_insert"))]
+    #[cfg(not(feature = "low_mem_insert"))]
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 49_224);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
     }
 
     // With packing
     #[cfg(target_pointer_width = "64")]
     #[cfg(feature = "high_assurance")]
-    #[cfg(not(feature = "fast_insert"))]
+    #[cfg(not(feature = "low_mem_insert"))]
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 24_616);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
     }
 }
 ```
@@ -196,16 +196,20 @@ It offers:
 | Operation | Average Case | Worst Case |
 | --- | --- | --- |
 | `get` | `O(log n)` | `O(log n)` |
-| `insert` | `O(n log n)` | Amortized `O(n log n)` |
+| `insert` | `O(log n)` | Amortized `O(log n)` |
 | `remove` | `O(log n)` | Amortized `O(log n)` |
 
-If [the `fast_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_insert-feature) is enabled, `insert` becomes `O(log n)` instead of `O(n log n)` at the cost of additional stack memory use.
+<!--
+The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and the [`fast_rebalance` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) feature can be used to fine-tune speed-memory tradeoffs.
+-->
+
+The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) can be used to fine-tune a speed-memory tradeoff.
 Space complexity is always `O(n)`.
 
 #### Memory Footprint Demos
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: 18.6KB for an x86-64 binary.
-    * Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included. 18.6KB is a floor.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: 18.8KB for an x86-64 binary.
+    * Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included. 18.8KB is a floor.
 
 * [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: 2.6KB.
     * Caveat: 2-3x more stack space is required for runtime book keeping in operations like rebalancing. 2.6KB is the static size of the arena and all auxiliary metadata (e.g. storage cost).

@@ -15,7 +15,7 @@ include = [
     "src/**/*.rs",
     "benches/**/*.rs",
     "build.rs",
-    "./*.md",
+    "README.md",
     "Cargo.toml",
     "LICENSE",
 ]
@@ -33,7 +33,8 @@ lazy_static = "1"
 [features]
 high_assurance = []
 alt_impl = []
-fast_insert = []
+low_mem_insert = []
+#fast_rebalance = []
 
 [lib]
 name = "scapegoat"

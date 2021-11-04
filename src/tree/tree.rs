@@ -468,6 +468,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Private API -----------------------------------------------------------------------------------------------------
 
+    // TODO: to support the "fast_rebalance" feature, this will need to track path
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     fn priv_get<Q>(&self, key: &Q) -> NodeGetHelper
     where
@@ -518,8 +519,21 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut path = IdxVec::new();
         let new_node = Node::new(key, val);
 
-        // Potential rebalance
+        // Insert
         let opt_val = self.priv_insert(&mut path, new_node);
+        /*
+        #[cfg(feature = "fast_rebalance")]
+        {
+            // TODO: verify that path doesn't include newly added node
+            // Update subtree sizes
+            for parent_idx in &path {
+                let parent_node = self.arena.hard_get_mut(*parent_idx);
+                parent_node.subtree_size += 1;
+            }
+        }
+        */
+
+        // Potential rebalance
         if path.len() > Self::alpha_balance_depth(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
@@ -653,6 +667,7 @@ impl<K: Ord, V> SGTree<K, V> {
         self.priv_remove(ngh)
     }
 
+    // TODO: must decrement subtree size if "fast_rebalance" feature enabled!
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     fn priv_remove(&mut self, ngh: NodeGetHelper) -> Option<Node<K, V>> {
         match ngh.node_idx {
@@ -902,6 +917,7 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Iterative subtree size computation
+    #[cfg(not(feature = "fast_rebalance"))]
     fn get_subtree_size(&self, idx: Idx) -> Idx {
         let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
@@ -921,6 +937,14 @@ impl<K: Ord, V> SGTree<K, V> {
         subtree_size
     }
 
+    /*
+    // Retrieve cached subtree size
+    #[cfg(feature = "fast_rebalance")]
+    fn get_subtree_size(&self, idx: Idx) -> Idx {
+        self.arena.hard_get(idx).subtree_size
+    }
+    */
+
     // Iterative in-place rebuild for balanced subtree
     fn rebuild(&mut self, idx: Idx) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
@@ -928,6 +952,7 @@ impl<K: Ord, V> SGTree<K, V> {
         self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
     }
 
+    // TODO: rebuild must update subtree sizes if "fast_rebalance" feature enabled!
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
     fn rebalance_subtree_from_sorted_idxs(

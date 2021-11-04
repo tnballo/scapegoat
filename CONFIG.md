@@ -37,16 +37,17 @@ cargo build --release
 
 ## Additional Features
 
-### The `fast_insert` feature
+### The `low_mem_insert` feature
 
-If this feature is enabled, the internal arena maintains a free list.
-This additional metadata costs stack space (higher memory footprint) but significantly speeds up insertion (lower runtime) for large arenas.
+If this feature is enabled, the internal arena doesn't maintain a free list.
+Removing this metadata saves stack space (lower memory footprint) but significantly slows down insertion (higher runtime).
+Especially for large arenas.
 
-* **Runtime gain if enabled:** `insert` becomes `O(log n)` instead of `O(n log n)`.
-* **Memory penalty if enabled:** up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
+* **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<usize>()` *per instance* of set/map.
 
-In practice, this may only be worth enabling for large arenas (e.g. the set/map is storing multiple thousand items).
-But you're encouraged to perform your own benchmarking and make the best choice for your usecase!
+* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`.
+
+## Experimental Features
 
 ### The `alt_impl` feature
 
@@ -60,3 +61,13 @@ The `alt_impl` feature enables optimizations proposed in the subsequent PhD thes
 
 The main optimization is eliminating recursion.
 This library already does that, but likely in a way inferior to the "official" algorithm (implemented prior to find/reading the thesis). Please see thesis pages 95 and 97 for the algorithm's pseudo code (needs translation to Rust!).
+
+<!--
+### The `fast_rebalance` feature
+
+TODO: this feature is not yet implemented.
+
+* **Runtime gain if enabled:** does not change algorithmic complexity, but both `insert` and `delete` become faster.
+
+* **Memory penalty if enabled:** costs up to `core::mem::size_of<usize>()` for *every node* in the set/map.
+-->
