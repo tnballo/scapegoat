@@ -34,7 +34,7 @@ lazy_static = "1"
 high_assurance = []
 alt_impl = []
 low_mem_insert = []
-#fast_rebalance = []
+fast_rebalance = []
 
 [lib]
 name = "scapegoat"

@@ -158,16 +158,16 @@ if temp.capacity() == 1024 {
 
     // Without packing
     #[cfg(target_pointer_width = "64")]
-    #[cfg(not(feature = "high_assurance"))]
     #[cfg(not(feature = "low_mem_insert"))]
+    #[cfg(not(feature = "high_assurance"))] // Disabled
     {
         assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
     }
 
     // With packing
     #[cfg(target_pointer_width = "64")]
-    #[cfg(feature = "high_assurance")]
     #[cfg(not(feature = "low_mem_insert"))]
+    #[cfg(feature = "high_assurance")]  // Enabled
     {
         assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
     }
@@ -200,10 +200,10 @@ It offers:
 | `remove` | `O(log n)` | Amortized `O(log n)` |
 
 <!--
-The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and the [`fast_rebalance` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) feature can be used to fine-tune speed-memory tradeoffs.
+The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and the [`fast_rebalance` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) feature can be used to fine-tune a tradeoffs of speed and memory usage.
 -->
 
-The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) can be used to fine-tune a speed-memory tradeoff.
+The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) can be used to fine-tune a tradeoffs of speed and memory usage.
 Space complexity is always `O(n)`.
 
 #### Memory Footprint Demos
