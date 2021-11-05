@@ -2,17 +2,18 @@
 
 This doc tackles advanced configuration options, it assumed you've read the main [README.md](https://github.com/tnballo/scapegoat/blob/master/README.md).
 
-## Additional Environment Variables
+## Additional Configuration
 
 ### Tuning the the tree's `a` factor
 
 The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
 `a` tunes how "aggressively" the data structure self-balances.
+It controls the trade-off between total rebuilding time and maximum height guarantees.
 
-* As `a` approaches `0.5`, the library will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
+* As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
 
-* As `a` approaches `1.0`, the library will rebalance less. This means quicker insertions, but slower lookups and deletions.
+* As `a` approaches `1.0`, the tree will rebalance less often. This means quicker insertions, but slower lookups and deletions.
 	* If `a` reached `1.0`, it'd mean a tree that never rebalances.
 
 We choose 2/3, e.g. `a = 0.666...`, by default.
@@ -35,17 +36,19 @@ export SG_ALPHA_DENOMINATOR=3.0
 cargo build --release
 ```
 
+Unlike stack arena size, `a` can be changed at runtime via the API `set_rebal_param(alpha_num: f32, alpha_denom: f32)`.
+So the library's performance characteristics can be tuned on-the-fly, without recompiling.
+
 ## Additional Features
 
 ### The `low_mem_insert` feature
 
 If this feature is enabled, the internal arena doesn't maintain a free list.
 Removing this metadata saves stack space (lower memory footprint) but significantly slows down insertion (higher runtime).
-Especially for large arenas.
 
 * **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<usize>()` *per instance* of set/map.
 
-* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`.
+* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`. The larger the arena, the more that matters. `get` and `remove` remain unchanged.
 
 ## Experimental Features
 

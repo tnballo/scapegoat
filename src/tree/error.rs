@@ -1,13 +1,13 @@
 // TODO: update case to "SgErr" in v2.0.0
-/// Errors for fallible operations, available when the `high_assurance` feature is enabled.
-#[cfg(feature = "high_assurance")]
+/// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SGErr {
-    /// Requested insert or append operation cannot complete, stack storage is full.
+    /// Requested operation cannot complete, stack storage is full.
+    /// This error is unique to the `high_assurance` feature.
     StackCapacityExceeded,
 
-    /// Reserved for future use
-    Reserved1,
+    /// Invalid rebalance factor requested, cannot set.
+    RebalanceFactorOutOfRange,
 
     /// Reserved for future use
     Reserved2,

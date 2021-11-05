@@ -16,7 +16,6 @@ mod iter;
 pub use iter::{ConsumingIter, Iter, IterMut};
 
 mod error;
-#[cfg(feature = "high_assurance")]
 pub use error::SGErr;
 
 #[allow(clippy::module_inception)]

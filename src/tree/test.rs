@@ -179,28 +179,28 @@ fn test_tree_packing() {
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "low_mem_insert"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 49_240);
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 49_248);
         }
 
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(feature = "low_mem_insert")]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 41_032);
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 41_040);
         }
 
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
         #[cfg(not(feature = "low_mem_insert"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 18_488);
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 18_496);
         }
 
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
         #[cfg(feature = "low_mem_insert")]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 16_424);
+            assert_eq!(size_of::<SGTree<u32, u32>>(), 16_432);
         }
     }
 }
@@ -754,4 +754,25 @@ fn test_clone() {
     let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
     let sgt_2 = sgt_1.clone();
     assert_eq!(sgt_1, sgt_2);
+}
+
+#[test]
+fn test_set_rebal_param() {
+    let data: Vec<(usize, usize)> = (0..100).map(|x| (x, x)).collect();
+
+    let sgt_1 = SGTree::from_iter(data.clone().into_iter());
+
+    // Lax rebalancing
+    let mut sgt_2 = SGTree::new();
+    assert!(sgt_2.set_rebal_param(0.9, 1.0).is_ok());
+    sgt_2.extend(data.clone().into_iter());
+
+    // Strict rebalancing
+    let mut sgt_3 = SGTree::new();
+    assert!(sgt_3.set_rebal_param(1.0, 2.0).is_ok());
+    sgt_3.extend(data.into_iter());
+
+    assert!(sgt_3.rebal_cnt() > sgt_2.rebal_cnt());
+    assert!(sgt_1.rebal_cnt() > sgt_2.rebal_cnt());
+    assert!(sgt_3.rebal_cnt() > sgt_1.rebal_cnt());
 }

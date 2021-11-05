@@ -20,15 +20,15 @@ fn main() {
         #[cfg(not(feature = "low_mem_insert"))]
         {
             // Map of 256 (u8, u8) pairs
-            assert_eq!(size_of::<SGMap<u8, u8>>(), 12_376);
+            assert_eq!(size_of::<SGMap<u8, u8>>(), 12_384);
 
             // Set of 256 u8 values
             // Unfortunately the internal () value in the pair is not optimized out, so same size as map
-            assert_eq!(size_of::<SGSet<u8>>(), 12_376);
+            assert_eq!(size_of::<SGSet<u8>>(), 12_384);
 
             // Moving up to a u16 without packing, both the set and map are actually the same size as the u8 case above!
-            assert_eq!(size_of::<SGMap<u16, u16>>(), 12_376);
-            assert_eq!(size_of::<SGSet<u16>>(), 12_376);
+            assert_eq!(size_of::<SGMap<u16, u16>>(), 12_384);
+            assert_eq!(size_of::<SGSet<u16>>(), 12_384);
         }
 
         // With packing
@@ -37,15 +37,15 @@ fn main() {
         #[cfg(feature = "low_mem_insert")]
         {
             // Packed map of 256 (u8, u8) pairs
-            assert_eq!(size_of::<SGMap<u8, u8>>(), 2_600);
+            assert_eq!(size_of::<SGMap<u8, u8>>(), 2_608);
 
             // Packed set of 256 u8 values
             // Unfortunately the internal () value in the pair is not optimized out, so same size as map
-            assert_eq!(size_of::<SGSet<u8>>(), 2_600);
+            assert_eq!(size_of::<SGSet<u8>>(), 2_608);
 
             // Moving up to a u16, we see alignment that allows optimization of the () value - set is smaller than map!
-            assert_eq!(size_of::<SGMap<u16, u16>>(), 3_112);
-            assert_eq!(size_of::<SGSet<u16>>(), 2_600);
+            assert_eq!(size_of::<SGMap<u16, u16>>(), 3_120);
+            assert_eq!(size_of::<SGSet<u16>>(), 2_608);
         }
     }
 }

@@ -161,7 +161,7 @@ if temp.capacity() == 1024 {
     #[cfg(not(feature = "low_mem_insert"))]
     #[cfg(not(feature = "high_assurance"))] // Disabled
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_440);
     }
 
     // With packing
@@ -169,7 +169,7 @@ if temp.capacity() == 1024 {
     #[cfg(not(feature = "low_mem_insert"))]
     #[cfg(feature = "high_assurance")]  // Enabled
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_688);
     }
 }
 ```
@@ -190,6 +190,8 @@ It offers:
 * **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
+
+* **Tunable Performance:** A [single floating point value](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#tuning-the-the-trees-a-factor) optimizes relative performance of `insert`, `get`, and `remove` operation classes. And it can be changed at runtime.
 
 #### Algorithmic Complexity
 

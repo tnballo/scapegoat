@@ -5,11 +5,8 @@ use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use crate::tree::{
-    ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGTree,
+    ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGErr, SGTree,
 };
-
-#[cfg(feature = "high_assurance")]
-use crate::tree::SGErr;
 
 /// Ordered set.
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
@@ -31,6 +28,32 @@ impl<T: Ord> SGSet<T> {
     /// ```
     pub fn new() -> Self {
         SGSet { bst: SGTree::new() }
+    }
+
+    /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
+    /// `a` tunes how "aggressively" the data structure self-balances.
+    /// It controls the trade-off between total rebuilding time and maximum height guarantees.
+    ///
+    /// * As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
+    /// 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
+    ///
+    /// * As `a` approaches `1.0`, the tree will rebalance less often. This means quicker insertions, but slower lookups and deletions.
+    /// 	* If `a` reached `1.0`, it'd mean a tree that never rebalances.
+    ///
+    /// Returns `Err` if `0.5 <= alpha_num / alpha_denom < 1.0` isn't `true` (invalid `a`, out of range).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set: SGSet<isize> = SGSet::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
+    /// ```
+    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
+        self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of set elements.

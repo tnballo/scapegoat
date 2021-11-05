@@ -7,14 +7,12 @@ use core::mem;
 use core::ops::Index;
 
 use super::arena::NodeArena;
+use super::error::SGErr;
 use super::iter::{ConsumingIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::types::{
     Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
 };
-
-#[cfg(feature = "high_assurance")]
-use super::error::SGErr;
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
@@ -27,11 +25,18 @@ use smallvec::smallvec;
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
 pub struct SGTree<K: Ord, V> {
+    // Storage
     pub(crate) arena: NodeArena<K, V>,
     pub(crate) root_idx: Option<Idx>,
+
+    // Query cache
     max_idx: Idx,
     min_idx: Idx,
     curr_size: Idx,
+
+    // Balance control
+    alpha_num: f32,
+    alpha_denom: f32,
     max_size: Idx,
     rebal_cnt: usize,
 }
@@ -47,8 +52,44 @@ impl<K: Ord, V> SGTree<K, V> {
             max_idx: 0,
             min_idx: 0,
             curr_size: 0,
+            alpha_num: ALPHA_NUM,
+            alpha_denom: ALPHA_DENOM,
             max_size: 0,
             rebal_cnt: 0,
+        }
+    }
+
+    /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
+    /// `a` tunes how "aggressively" the data structure self-balances.
+    /// It controls the trade-off between total rebuilding time and maximum height guarantees.
+    ///
+    /// * As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
+    /// 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
+    ///
+    /// * As `a` approaches `1.0`, the tree will rebalance less often. This means quicker insertions, but slower lookups and deletions.
+    /// 	* If `a` reached `1.0`, it'd mean a tree that never rebalances.
+    ///
+    /// Returns `Err` if `0.5 <= alpha_num / alpha_denom < 1.0` isn't `true` (invalid `a`, out of range).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let mut sgt: SGTree<isize, isize> = SGTree::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
+    /// ```
+    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
+        let a = alpha_num / alpha_denom;
+        match (0.5 <= a) && (a < 1.0) {
+            true => {
+                self.alpha_num = alpha_num;
+                self.alpha_denom = alpha_denom;
+                Ok(())
+            }
+            false => Err(SGErr::RebalanceFactorOutOfRange),
         }
     }
 
@@ -573,7 +614,7 @@ impl<K: Ord, V> SGTree<K, V> {
         }
 
         // Potential rebalance
-        if path.len() > Self::alpha_balance_depth(self.max_size) {
+        if path.len() > self.alpha_balance_depth(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
                 self.rebuild(scapegoat_idx);
             }
@@ -944,7 +985,8 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
         while (parent_path_idx > 0)
-            && (ALPHA_DENOM * node_subtree_size as f32) <= (ALPHA_NUM * parent_subtree_size as f32)
+            && (self.alpha_denom * node_subtree_size as f32)
+                <= (self.alpha_num * parent_subtree_size as f32)
         {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
@@ -969,7 +1011,7 @@ impl<K: Ord, V> SGTree<K, V> {
         let mut parent_path_idx = path.len() - 1;
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
-        while (parent_path_idx > 0) && (i <= Self::alpha_balance_depth(node_subtree_size)) {
+        while (parent_path_idx > 0) && (i <= self.alpha_balance_depth(node_subtree_size)) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             i += 1;
@@ -1095,9 +1137,9 @@ impl<K: Ord, V> SGTree<K, V> {
     }
 
     // Alpha weight balance computation helper.
-    fn alpha_balance_depth(val: Idx) -> usize {
+    fn alpha_balance_depth(&self, val: Idx) -> usize {
         // log base (1/alpha), hence (denom/num)
-        (val as f32).log(ALPHA_DENOM / ALPHA_NUM).floor() as usize
+        (val as f32).log(self.alpha_denom / self.alpha_num).floor() as usize
     }
 }
 
