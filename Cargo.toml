@@ -41,5 +41,9 @@ name = "scapegoat"
 path = "src/lib.rs"
 
 [[bench]]
-name = "bench_set"
+name = "bench_set_rand"
+harness = false
+
+[[bench]]
+name = "bench_set_seq"
 harness = false
