@@ -32,7 +32,7 @@ impl<T: Ord> SGSet<T> {
 
     /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
     /// `a` tunes how "aggressively" the data structure self-balances.
-    /// It controls the trade-off between total rebuilding time and maximum height guarantees.
+    /// It controls the trade-off between total rebuild time and maximum height guarantees.
     ///
     /// * As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
     ///     * An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).

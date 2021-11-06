@@ -122,7 +122,7 @@ For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.or
 
 ```ignore
 [dependencies]
-scapegoat = { version = "1", features = ["high_assurance"] }
+scapegoat = { version = "^1.6", features = ["high_assurance"] }
 ```
 
 Enabling this feature makes two changes:

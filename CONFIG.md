@@ -8,7 +8,7 @@ This doc tackles advanced configuration options, it assumed you've read the main
 
 The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
 `a` tunes how "aggressively" the data structure self-balances.
-It controls the trade-off between total rebuilding time and maximum height guarantees.
+It controls the trade-off between total rebuild time and maximum height guarantees.
 
 * As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
@@ -47,7 +47,7 @@ Removing this metadata saves stack space (lower memory footprint) but significan
 
 * **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
 
-* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`. The larger the arena, the more that matters. `get` and `remove` remain unchanged.
+* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`. The larger the arena, the more that matters (algorithmic complexity downgrade). `get` and `remove` remain unchanged.
 
 ### The `fast_rebalance` feature
 
@@ -56,7 +56,7 @@ This metadata increases stack space usage (higher memory footprint) but signific
 
 * **Memory penalty if enabled:** costs up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
 
-* **Runtime gain if enabled:** does not change algorithmic complexity, but both `insert` and `remove` become faster. The larger the arena, the more that matters. `get` remains unchanged.
+* **Runtime gain if enabled:** does not change algorithmic complexity, but `insert` becomes faster. `get` remains unchanged. Due to extra book keeping needed to keep subtree size caches updated following node removal, `remove` slows down for the average case but may improve for the worst case.
 
 ## Experimental Features
 
