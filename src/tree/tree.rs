@@ -939,10 +939,9 @@ impl<K: Ord, V> SGTree<K, V> {
                 {
                     drained_sgt.insert(node.key, node.val);
                 }
-                #[allow(unused_must_use)]
                 #[cfg(feature = "high_assurance")]
                 {
-                    drained_sgt.insert(node.key, node.val);
+                    assert!(drained_sgt.insert(node.key, node.val).is_ok());
                 }
             }
         }

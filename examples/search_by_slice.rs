@@ -24,11 +24,10 @@ fn main() {
         set.insert(bad_code);
         set.insert(bad_food);
     }
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        set.insert(bad_code);
-        set.insert(bad_food);
+        assert!(set.insert(bad_code).is_ok());
+        assert!(set.insert(bad_food).is_ok());
     }
 
     // Vec<u8> is sized, it's actually a fat pointer to a heap buffer.

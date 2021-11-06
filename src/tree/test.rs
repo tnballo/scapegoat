@@ -23,11 +23,8 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str>, Vec<usize>) {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(*k, "n/a");
-        }
+        assert!(sgt.insert(*k, "n/a").is_ok());
 
         assert_logical_invariants(&sgt);
     }
@@ -104,11 +101,8 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(rand_key, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(rand_key, "n/a");
-        }
+        assert!(sgt.insert(rand_key, "n/a").is_ok());
 
         // Verify internal state post-insert
         if check_invars {
@@ -296,12 +290,11 @@ fn test_append() {
         a.insert(3, "3");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.insert(1, "1");
-        a.insert(2, "2");
-        a.insert(3, "3");
+        assert!(a.insert(1, "1").is_ok());
+        assert!(a.insert(2, "2").is_ok());
+        assert!(a.insert(3, "3").is_ok());
     }
 
     let mut b = SGTree::new();
@@ -314,13 +307,12 @@ fn test_append() {
         a.append(&mut b);
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.insert(4, "4");
-        b.insert(5, "5");
-        b.insert(6, "6");
-        a.append(&mut b);
+        assert!(b.insert(4, "4").is_ok());
+        assert!(b.insert(5, "5").is_ok());
+        assert!(b.insert(6, "6").is_ok());
+        assert!(a.append(&mut b).is_ok());
     }
 
     assert!(b.is_empty());
@@ -342,11 +334,8 @@ fn test_two_child_removal_case_1() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(*k, "n/a");
-        }
+        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     sgt.remove(&to_remove);
@@ -368,11 +357,8 @@ fn test_two_child_removal_case_2() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(*k, "n/a");
-        }
+        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     sgt.remove(&to_remove);
@@ -394,11 +380,8 @@ fn test_two_child_removal_case_3() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(*k, "n/a");
-        }
+        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     sgt.remove(&to_remove);
@@ -468,11 +451,8 @@ fn test_first_last() {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
-        {
-            sgt.insert(*k, "n/a");
-        }
+        assert!(sgt.insert(*k, "n/a").is_ok());
 
         assert_logical_invariants(&sgt);
         sgt.contains_key(k);
@@ -503,12 +483,11 @@ fn test_subtree_rebalance() {
         sgt.insert(13658362701324851025, "n/a");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgt.insert(237197427728999687, "n/a");
-        sgt.insert(2328219650045037451, "n/a");
-        sgt.insert(13658362701324851025, "n/a");
+        assert!(sgt.insert(237197427728999687, "n/a").is_ok());
+        assert!(sgt.insert(2328219650045037451, "n/a").is_ok());
+        assert!(sgt.insert(13658362701324851025, "n/a").is_ok());
     }
 
     sgt.remove(&13658362701324851025);
@@ -533,25 +512,24 @@ fn test_subtree_rebalance() {
         sgt.insert(9350363297060113585, "n/a");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgt.insert(2239831466376212988, "n/a");
-        sgt.insert(15954331640746224573, "n/a");
-        sgt.insert(8202281457156668544, "n/a");
-        sgt.insert(5226917524540172628, "n/a");
-        sgt.insert(11823668523937575827, "n/a");
-        sgt.insert(13519144312507908668, "n/a");
-        sgt.insert(17799627035639903362, "n/a");
-        sgt.insert(17491737414383996868, "n/a");
-        sgt.insert(2247619647701733096, "n/a");
-        sgt.insert(15122725631405182851, "n/a");
-        sgt.insert(9837932133859010449, "n/a");
-        sgt.insert(15426779056379992972, "n/a");
-        sgt.insert(1963900452029117196, "n/a");
-        sgt.insert(1328762018325194497, "n/a");
-        sgt.insert(7471075696232724572, "n/a");
-        sgt.insert(9350363297060113585, "n/a");
+        assert!(sgt.insert(2239831466376212988, "n/a").is_ok());
+        assert!(sgt.insert(15954331640746224573, "n/a").is_ok());
+        assert!(sgt.insert(8202281457156668544, "n/a").is_ok());
+        assert!(sgt.insert(5226917524540172628, "n/a").is_ok());
+        assert!(sgt.insert(11823668523937575827, "n/a").is_ok());
+        assert!(sgt.insert(13519144312507908668, "n/a").is_ok());
+        assert!(sgt.insert(17799627035639903362, "n/a").is_ok());
+        assert!(sgt.insert(17491737414383996868, "n/a").is_ok());
+        assert!(sgt.insert(2247619647701733096, "n/a").is_ok());
+        assert!(sgt.insert(15122725631405182851, "n/a").is_ok());
+        assert!(sgt.insert(9837932133859010449, "n/a").is_ok());
+        assert!(sgt.insert(15426779056379992972, "n/a").is_ok());
+        assert!(sgt.insert(1963900452029117196, "n/a").is_ok());
+        assert!(sgt.insert(1328762018325194497, "n/a").is_ok());
+        assert!(sgt.insert(7471075696232724572, "n/a").is_ok());
+        assert!(sgt.insert(9350363297060113585, "n/a").is_ok());
     }
 
     sgt.remove(&9350363297060113585);
@@ -564,10 +542,7 @@ fn test_subtree_rebalance() {
     sgt.insert(critical_val, "n/a");
 
     #[cfg(feature = "high_assurance")]
-    #[allow(unused_must_use)]
-    {
-        sgt.insert(critical_val, "n/a");
-    }
+    assert!(sgt.insert(critical_val, "n/a").is_ok());
 
     assert!(sgt.contains_key(&11823668523937575827));
     assert!(sgt.contains_key(&critical_val));
@@ -606,11 +581,10 @@ fn test_retain() {
         sg_map.insert(14987934384537018497, 0);
         sg_map.insert(14483576400934207487, 0);
     }
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sg_map.insert(14987934384537018497, 0);
-        sg_map.insert(14483576400934207487, 0);
+        assert!(sg_map.insert(14987934384537018497, 0).is_ok());
+        assert!(sg_map.insert(14483576400934207487, 0).is_ok());
     }
 
     assert!(sg_map.iter().eq(bt_map.iter()));
@@ -628,14 +602,10 @@ fn test_extend() {
 
     for i in 0..5 {
         #[cfg(not(feature = "high_assurance"))]
-        {
-            sgt_1.insert(i, i);
-        }
-        #[allow(unused_must_use)]
+        sgt_1.insert(i, i);
+
         #[cfg(feature = "high_assurance")]
-        {
-            sgt_1.insert(i, i);
-        }
+        assert!(sgt_1.insert(i, i).is_ok());
     }
 
     let iterable_1: SmallVec<[(&usize, &usize); 5]> =
@@ -645,14 +615,10 @@ fn test_extend() {
 
     for i in 5..10 {
         #[cfg(not(feature = "high_assurance"))]
-        {
-            sgt_2.insert(i, i);
-        }
-        #[allow(unused_must_use)]
+        sgt_2.insert(i, i);
+
         #[cfg(feature = "high_assurance")]
-        {
-            sgt_2.insert(i, i);
-        }
+        assert!(sgt_2.insert(i, i).is_ok());
     }
 
     let iterable_2: SmallVec<[(&usize, &usize); 5]> =
@@ -692,11 +658,10 @@ fn test_slice_search() {
         sgt.insert(bad_code, "badcode");
         sgt.insert(bad_food, "badfood");
     }
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgt.insert(bad_code, "badcode");
-        sgt.insert(bad_food, "badfood");
+        assert!(sgt.insert(bad_code, "badcode").is_ok());
+        assert!(sgt.insert(bad_food, "badfood").is_ok());
     }
 
     let bad_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD];

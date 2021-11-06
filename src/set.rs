@@ -327,10 +327,9 @@ impl<T: Ord> SGSet<T> {
         {
             self.insert(value);
         }
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
         {
-            self.insert(value);
+            assert!(self.insert(value).is_ok());
         }
 
         removed

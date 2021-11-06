@@ -27,7 +27,6 @@ Note our default is almost exactly in the middle of the paper's range, suggestin
 Just like with stack arena size, `a` can be compile-timed configured by exporting environment variables before build.
 The `a` denominator is the floating point string assigned to env var `SG_ALPHA_NUMERATOR`.
 The `a` denominator is the floating point string assigned to env var `SG_ALPHA_DENOMINATOR`.
-
 For example, manually setting the default 2/3 would be:
 
 ```
@@ -36,8 +35,8 @@ export SG_ALPHA_DENOMINATOR=3.0
 cargo build --release
 ```
 
-Unlike stack arena size, `a` can be changed at runtime via the API `set_rebal_param(alpha_num: f32, alpha_denom: f32)`.
-So the library's performance characteristics can be tuned on-the-fly, without recompiling.
+`a` can also be changed at runtime via the API `set_rebal_param(alpha_num: f32, alpha_denom: f32)`.
+The library's performance characteristics can be tuned on-the-fly, without recompiling.
 
 ## Additional Features
 
@@ -52,8 +51,8 @@ Removing this metadata saves stack space (lower memory footprint) but significan
 
 ### The `fast_rebalance` feature
 
-If this feature is enabled, every node stores an additional piece of metadata: subtree size.
-This metadata increases stack space (higher memory footprint) but significantly speeds up rebalancing operations (faster runtime).
+If this feature is enabled, every node stores an additional piece of internal metadata: subtree size.
+This metadata increases stack space usage (higher memory footprint) but significantly speeds up rebalancing operations (faster runtime).
 
 * **Memory penalty if enabled:** costs up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
 
