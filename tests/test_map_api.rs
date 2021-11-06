@@ -40,14 +40,13 @@ fn test_basic_map_functionality() {
         sgm.insert(5, "5");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgm.insert(1, "1");
-        sgm.insert(2, "2");
-        sgm.insert(3, "3");
-        sgm.insert(4, "4");
-        sgm.insert(5, "5");
+        assert!(sgm.insert(1, "1").is_ok());
+        assert!(sgm.insert(2, "2").is_ok());
+        assert!(sgm.insert(3, "3").is_ok());
+        assert!(sgm.insert(4, "4").is_ok());
+        assert!(sgm.insert(5, "5").is_ok());
     }
 
     assert!(!sgm.is_empty());
@@ -100,12 +99,11 @@ fn test_basic_map_functionality() {
         sgm.insert(10, "10");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        sgm.insert(0, "0");
-        sgm.insert(3, "3");
-        sgm.insert(10, "10");
+        assert!(sgm.insert(0, "0").is_ok());
+        assert!(sgm.insert(3, "3").is_ok());
+        assert!(sgm.insert(10, "10").is_ok());
     }
 
     assert_eq!(sgm.len(), 5);
@@ -212,10 +210,9 @@ fn test_map_iter_mut_rand() {
         #[cfg(not(feature = "high_assurance"))]
         sgm.insert(rng.gen(), 0);
 
-        #[allow(unused_must_use)]
         #[cfg(feature = "high_assurance")]
         {
-            sgm.insert(rng.gen(), 0);
+            assert!(sgm.insert(rng.gen(), 0).is_ok());
         }
     }
 
@@ -250,12 +247,11 @@ fn test_map_append() {
         a.insert(3, "3");
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        a.insert(1, "1");
-        a.insert(2, "2");
-        a.insert(3, "3");
+        assert!(a.insert(1, "1").is_ok());
+        assert!(a.insert(2, "2").is_ok());
+        assert!(a.insert(3, "3").is_ok());
     }
 
     let mut b = SGMap::new();
@@ -268,13 +264,12 @@ fn test_map_append() {
         a.append(&mut b);
     }
 
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        b.insert(4, "4");
-        b.insert(5, "5");
-        b.insert(6, "6");
-        a.append(&mut b);
+        assert!(b.insert(4, "4").is_ok());
+        assert!(b.insert(5, "5").is_ok());
+        assert!(b.insert(6, "6").is_ok());
+        assert!(a.append(&mut b).is_ok());
     }
 
     assert!(b.is_empty());

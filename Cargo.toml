@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "1.5.0"
+version = "1.6.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -12,9 +12,10 @@ keywords = ["scapegoat", "tree", "set", "map", "no_std"]
 categories = ["algorithms", "data-structures", "no-std", "embedded"]
 description = "Safe, embedded-friendly ordered set/map via a scapegoat tree."
 include = [
-    "**/*.rs",
-    "**/*.md",
-    "**/*.sh",
+    "src/**/*.rs",
+    "benches/**/*.rs",
+    "build.rs",
+    "README.md",
     "Cargo.toml",
     "LICENSE",
 ]
@@ -32,11 +33,17 @@ lazy_static = "1"
 [features]
 high_assurance = []
 alt_impl = []
+low_mem_insert = []
+fast_rebalance = []
 
 [lib]
 name = "scapegoat"
 path = "src/lib.rs"
 
 [[bench]]
-name = "bench_set"
+name = "bench_set_rand"
+harness = false
+
+[[bench]]
+name = "bench_set_seq"
 harness = false

@@ -122,7 +122,14 @@ For more advanced configuration options, see [the documentation here](https://gi
 
 ### The `high_assurance` Feature
 
-For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code), enabling the `high_assurance` feature makes two changes:
+For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code), the `high_assurance` feature can be enabled with the standard `Cargo.toml` declaration:
+
+```rust
+[dependencies]
+scapegoat = { version = "1", features = ["high_assurance"] }
+```
+
+Enabling this feature makes two changes:
 
 1. **Front-end, API Tweak:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, so caller must handle. No heap use, no panic potential on insert.
 
@@ -147,25 +154,63 @@ use scapegoat::SGMap;
 
 // This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)
 let temp: SGMap<u64, u64> = SGMap::new();
-if temp.capacity() == 1024 {
+let other_features_enabled = cfg!(any(feature = "fast_rebalance", feature = "low_mem_insert"));
+if temp.capacity() == 1024 && (!other_features_enabled) {
 
     // Without packing
     #[cfg(target_pointer_width = "64")]
-    #[cfg(not(feature = "high_assurance"))]
+    #[cfg(not(feature = "high_assurance"))] // Disabled
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_432);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_440);
     }
 
     // With packing
     #[cfg(target_pointer_width = "64")]
-    #[cfg(feature = "high_assurance")]
+    #[cfg(feature = "high_assurance")]  // Enabled
     {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_680);
+        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_688);
     }
 }
 ```
 
-### Trusted Dependencies
+### Considerations
+
+#### General Goals
+
+This project is an exercise in safe, portable data structure design.
+The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
+Without sacrificing safety.
+
+`scapegoat` is not as fast or mature as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/) (benchmarks via `cargo bench`).
+The standard library has been heavily optimized for cache performance.
+This library is optimized for low, stack-only memory footprint.
+It offers:
+
+* **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
+
+* **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
+
+* **Tunable Performance:** A [single floating point value](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#tuning-the-the-trees-a-factor) optimizes relative performance of `insert`, `get`, and `remove` operation classes. And it can be changed at runtime.
+
+#### Algorithmic Complexity
+
+Space complexity is always `O(n)`.
+
+| Operation | Average Case | Worst Case |
+| --- | --- | --- |
+| `get` | `O(log n)` | `O(log n)` |
+| `insert` | `O(log n)` | Amortized `O(log n)` |
+| `remove` | `O(log n)` | Amortized `O(log n)` |
+
+The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
+
+#### Memory Footprint Demos
+
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **18.8KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
+
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: 2-3x more stack space is required for runtime book keeping (e.g. rebalancing).
+
+#### Trusted Dependencies
 
 This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
@@ -173,18 +218,7 @@ This library has three dependencies, each of which have no dependencies of their
 * [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
 * [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer packing.
 
-### Considerations
-
-This project is an exercise in safe, portable data structure design.
-It's not as mature, fast, or memory efficient as the [standard library's `BTreeMap`/`BTreeSet`](http://cglab.ca/~abeinges/blah/rust-btree-case/) (benchmarks via `cargo bench`).
-It does, however, offer:
-
-* **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported!
-
-* **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
-
 ### License and Contributing
 
 Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/master/LICENSE).
 Contributions are welcome!
-

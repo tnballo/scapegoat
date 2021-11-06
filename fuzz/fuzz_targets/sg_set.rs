@@ -1,6 +1,5 @@
 #![no_main]
 #![feature(map_first_last)]
-#![feature(btree_retain)]
 
 use std::collections::BTreeSet;
 use std::iter::FromIterator;

@@ -16,13 +16,12 @@ fn main() {
         example.insert(1, "Please");
         example.insert(4, "borrow checker");
     }
-    #[allow(unused_must_use)]
     #[cfg(feature = "high_assurance")]
     {
-        example.insert(3, "the");
-        example.insert(2, "don't blame");
-        example.insert(1, "Please");
-        example.insert(4, "borrow checker");
+        assert!(example.insert(3, "the").is_ok());
+        assert!(example.insert(2, "don't blame").is_ok());
+        assert!(example.insert(1, "Please").is_ok());
+        assert!(example.insert(4, "borrow checker").is_ok());
     }
 
     // Ordered reference iterator
