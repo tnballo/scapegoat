@@ -64,10 +64,10 @@ impl<K: Ord, V> SGTree<K, V> {
     /// It controls the trade-off between total rebuilding time and maximum height guarantees.
     ///
     /// * As `a` approaches `0.5`, the tree will rebalance more often. Ths means slower insertions, but faster lookups and deletions.
-    /// 	* An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
+    ///     * An `a` equal to `0.5` means a tree that always maintains a perfect balance (e.g."complete" binary tree, at all times).
     ///
     /// * As `a` approaches `1.0`, the tree will rebalance less often. This means quicker insertions, but slower lookups and deletions.
-    /// 	* If `a` reached `1.0`, it'd mean a tree that never rebalances.
+    ///     * If `a` reached `1.0`, it'd mean a tree that never rebalances.
     ///
     /// Returns `Err` if `0.5 <= alpha_num / alpha_denom < 1.0` isn't `true` (invalid `a`, out of range).
     ///
@@ -83,7 +83,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// ```
     pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
         let a = alpha_num / alpha_denom;
-        match (0.5 <= a) && (a < 1.0) {
+        match (0.5..1.0).contains(&a) {
             true => {
                 self.alpha_num = alpha_num;
                 self.alpha_denom = alpha_denom;
