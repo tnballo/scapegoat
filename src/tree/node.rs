@@ -24,7 +24,7 @@ impl<K, V> Node<K, V> {
             right_idx: None,
 
             #[cfg(feature = "fast_rebalance")]
-            subtree_size: 0,
+            subtree_size: 1,
         }
     }
 }
@@ -137,6 +137,8 @@ impl NodeSwapHistHelper {
     }
 }
 
+// Note: low_mem_insert feature doesn't affect node size, only arena size.
+#[cfg(not(feature = "low_mem_insert"))]
 #[cfg(test)]
 mod tests {
     use super::Node;
@@ -147,14 +149,37 @@ mod tests {
 
     #[test]
     fn test_node_packing() {
+        // No features
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
             assert_eq!(size_of::<Node<u32, u32>>(), 40);
         }
 
+        // All features
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
+        #[cfg(feature = "fast_rebalance")]
+        {
+            // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
+            if MAX_ELEMS < u16::MAX.into() {
+                assert_eq!(size_of::<Node<u32, u32>>(), 20);
+            }
+        }
+
+        // fast_rebalance only
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        #[cfg(feature = "fast_rebalance")]
+        {
+            assert_eq!(size_of::<Node<u32, u32>>(), 48);
+        }
+
+        // high_assurance only
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
             // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {

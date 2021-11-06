@@ -1,9 +1,8 @@
 use core::fmt::Debug;
 use core::iter::FromIterator;
-use core::mem::size_of;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use super::SGTree;
+use super::{SGErr, SGTree};
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -175,32 +174,58 @@ where
 fn test_tree_packing() {
     // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
     if MAX_ELEMS == 1024 {
+        // No features
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "low_mem_insert"))]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 49_248);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 49_248);
         }
 
+        // All features
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(feature = "high_assurance")]
+        #[cfg(feature = "low_mem_insert")]
+        #[cfg(feature = "fast_rebalance")]
+        {
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 20_528);
+        }
+
+        // low_mem_insert only
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(feature = "low_mem_insert")]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 41_040);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 41_040);
         }
 
+        // high_assurance only
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
         #[cfg(not(feature = "low_mem_insert"))]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 18_496);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 18_496);
         }
 
+        // fast_rebalance only
+        #[cfg(target_pointer_width = "64")]
+        #[cfg(not(feature = "high_assurance"))]
+        #[cfg(not(feature = "low_mem_insert"))]
+        #[cfg(feature = "fast_rebalance")]
+        {
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 57_440);
+        }
+
+        // Optimize for size
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "high_assurance")]
         #[cfg(feature = "low_mem_insert")]
+        #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(size_of::<SGTree<u32, u32>>(), 16_432);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32>>(), 16_432);
         }
     }
 }
@@ -547,6 +572,8 @@ fn test_subtree_rebalance() {
     assert!(sgt.contains_key(&11823668523937575827));
     assert!(sgt.contains_key(&critical_val));
     assert!(sgt.contains_key(&13519144312507908668));
+
+    assert_eq!(sgt.rebal_cnt(), 1);
 }
 
 #[test]
@@ -758,6 +785,10 @@ fn test_clone() {
 
 #[test]
 fn test_set_rebal_param() {
+    #[cfg(not(feature = "high_assurance"))]
+    let data: Vec<(usize, usize)> = (0..10_000).map(|x| (x, x)).collect();
+
+    #[cfg(feature = "high_assurance")]
     let data: Vec<(usize, usize)> = (0..100).map(|x| (x, x)).collect();
 
     let sgt_1 = SGTree::from_iter(data.clone().into_iter());
@@ -772,7 +803,28 @@ fn test_set_rebal_param() {
     assert!(sgt_3.set_rebal_param(1.0, 2.0).is_ok());
     sgt_3.extend(data.into_iter());
 
+    // Invalid rebalance factor
+    assert_eq!(
+        sgt_3.set_rebal_param(2.0, 1.0),
+        Err(SGErr::RebalanceFactorOutOfRange)
+    );
+
+    // Alpha tuning OK
     assert!(sgt_3.rebal_cnt() > sgt_2.rebal_cnt());
     assert!(sgt_1.rebal_cnt() > sgt_2.rebal_cnt());
     assert!(sgt_3.rebal_cnt() > sgt_1.rebal_cnt());
+
+    // Exact counts, useful to verify that different features being enabled don't change these numbers
+    #[cfg(feature = "high_assurance")]
+    {
+        assert_eq!(sgt_1.rebal_cnt(), 52);
+        assert_eq!(sgt_2.rebal_cnt(), 8);
+        assert_eq!(sgt_3.rebal_cnt(), 93);
+    }
+    #[cfg(not(feature = "high_assurance"))]
+    {
+        assert_eq!(sgt_1.rebal_cnt(), 5_475);
+        assert_eq!(sgt_2.rebal_cnt(), 1_192);
+        assert_eq!(sgt_3.rebal_cnt(), 9_987);
+    }
 }

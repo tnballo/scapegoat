@@ -605,7 +605,6 @@ impl<K: Ord, V> SGTree<K, V> {
 
         #[cfg(feature = "fast_rebalance")]
         {
-            // TODO: verify that path doesn't include newly added node
             // Update subtree sizes
             for parent_idx in &path {
                 let parent_node = self.arena.hard_get_mut(*parent_idx);
@@ -760,7 +759,6 @@ impl<K: Ord, V> SGTree<K, V> {
         self.priv_remove(Some(&path), ngh)
     }
 
-    // TODO: must decrement subtree size if "fast_rebalance" feature enabled!
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
     fn priv_remove(&mut self, opt_path: Option<&IdxVec>, ngh: NodeGetHelper) -> Option<Node<K, V>> {
@@ -786,6 +784,10 @@ impl<K: Ord, V> SGTree<K, V> {
                     (Some(_), Some(right_idx)) => {
                         let mut min_idx = right_idx;
                         let mut min_parent_idx = node_idx;
+
+                        #[cfg(feature = "fast_rebalance")]
+                        let min_node_subtree_size = node_to_remove.subtree_size - 1;
+
                         loop {
                             let min_node = self.arena.hard_get(min_idx);
                             match min_node.left_idx {
@@ -804,6 +806,11 @@ impl<K: Ord, V> SGTree<K, V> {
                                             let min_parent_node =
                                                 self.arena.hard_get_mut(min_parent_idx);
                                             min_parent_node.left_idx = unlink_new_child;
+
+                                            #[cfg(feature = "fast_rebalance")]
+                                            {
+                                                min_parent_node.subtree_size -= 1;
+                                            }
                                         }
                                         break;
                                     }
@@ -814,6 +821,11 @@ impl<K: Ord, V> SGTree<K, V> {
                                             let min_parent_node =
                                                 self.arena.hard_get_mut(min_parent_idx);
                                             min_parent_node.left_idx = None;
+
+                                            #[cfg(feature = "fast_rebalance")]
+                                            {
+                                                min_parent_node.subtree_size -= 1;
+                                            }
                                         }
                                         break;
                                     }
@@ -825,6 +837,11 @@ impl<K: Ord, V> SGTree<K, V> {
                         let min_node = self.arena.hard_get_mut(min_idx);
                         min_node.right_idx = node_to_remove_right_idx;
                         min_node.left_idx = node_to_remove_left_idx;
+
+                        #[cfg(feature = "fast_rebalance")]
+                        {
+                            min_node.subtree_size = min_node_subtree_size;
+                        }
 
                         // Return as new child
                         Some(min_idx)
@@ -864,6 +881,7 @@ impl<K: Ord, V> SGTree<K, V> {
                     if let Some(path) = opt_path {
                         for parent_idx in path {
                             let parent_node = self.arena.hard_get_mut(*parent_idx);
+                            debug_assert!(parent_node.subtree_size > 1);
                             parent_node.subtree_size -= 1;
                         }
                     }
@@ -1057,7 +1075,6 @@ impl<K: Ord, V> SGTree<K, V> {
         self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
     }
 
-    // TODO: rebuild must update subtree sizes if "fast_rebalance" feature enabled!
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
     fn rebalance_subtree_from_sorted_idxs(
@@ -1112,6 +1129,7 @@ impl<K: Ord, V> SGTree<K, V> {
             let parent_node = self
                 .arena
                 .hard_get_mut(sorted_arena_idxs[sorted_idx.usize()]);
+
             parent_node.left_idx = None;
             parent_node.right_idx = None;
 
@@ -1128,11 +1146,20 @@ impl<K: Ord, V> SGTree<K, V> {
                 parent_node.right_idx = Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]);
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
+
+            // Set subtree size
+            #[cfg(feature = "fast_rebalance")]
+            {
+                parent_node.subtree_size = parent_nrh.high_idx - parent_nrh.low_idx + 1;
+                debug_assert!(parent_node.subtree_size >= 1);
+            }
         }
 
         debug_assert!(
             self.get_subtree_size(subtree_root_arena_idx) == (sorted_arena_idxs.len() as Idx),
-            "Internal invariant failed: rebalance dropped node count!"
+            "Internal invariant failed: rebalance changed node count! {} -> {}",
+            self.get_subtree_size(subtree_root_arena_idx),
+            sorted_arena_idxs.len()
         );
     }
 
