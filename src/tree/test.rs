@@ -2,7 +2,10 @@ use core::fmt::Debug;
 use core::iter::FromIterator;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use super::{SGErr, SGTree};
+use super::SGTree;
+
+#[cfg(not(feature = "alt_impl"))]
+use super::SGErr;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -748,6 +751,7 @@ fn test_clone() {
     assert_eq!(sgt_1, sgt_2);
 }
 
+#[cfg(not(feature = "alt_impl"))] // This affects rebalance count and is experimental.
 #[test]
 fn test_set_rebal_param() {
     #[cfg(not(feature = "high_assurance"))]
@@ -786,6 +790,7 @@ fn test_set_rebal_param() {
         assert_eq!(sgt_2.rebal_cnt(), 8);
         assert_eq!(sgt_3.rebal_cnt(), 93);
     }
+
     #[cfg(not(feature = "high_assurance"))]
     {
         assert_eq!(sgt_1.rebal_cnt(), 5_475);

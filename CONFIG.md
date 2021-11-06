@@ -65,7 +65,7 @@ This metadata increases stack space usage (higher memory footprint) but signific
 By default, this library uses the algorithms proposed in the original paper ([Galperin and Rivest, 1993](https://people.csail.mit.edu/rivest/pubs/GR93.pdf)).
 The `alt_impl` feature enables optimizations proposed in the subsequent PhD thesis ([Galperin, 1996](https://dspace.mit.edu/handle/1721.1/10639)).
 
-> **Warning:** This feature is currently a work in progress, it's not finished or guaranteed to be an improvement (e.g. the implementation may be incorrect).
+> **Warning:** This feature is currently a work in progress, it's not finished or guaranteed to be an improvement (e.g. the implementation may be incorrect). But risk is low - this feature only affects performance.
 >
 > The feature-gate means we can compare the two modes before potentially setting a new default in a future version.
 > Beyond that point the non-default is only worth supporting if it's measurably superior for some usecase.

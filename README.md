@@ -202,15 +202,13 @@ Space complexity is always `O(n)`.
 | `insert` | `O(log n)` | Amortized `O(log n)` |
 | `remove` | `O(log n)` | Amortized `O(log n)` |
 
-The [`low_mem_insert` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and the [`fast_rebalance` feature](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) feature can be used to fine-tune tradeoffs of memory usage and speed.
+The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
 
 #### Memory Footprint Demos
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: 18.8KB for an x86-64 binary.
-    * Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included. 18.8KB is a floor.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **18.8KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
-* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: 2.6KB.
-    * Caveat: 2-3x more stack space is required for runtime book keeping in operations like rebalancing. 2.6KB is the static size (e.g. storage cost).
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: 2-3x more stack space is required for runtime book keeping (e.g. rebalancing).
 
 #### Trusted Dependencies
 
