@@ -47,7 +47,7 @@ Removing this metadata saves stack space (lower memory footprint) but significan
 
 * **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
 
-* **Runtime penalty if enabled:** `insert` becomes `O(n log n)` instead of `O(log n)`. The larger the arena, the more that matters (algorithmic complexity downgrade). `get` and `remove` remain unchanged.
+* **Runtime penalty if enabled:** `insert` becomes `O(n)` instead of `O(log n)`. The larger the arena, the more that matters (algorithmic complexity downgrade). `get` and `remove` remain unchanged.
 
 ### The `fast_rebalance` feature
 
