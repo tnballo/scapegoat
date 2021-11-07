@@ -1,3 +1,4 @@
+<br><p align="center"><img src="https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg" width="333" alt="scapegoat"></p><br>
 # scapegoat
 
 [![crates.io](https://img.shields.io/crates/v/scapegoat.svg)](https://crates.io/crates/scapegoat)

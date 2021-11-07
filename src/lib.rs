@@ -223,6 +223,7 @@ Contributions are welcome!
 #![forbid(unsafe_code)]
 #![cfg_attr(not(any(test, fuzzing)), no_std)]
 #![cfg_attr(not(any(test, fuzzing)), deny(missing_docs))]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg")]
 
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
