@@ -6,7 +6,8 @@ use scapegoat::SGSet;
 
 mod test_data;
 use test_data::{
-    RAND_100, RAND_10_000, RAND_1_000, SGS_100_RAND, SGS_10_000_RAND, SGS_1_000_RAND, STD_100_RAND, STD_10_000_RAND, STD_1_000_RAND,
+    RAND_100, RAND_10_000, RAND_1_000, SGS_100_RAND, SGS_10_000_RAND, SGS_1_000_RAND, STD_100_RAND,
+    STD_10_000_RAND, STD_1_000_RAND,
 };
 
 // Benches -------------------------------------------------------------------------------------------------------------

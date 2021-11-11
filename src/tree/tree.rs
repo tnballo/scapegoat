@@ -997,8 +997,8 @@ impl<K: Ord, V> SGTree<K, V> {
             return None;
         }
 
-        let mut node_subtree_size = 1;
-        let mut parent_path_idx = path.len() - 1;
+        let mut node_subtree_size = 1; // Newly inserted
+        let mut parent_path_idx = path.len() - 1; // Parent of newly inserted
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
         while (parent_path_idx > 0)
@@ -1007,7 +1007,11 @@ impl<K: Ord, V> SGTree<K, V> {
         {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
-            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+            parent_subtree_size = self.get_subtree_size_differential(
+                path[parent_path_idx],     // Parent index
+                path[parent_path_idx + 1], // Child index
+                node_subtree_size,         // Child subtree size
+            );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
         }
@@ -1024,15 +1028,19 @@ impl<K: Ord, V> SGTree<K, V> {
         }
 
         let mut i = 0;
-        let mut node_subtree_size = 1;
-        let mut parent_path_idx = path.len() - 1;
+        let mut node_subtree_size = 1; // Newly inserted
+        let mut parent_path_idx = path.len() - 1; // Parent of newly inserted
         let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
 
         while (parent_path_idx > 0) && (i <= self.alpha_balance_depth(node_subtree_size)) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             i += 1;
-            parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+            parent_subtree_size = self.get_subtree_size_differential(
+                path[parent_path_idx],     // Parent index
+                path[parent_path_idx + 1], // Child index
+                node_subtree_size,         // Child subtree size
+            );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
         }
@@ -1065,6 +1073,58 @@ impl<K: Ord, V> SGTree<K, V> {
     #[cfg(feature = "fast_rebalance")]
     fn get_subtree_size(&self, idx: Idx) -> Idx {
         self.arena.hard_get(idx).subtree_size
+    }
+
+    // Differential subtree size helper
+    #[cfg(not(feature = "fast_rebalance"))]
+    fn get_subtree_size_differential(
+        &self,
+        parent_idx: Idx,
+        child_idx: Idx,
+        child_subtree_size: Idx,
+    ) -> Idx {
+        let parent = self.arena.hard_get(parent_idx);
+
+        debug_assert!(
+            (parent.right_idx == Some(child_idx)) || (parent.left_idx == Some(child_idx))
+        );
+
+        let mut is_right_child = false;
+        if let Some(right_child_idx) = parent.right_idx {
+            if right_child_idx == child_idx {
+                is_right_child = true;
+            }
+        }
+
+        let other_child_subtree_size = if is_right_child {
+            match parent.left_idx {
+                Some(idx) => self.get_subtree_size(idx),
+                None => 0,
+            }
+        } else {
+            match parent.right_idx {
+                Some(idx) => self.get_subtree_size(idx),
+                None => 0,
+            }
+        };
+
+        let computed_subtree_size = child_subtree_size + other_child_subtree_size + 1;
+
+        debug_assert_eq!(computed_subtree_size, self.get_subtree_size(parent_idx));
+
+        computed_subtree_size
+    }
+
+    // Subtree size helper
+    // Size already cached if `fast_rebalance` is enabled, no need for differential logic
+    #[cfg(feature = "fast_rebalance")]
+    fn get_subtree_size_differential(
+        &self,
+        parent_idx: Idx,
+        _child_idx: Idx,
+        _child_subtree_size: Idx,
+    ) -> Idx {
+        self.get_subtree_size(parent_idx)
     }
 
     // Iterative in-place rebuild for balanced subtree
