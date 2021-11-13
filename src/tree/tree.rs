@@ -27,7 +27,7 @@ use smallvec::smallvec;
 pub struct SGTree<K: Ord, V> {
     // Storage
     pub(crate) arena: NodeArena<K, V>,
-    pub(crate) root_idx: Option<Idx>,
+    pub(crate) root_idx: Option<Idx>, // TODO: rename to opt_root_idx
 
     // Query cache
     max_idx: Idx,
@@ -91,6 +91,26 @@ impl<K: Ord, V> SGTree<K, V> {
             }
             false => Err(SGErr::RebalanceFactorOutOfRange),
         }
+    }
+
+    /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
+    /// See [the corresponding setter method][SGTree::set_rebal_param] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGTree;
+    ///
+    /// let mut sgt: SGTree<isize, isize> = SGTree::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
+    ///
+    /// // Get the currently set value
+    /// assert_eq!(sgt.rebal_param(), (2.0, 3.0));
+    /// ```
+    pub fn rebal_param(&self) -> (f32, f32) {
+        (self.alpha_num, self.alpha_denom)
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of tree pairs.

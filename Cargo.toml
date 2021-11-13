@@ -47,3 +47,7 @@ harness = false
 [[bench]]
 name = "bench_set_seq"
 harness = false
+
+[[bench]]
+name = "bench_set_from"
+harness = false

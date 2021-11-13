@@ -56,6 +56,26 @@ impl<T: Ord> SGSet<T> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
 
+    /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
+    /// See [the corresponding setter method][SGSet::set_rebal_param] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set: SGSet<isize> = SGSet::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
+    ///
+    /// // Get the currently set value
+    /// assert_eq!(set.rebal_param(), (2.0, 3.0));
+    /// ```
+    pub fn rebal_param(&self) -> (f32, f32) {
+        self.bst.rebal_param()
+    }
+
     /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
     /// Attempting to insert elements beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
