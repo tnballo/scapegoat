@@ -5,7 +5,7 @@ use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use crate::tree::{
-    ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGErr, SGTree,
+    ElemRefIter, ElemRefVec, IntoIter as TreeIntoIter, Iter as TreeIter, SGErr, SGTree,
 };
 
 /// Ordered set.
@@ -910,27 +910,27 @@ impl<'a, T: Ord> Iterator for Iter<'a, T> {
 // Consuming iterator
 impl<T: Ord> IntoIterator for SGSet<T> {
     type Item = T;
-    type IntoIter = ConsumingIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ConsumingIter::new(self)
+        IntoIter::new(self)
     }
 }
 
 /// Consuming iterator wrapper
-pub struct ConsumingIter<T: Ord> {
-    cons_iter: TreeConsumingIter<T, ()>,
+pub struct IntoIter<T: Ord> {
+    cons_iter: TreeIntoIter<T, ()>,
 }
 
-impl<T: Ord> ConsumingIter<T> {
+impl<T: Ord> IntoIter<T> {
     pub fn new(set: SGSet<T>) -> Self {
-        ConsumingIter {
-            cons_iter: TreeConsumingIter::new(set.bst),
+        IntoIter {
+            cons_iter: TreeIntoIter::new(set.bst),
         }
     }
 }
 
-impl<T: Ord> Iterator for ConsumingIter<T> {
+impl<T: Ord> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -14,13 +14,13 @@ fn bench_from_rand(c: &mut Criterion) {
 
     c.bench_function("sgs_from_10_000_rand", |b| {
         b.iter(|| {
-           let _ = SGSet::from(rand_10k);
+            let _ = SGSet::from(rand_10k);
         })
     });
 
     c.bench_function("std_from_10_000_rand", |b| {
         b.iter(|| {
-           let _ = BTreeSet::from(rand_10k);
+            let _ = BTreeSet::from(rand_10k);
         })
     });
 }
@@ -30,13 +30,13 @@ fn bench_from_seq(c: &mut Criterion) {
 
     c.bench_function("sgs_from_10_000_seq", |b| {
         b.iter(|| {
-           let _ = SGSet::from(seq_10k);
+            let _ = SGSet::from(seq_10k);
         })
     });
 
     c.bench_function("std_from_10_000_seq", |b| {
         b.iter(|| {
-           let _ = BTreeSet::from(seq_10k);
+            let _ = BTreeSet::from(seq_10k);
         })
     });
 }

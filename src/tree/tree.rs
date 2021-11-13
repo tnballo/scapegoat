@@ -8,7 +8,7 @@ use core::ops::Index;
 
 use super::arena::NodeArena;
 use super::error::SGErr;
-use super::iter::{ConsumingIter, Iter, IterMut};
+use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::types::{
     Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
@@ -1430,9 +1430,9 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGTree<K, V> {
     type Item = (K, V);
-    type IntoIter = ConsumingIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ConsumingIter::new(self)
+        IntoIter::new(self)
     }
 }

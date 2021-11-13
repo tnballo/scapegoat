@@ -13,7 +13,7 @@ mod node;
 pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
 mod iter;
-pub use iter::{ConsumingIter, Iter, IterMut};
+pub use iter::{IntoIter, Iter, IterMut};
 
 mod error;
 pub use error::SGErr;

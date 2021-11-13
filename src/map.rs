@@ -3,7 +3,7 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{ConsumingIter, Iter, IterMut, SGErr, SGTree};
+use crate::tree::{IntoIter, Iter, IterMut, SGErr, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
@@ -93,6 +93,48 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn capacity(&self) -> usize {
         self.bst.capacity()
+    }
+
+    /// Gets an iterator over the keys of the map, in sorted order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<_> = a.keys().cloned().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    pub fn keys(&self) -> Keys<'_, K, V> {
+        Keys { inner: self.iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the keys, in sorted order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<i32> = a.into_keys().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys {
+            inner: self.into_iter(),
+        }
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -742,7 +784,7 @@ where
     }
 }
 
-// Iterators -----------------------------------------------------------------------------------------------------------
+// General Iterators ---------------------------------------------------------------------------------------------------
 
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
@@ -757,9 +799,49 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGMap<K, V> {
     type Item = (K, V);
-    type IntoIter = ConsumingIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ConsumingIter::new(self.bst)
+        IntoIter::new(self.bst)
     }
 }
+
+// Key Iterators -------------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+
+/// An iterator over the keys of a `SGMap`.
+///
+/// This `struct` is created by the [`keys`][SGMap::keys] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct Keys<'a, K: Ord + 'a, V: 'a> {
+    inner: Iter<'a, K, V>,
+}
+
+impl<'a, K: Ord, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<&'a K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+}
+
+/// An owning iterator over the keys of a `SGMap`.
+///
+/// This `struct` is created by the [`into_keys`][SGMap::into_keys] method on [`SGMap`].
+/// See its documentation for more.
+pub struct IntoKeys<K: Ord, V> {
+    inner: IntoIter<K, V>,
+}
+
+impl<K: Ord, V> Iterator for IntoKeys<K, V> {
+    type Item = K;
+
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+}
+
+// Value Iterators -----------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility

@@ -234,11 +234,10 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 pub use crate::tree::{Node, NodeArena, NodeGetHelper, NodeRebuildHelper};
 
 mod tree;
-pub use crate::tree::SGErr;
-pub use crate::tree::SGTree;
+pub use crate::tree::{SGErr, SGTree};
 
 mod map;
-pub use crate::map::SGMap;
+pub use crate::map::{IntoKeys, Keys, SGMap};
 
 mod set;
 pub use crate::set::SGSet;

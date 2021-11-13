@@ -103,14 +103,15 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
-pub struct ConsumingIter<K: Ord, V> {
+pub struct IntoIter<K: Ord, V> {
     bst: SGTree<K, V>,
     sorted_idxs: IdxVec,
 }
 
-impl<K: Ord, V> ConsumingIter<K, V> {
+impl<K: Ord, V> IntoIter<K, V> {
+    /// Constructor
     pub fn new(bst: SGTree<K, V>) -> Self {
-        let mut ordered_iter = ConsumingIter {
+        let mut ordered_iter = IntoIter {
             bst,
             sorted_idxs: IdxVec::new(),
         };
@@ -124,7 +125,7 @@ impl<K: Ord, V> ConsumingIter<K, V> {
     }
 }
 
-impl<K: Ord, V> Iterator for ConsumingIter<K, V> {
+impl<K: Ord, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
