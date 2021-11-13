@@ -79,8 +79,7 @@ if let Some(three_val) = example.get_mut(&3) {
 
 // New message :)
 assert!(example
-    .iter()
-    .map(|(_, v)| *v)
+    .into_values()
     .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));

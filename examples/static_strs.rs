@@ -54,8 +54,7 @@ fn main() {
 
     // New message :)
     assert!(example
-        .iter()
-        .map(|(_, v)| *v)
+        .into_values()
         .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
         .iter()
         .eq([

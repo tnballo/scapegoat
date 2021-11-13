@@ -26,6 +26,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     IsEmpty,
     Iter,
     IterMut,
+    Keys,
     LastKey,
     LastKeyValue,
     Len,
@@ -36,6 +37,8 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     RemoveEntry { key: K },
     Retain { rand_key: K },
     SplitOff { key: K },
+    Values,
+    ValuesMut,
     // Trait Equivalence -----------------------------------------------------------------------------------------------
     Clone,
     Debug,
@@ -179,6 +182,9 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             MapMethod::IterMut => {
                 assert!(sg_map.iter_mut().eq(bt_map.iter_mut()));
             },
+            MapMethod::Keys => {
+                assert!(sg_map.keys().eq(bt_map.keys()));
+            },
             MapMethod::LastKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -303,6 +309,12 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                     sg_map.cmp(&sg_map_new),
                     bt_map.cmp(&bt_map_new),
                 );
+            },
+            MapMethod::Values => {
+                assert!(sg_map.values().eq(bt_map.values()));
+            },
+            MapMethod::ValuesMut => {
+                assert!(sg_map.values_mut().eq(bt_map.values_mut()));
             },
         }
     }
