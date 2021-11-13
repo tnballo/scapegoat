@@ -129,7 +129,7 @@ For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.or
 
 ```rust
 [dependencies]
-scapegoat = { version = "^1.6", features = ["high_assurance"] }
+scapegoat = { version = "^1.7", features = ["high_assurance"] }
 ```
 
 Enabling this feature makes two changes:
