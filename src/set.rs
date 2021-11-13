@@ -5,7 +5,7 @@ use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use crate::tree::{
-    ConsumingIter as TreeConsumingIter, ElemRefIter, ElemRefVec, Iter as TreeIter, SGErr, SGTree,
+    ElemRefIter, ElemRefVec, IntoIter as TreeIntoIter, Iter as TreeIter, SGErr, SGTree,
 };
 
 /// Ordered set.
@@ -54,6 +54,26 @@ impl<T: Ord> SGSet<T> {
     /// ```
     pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
+    }
+
+    /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
+    /// See [the corresponding setter method][SGSet::set_rebal_param] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGSet;
+    ///
+    /// let mut set: SGSet<isize> = SGSet::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
+    ///
+    /// // Get the currently set value
+    /// assert_eq!(set.rebal_param(), (2.0, 3.0));
+    /// ```
+    pub fn rebal_param(&self) -> (f32, f32) {
+        self.bst.rebal_param()
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
@@ -890,27 +910,27 @@ impl<'a, T: Ord> Iterator for Iter<'a, T> {
 // Consuming iterator
 impl<T: Ord> IntoIterator for SGSet<T> {
     type Item = T;
-    type IntoIter = ConsumingIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ConsumingIter::new(self)
+        IntoIter::new(self)
     }
 }
 
 /// Consuming iterator wrapper
-pub struct ConsumingIter<T: Ord> {
-    cons_iter: TreeConsumingIter<T, ()>,
+pub struct IntoIter<T: Ord> {
+    cons_iter: TreeIntoIter<T, ()>,
 }
 
-impl<T: Ord> ConsumingIter<T> {
+impl<T: Ord> IntoIter<T> {
     pub fn new(set: SGSet<T>) -> Self {
-        ConsumingIter {
-            cons_iter: TreeConsumingIter::new(set.bst),
+        IntoIter {
+            cons_iter: TreeIntoIter::new(set.bst),
         }
     }
 }
 
-impl<T: Ord> Iterator for ConsumingIter<T> {
+impl<T: Ord> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

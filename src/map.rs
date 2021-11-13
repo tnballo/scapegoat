@@ -3,7 +3,7 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{ConsumingIter, Iter, IterMut, SGErr, SGTree};
+use crate::tree::{IntoIter, Iter, IterMut, SGErr, SGTree};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
@@ -56,6 +56,26 @@ impl<K: Ord, V> SGMap<K, V> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
 
+    /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
+    /// See [the corresponding setter method][SGMap::set_rebal_param] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut map: SGMap<isize, isize> = SGMap::new();
+    ///
+    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
+    /// assert!(map.set_rebal_param(2.0, 3.0).is_ok());
+    ///
+    /// // Get the currently set value
+    /// assert_eq!(map.rebal_param(), (2.0, 3.0));
+    /// ```
+    pub fn rebal_param(&self) -> (f32, f32) {
+        self.bst.rebal_param()
+    }
+
     /// `#![no_std]`: total capacity, e.g. maximum number of map pairs.
     /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
     ///
@@ -73,6 +93,117 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     pub fn capacity(&self) -> usize {
         self.bst.capacity()
+    }
+
+    /// Gets an iterator over the keys of the map, in sorted order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<_> = a.keys().cloned().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    pub fn keys(&self) -> Keys<'_, K, V> {
+        Keys { inner: self.iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the keys, in sorted order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(2, "b");
+    /// a.insert(1, "a");
+    ///
+    /// let keys: Vec<i32> = a.into_keys().collect();
+    /// assert_eq!(keys, [1, 2]);
+    /// ```
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys {
+            inner: self.into_iter(),
+        }
+    }
+
+    /// Gets an iterator over the values of the map, in order by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(1, "hello");
+    /// a.insert(2, "goodbye");
+    ///
+    /// let values: Vec<&str> = a.values().cloned().collect();
+    /// assert_eq!(values, ["hello", "goodbye"]);
+    /// ```
+    pub fn values(&self) -> Values<'_, K, V> {
+        Values { inner: self.iter() }
+    }
+
+    /// Creates a consuming iterator visiting all the values, in order by key.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(1, "hello");
+    /// a.insert(2, "goodbye");
+    ///
+    /// let values: Vec<&str> = a.into_values().collect();
+    /// assert_eq!(values, ["hello", "goodbye"]);
+    /// ```
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues {
+            inner: self.into_iter(),
+        }
+    }
+
+    /// Gets a mutable iterator over the values of the map, in order by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SGMap;
+    ///
+    /// let mut a = SGMap::new();
+    /// a.insert(1, String::from("hello"));
+    /// a.insert(2, String::from("goodbye"));
+    ///
+    /// for value in a.values_mut() {
+    ///     value.push_str("!");
+    /// }
+    ///
+    /// let values: Vec<String> = a.values().cloned().collect();
+    /// assert_eq!(values, [String::from("hello!"),
+    ///                     String::from("goodbye!")]);
+    /// ```
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+        ValuesMut {
+            inner: self.iter_mut(),
+        }
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -722,7 +853,7 @@ where
     }
 }
 
-// Iterators -----------------------------------------------------------------------------------------------------------
+// General Iterators ---------------------------------------------------------------------------------------------------
 
 // Reference iterator
 impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
@@ -737,9 +868,97 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
 // Consuming iterator
 impl<K: Ord, V> IntoIterator for SGMap<K, V> {
     type Item = (K, V);
-    type IntoIter = ConsumingIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        ConsumingIter::new(self.bst)
+        IntoIter::new(self.bst)
+    }
+}
+
+// Key Iterators -------------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+
+/// An iterator over the keys of a `SGMap`.
+///
+/// This `struct` is created by the [`keys`][SGMap::keys] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct Keys<'a, K: Ord + 'a, V: 'a> {
+    inner: Iter<'a, K, V>,
+}
+
+impl<'a, K: Ord, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<&'a K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+}
+
+/// An owning iterator over the keys of a `SGMap`.
+///
+/// This `struct` is created by the [`into_keys`][SGMap::into_keys] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct IntoKeys<K: Ord, V> {
+    inner: IntoIter<K, V>,
+}
+
+impl<K: Ord, V> Iterator for IntoKeys<K, V> {
+    type Item = K;
+
+    fn next(&mut self) -> Option<K> {
+        self.inner.next().map(|(k, _)| k)
+    }
+}
+
+// Value Iterators -----------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+
+/// An iterator over the values of a `SGMap`.
+///
+/// This `struct` is created by the [`values`][SGMap::values] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct Values<'a, K: Ord + 'a, V: 'a> {
+    inner: Iter<'a, K, V>,
+}
+
+impl<'a, K: Ord, V> Iterator for Values<'a, K, V> {
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<&'a V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+}
+
+/// An owning iterator over the values of a `SGMap`.
+///
+/// This `struct` is created by the [`into_values`][SGMap::into_values] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct IntoValues<K: Ord, V> {
+    inner: IntoIter<K, V>,
+}
+
+impl<K: Ord, V> Iterator for IntoValues<K, V> {
+    type Item = V;
+
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+}
+
+/// A mutable iterator over the values of a `SGMap`.
+///
+/// This `struct` is created by the [`values_mut`][SGMap::values_mut] method on [`SGMap`][SGMap].
+/// See its documentation for more.
+pub struct ValuesMut<'a, K: Ord + 'a, V: 'a> {
+    inner: IterMut<'a, K, V>,
+}
+
+impl<'a, K: Ord, V> Iterator for ValuesMut<'a, K, V> {
+    type Item = &'a mut V;
+
+    fn next(&mut self) -> Option<&'a mut V> {
+        self.inner.next().map(|(_, v)| v)
     }
 }

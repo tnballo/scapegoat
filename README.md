@@ -2,7 +2,10 @@
 # scapegoat
 
 [![crates.io](https://img.shields.io/crates/v/scapegoat.svg)](https://crates.io/crates/scapegoat)
+[![docs.rs](https://docs.rs/scapegoat/badge.svg)](https://docs.rs/scapegoat/)
 [![GitHub Actions](https://github.com/tnballo/scapegoat/workflows/test/badge.svg)](https://github.com/tnballo/scapegoat/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/LICENSE)
+[![Unsafe-Zero-Percent](https://img.shields.io/badge/Unsafety-0%25-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/src/lib.rs#L223)
 
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
@@ -84,8 +87,7 @@ if let Some(three_val) = example.get_mut(&3) {
 
 // New message :)
 assert!(example
-    .iter()
-    .map(|(_, v)| *v)
+    .into_values()
     .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));

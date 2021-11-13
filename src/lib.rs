@@ -79,8 +79,7 @@ if let Some(three_val) = example.get_mut(&3) {
 
 // New message :)
 assert!(example
-    .iter()
-    .map(|(_, v)| *v)
+    .into_values()
     .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
@@ -223,7 +222,9 @@ Contributions are welcome!
 #![forbid(unsafe_code)]
 #![cfg_attr(not(any(test, fuzzing)), no_std)]
 #![cfg_attr(not(any(test, fuzzing)), deny(missing_docs))]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg"
+)]
 
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
@@ -232,11 +233,10 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 pub use crate::tree::{Node, NodeArena, NodeGetHelper, NodeRebuildHelper};
 
 mod tree;
-pub use crate::tree::SGErr;
-pub use crate::tree::SGTree;
+pub use crate::tree::{SGErr, SGTree};
 
 mod map;
-pub use crate::map::SGMap;
+pub use crate::map::{IntoKeys, IntoValues, Keys, SGMap, Values, ValuesMut};
 
 mod set;
 pub use crate::set::SGSet;
