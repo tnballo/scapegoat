@@ -237,7 +237,7 @@ mod tree;
 pub use crate::tree::{SGErr, SGTree};
 
 mod map;
-pub use crate::map::{IntoKeys, Keys, SGMap};
+pub use crate::map::{IntoKeys, IntoValues, Keys, SGMap, Values, ValuesMut};
 
 mod set;
 pub use crate::set::SGSet;
