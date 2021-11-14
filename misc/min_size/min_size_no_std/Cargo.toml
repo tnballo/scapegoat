@@ -1,7 +1,7 @@
-cargo-features = ["strip"]
+#cargo-features = ["strip"]
 
 [package]
-name = "min_size"
+name = "min_size_no_std"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,10 +12,10 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-strip = true
+#strip = true
 opt-level = "z"
 lto = true
 codegen-units = 1
 
 [dependencies]
-scapegoat = { path = "../../../scapegoat" }
+scapegoat = { path = "../../../../scapegoat" }
