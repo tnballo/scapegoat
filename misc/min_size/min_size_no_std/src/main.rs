@@ -1,33 +1,28 @@
 #![no_std]
+#![no_main]
 #![feature(default_alloc_error_handler)]
-#![feature(lang_items, start)]
 #![feature(rustc_private)]
 
-use core::alloc::{GlobalAlloc, Layout};
 use core::panic::PanicInfo;
 use core::ptr::null_mut;
+use core::alloc::{GlobalAlloc, Layout};
 
 extern crate libc;
 
 use scapegoat::SGMap;
 
-fn main() {
+#[no_mangle]
+pub fn main(_argc: i32, _argv: *const *const u8) -> isize {
     let mut map: SGMap<usize, usize> = SGMap::new();
     map.insert(1, 2);
     assert_eq!(map.get(&1), Some(&2));
     assert_eq!(map.remove(&1), Some(2));
+    return 0;
 }
 
 #[panic_handler]
 fn panic_handler(_info: &PanicInfo) -> ! {
     loop {}
-}
-
-#[start]
-#[no_mangle]
-fn start(_argc: isize, _argv: *const *const u8) -> isize {
-    main();
-    0
 }
 
 #[global_allocator]
