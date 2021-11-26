@@ -1,37 +1,36 @@
 use core::slice::{Iter, IterMut};
 
-use super::node::{Node, NodeSwapHistHelper};
+use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 
-#[cfg(not(feature = "low_mem_insert"))]
-use super::types::{ArenaVec, Idx, IdxVec, SortMetaVec};
-
-#[cfg(feature = "low_mem_insert")]
-use super::types::{ArenaVec, Idx, SortMetaVec};
-
-use crate::MAX_ELEMS;
-
+use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
 
 /// A simple arena allocator.
 #[derive(Clone)]
-pub struct NodeArena<K, V> {
-    arena: ArenaVec<K, V>,
+pub struct NodeArena<K, V, I, const N: usize> {
+    arena: SmallVec<[Option<Node<K, V>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
-    free_list: IdxVec,
+    free_list: SmallVec<[I; N]>,
 }
 
-impl<K, V> NodeArena<K, V> {
+impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
+
     // Public API ------------------------------------------------------------------------------------------------------
 
     /// Constructor.
     pub fn new() -> Self {
-        NodeArena {
-            arena: ArenaVec::new(),
+        let na = NodeArena {
+            arena: SmallVec::<[Option::<Node<K, V>>; N]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: IdxVec::new(),
-        }
+            free_list: SmallVec::<[I; N]>::new()
+        };
+
+        // Verify dependency's const generic constructors
+        debug_assert!((N == na.len()) && (N == na.free_list.len()));
+
+        na
     }
 
     /// `#![no_std]`: total capacity, e.g. maximum number of items.
@@ -40,7 +39,7 @@ impl<K, V> NodeArena<K, V> {
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
     pub fn capacity(&self) -> usize {
-        MAX_ELEMS
+        N
     }
 
     /// Returns an iterator over immutable arena elements.
@@ -54,7 +53,7 @@ impl<K, V> NodeArena<K, V> {
     }
 
     /// Add node to area, growing if necessary, and return addition index.
-    pub fn add(&mut self, node: Node<K, V>) -> Idx {
+    pub fn add(&mut self, node: Node<K, V>) -> I {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
@@ -65,7 +64,7 @@ impl<K, V> NodeArena<K, V> {
             .arena
             .iter()
             .position(|x| x.is_none())
-            .map(|i| i as Idx);
+            .map(|i| i as I);
 
         match opt_free_idx {
             Some(free_idx) => {
@@ -78,18 +77,18 @@ impl<K, V> NodeArena<K, V> {
             }
             None => {
                 self.arena.push(Some(node));
-                (self.arena.len() - 1) as Idx
+                (self.arena.len() - 1) as I
             }
         }
     }
 
     /// Remove node at a given index from area, return it.
-    pub fn remove(&mut self, idx: Idx) -> Option<Node<K, V>> {
+    pub fn remove(&mut self, idx: I) -> Option<Node<K, V>> {
         debug_assert!(
-            idx < self.arena.len() as Idx,
+            idx < self.arena.len() as I,
             "API misuse: requested removal past last index!"
         );
-        if idx < self.arena.len() as Idx {
+        if idx < self.arena.len() as I {
             // Move node to back, replacing with None, preserving order
             self.arena.push(None);
             let len = self.arena.len();
@@ -120,7 +119,7 @@ impl<K, V> NodeArena<K, V> {
 
     /// Sort the arena in caller-requested order and update all tree metadata accordingly
     /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
-    pub fn sort(&mut self, root_idx: Idx, sort_metadata: SortMetaVec) -> Idx {
+    pub fn sort(&mut self, root_idx: I, sort_metadata: SmallVec<[NodeGetHelper; N]>) -> I {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx.is_some()));
 
         let mut swap_history = NodeSwapHistHelper::new();
@@ -128,7 +127,7 @@ impl<K, V> NodeArena<K, V> {
         // Sort as requested
         for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
             let curr_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
-            let sorted_idx = sorted_idx as Idx;
+            let sorted_idx = sorted_idx as I;
             if curr_idx != sorted_idx {
                 self.arena.swap(curr_idx.usize(), sorted_idx.usize());
                 swap_history.add(curr_idx, sorted_idx);
@@ -158,7 +157,7 @@ impl<K, V> NodeArena<K, V> {
 
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: Idx) -> Node<K, V> {
+    pub fn hard_remove(&mut self, idx: I) -> Node<K, V> {
         match self.remove(idx) {
             Some(node) => node,
             None => {
@@ -168,7 +167,7 @@ impl<K, V> NodeArena<K, V> {
     }
 
     /// Get a reference to a node.
-    pub fn get(&self, idx: Idx) -> Option<&Node<K, V>> {
+    pub fn get(&self, idx: I) -> Option<&Node<K, V>> {
         match self.arena.get(idx.usize()) {
             Some(Some(node)) => Some(node),
             _ => None,
@@ -176,7 +175,7 @@ impl<K, V> NodeArena<K, V> {
     }
 
     /// Get mutable reference to a node.
-    pub fn get_mut(&mut self, idx: Idx) -> Option<&mut Node<K, V>> {
+    pub fn get_mut(&mut self, idx: I) -> Option<&mut Node<K, V>> {
         match self.arena.get_mut(idx.usize()) {
             Some(Some(node)) => Some(node),
             _ => None,
@@ -185,7 +184,7 @@ impl<K, V> NodeArena<K, V> {
 
     /// Get reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get` instead.
-    pub fn hard_get(&self, idx: Idx) -> &Node<K, V> {
+    pub fn hard_get(&self, idx: I) -> &Node<K, V> {
         match self.get(idx) {
             Some(node) => node,
             None => {
@@ -196,7 +195,7 @@ impl<K, V> NodeArena<K, V> {
 
     /// Get mutable reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get_mut` instead.
-    pub fn hard_get_mut(&mut self, idx: Idx) -> &mut Node<K, V> {
+    pub fn hard_get_mut(&mut self, idx: I) -> &mut Node<K, V> {
         match self.get_mut(idx) {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
@@ -209,7 +208,7 @@ impl<K, V> NodeArena<K, V> {
     }
 }
 
-impl<K: Ord, V> Default for NodeArena<K, V> {
+impl<K: Ord, V, I, const N: usize> Default for NodeArena<K, V, I, N> {
     fn default() -> Self {
         Self::new()
     }

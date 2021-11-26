@@ -15,18 +15,20 @@ use super::types::{
 };
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
+use crate::MAX_ELEMS;
 
 #[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
-use smallnum::SmallUnsigned;
+use smallnum::{small_unsigned, SmallUnsigned};
 use smallvec::smallvec;
+
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
 pub struct SGTree<K: Ord, V> {
     // Storage
-    pub(crate) arena: NodeArena<K, V>,
+    pub(crate) arena: NodeArena<K, V>, // TODO: Make dyn for arena trait? Then can be any I/N. See: https://www.reddit.com/r/rust/comments/mf16qk/i_was_nerdsniped_into_demonstrating_that_you_can/
     pub(crate) root_idx: Option<Idx>, // TODO: rename to opt_root_idx
 
     // Query cache
@@ -47,7 +49,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
-            arena: NodeArena::new(),
+            arena: NodeArena::<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>::new(),
             root_idx: None,
             max_idx: 0,
             min_idx: 0,
