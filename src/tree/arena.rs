@@ -3,7 +3,7 @@ use core::slice::{Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 
 use smallvec::SmallVec;
-use smallnum::SmallUnsigned;
+use smallnum::{SmallUnsigned, small_unsigned};
 
 /// A simple arena allocator.
 #[derive(Clone)]
@@ -14,7 +14,9 @@ pub struct NodeArena<K, V, I, const N: usize> {
     free_list: SmallVec<[I; N]>,
 }
 
-impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
+impl<K, V, I: Default + SmallUnsigned + PartialEq + PartialOrd, const N: usize> NodeArena<K, V, I, N> {
+
+    //type Idx = small_unsigned!(N);
 
     // Public API ------------------------------------------------------------------------------------------------------
 
@@ -77,7 +79,7 @@ impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
             }
             None => {
                 self.arena.push(Some(node));
-                (self.arena.len() - 1) as I
+                I::hard_from(self.arena.len() - 1)
             }
         }
     }
@@ -85,10 +87,10 @@ impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
     /// Remove node at a given index from area, return it.
     pub fn remove(&mut self, idx: I) -> Option<Node<K, V>> {
         debug_assert!(
-            idx < self.arena.len() as I,
+            idx < I::hard_from(self.arena.len()),
             "API misuse: requested removal past last index!"
         );
-        if idx < self.arena.len() as I {
+        if idx < I::hard_from(self.arena.len()) {
             // Move node to back, replacing with None, preserving order
             self.arena.push(None);
             let len = self.arena.len();
@@ -127,7 +129,7 @@ impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
         // Sort as requested
         for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
             let curr_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
-            let sorted_idx = sorted_idx as I;
+            let sorted_idx = I::hard_from(sorted_idx);
             if curr_idx != sorted_idx {
                 self.arena.swap(curr_idx.usize(), sorted_idx.usize());
                 swap_history.add(curr_idx, sorted_idx);
@@ -208,7 +210,7 @@ impl<K, V, I: Default + SmallUnsigned, const N: usize> NodeArena<K, V, I, N> {
     }
 }
 
-impl<K: Ord, V, I, const N: usize> Default for NodeArena<K, V, I, N> {
+impl<K: Ord, V, I: Default + SmallUnsigned + PartialEq + PartialOrd, const N: usize> Default for NodeArena<K, V, I, N> {
     fn default() -> Self {
         Self::new()
     }

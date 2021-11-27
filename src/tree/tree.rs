@@ -22,13 +22,14 @@ use micromath::F32Ext;
 use smallnum::{small_unsigned, SmallUnsigned};
 use smallvec::smallvec;
 
-
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
 pub struct SGTree<K: Ord, V> {
     // Storage
-    pub(crate) arena: NodeArena<K, V>, // TODO: Make dyn for arena trait? Then can be any I/N. See: https://www.reddit.com/r/rust/comments/mf16qk/i_was_nerdsniped_into_demonstrating_that_you_can/
+    pub(crate) arena: NodeArena<K, V, u64, MAX_ELEMS>, // TODO: changes high_assurance to only pack on SGTreeConst<K,V,C>
+    // TODO: enum dispatch here to not mess up high_assurance packing for default?
+    //pub(crate) arena: NodeArena<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>,
     pub(crate) root_idx: Option<Idx>, // TODO: rename to opt_root_idx
 
     // Query cache
@@ -49,7 +50,7 @@ impl<K: Ord, V> SGTree<K, V> {
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
-            arena: NodeArena::<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>::new(),
+            arena: NodeArena::<K, V, u64, MAX_ELEMS>::new(), // TODO: cannot be usize here, since small unsigned doesn't return it! Down side for 32-bit systems
             root_idx: None,
             max_idx: 0,
             min_idx: 0,
@@ -60,6 +61,24 @@ impl<K: Ord, V> SGTree<K, V> {
             rebal_cnt: 0,
         }
     }
+
+    /*
+    /// TODO: docs
+    pub fn with_capacity<const C: usize>(capacity: C) -> Self {
+        SGTree {
+            //arena: NodeArena::<K, V, small_unsigned!(C), C>::new(), // TODO
+            arena: NodeArena::<K, V, usize, C>::new(),
+            root_idx: None,
+            max_idx: 0,
+            min_idx: 0,
+            curr_size: 0,
+            alpha_num: ALPHA_NUM,
+            alpha_denom: ALPHA_DENOM,
+            max_size: 0,
+            rebal_cnt: 0,
+        }
+    }
+    */
 
     /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
     /// `a` tunes how "aggressively" the data structure self-balances.

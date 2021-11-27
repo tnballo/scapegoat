@@ -1,5 +1,7 @@
 use super::types::{Idx, SortSwapVec};
 
+// TODO: change Index to I: SmallUnsigned
+
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
 /// Binary tree node.
