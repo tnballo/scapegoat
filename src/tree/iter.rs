@@ -1,5 +1,6 @@
 
 use smallvec::SmallVec;
+use smallnum::SmallUnsigned;
 
 use super::tree::SGTree;
 
@@ -14,7 +15,7 @@ pub struct Iter<'a, K: Ord, V, I, const C: usize> {
     idx_stack: SmallVec::<[I; C]>,
 }
 
-impl<'a, K: Ord, V, I, const C: usize> Iter<'a, K, V, I, C> {
+impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iter<'a, K, V, I, C> {
     pub fn new(bst: &'a SGTree<K, V>) -> Self {
         let mut ordered_iter = Iter {
             bst,
@@ -25,13 +26,13 @@ impl<'a, K: Ord, V, I, const C: usize> Iter<'a, K, V, I, C> {
             let mut curr_idx = root_idx;
             loop {
                 let node = ordered_iter.bst.arena.hard_get(curr_idx);
-                match node.left_idx {
+                match node.left_idx() {
                     Some(lt_idx) => {
-                        ordered_iter.idx_stack.push(curr_idx);
+                        ordered_iter.idx_stack.push(I::checked_from(curr_idx));
                         curr_idx = lt_idx;
                     }
                     None => {
-                        ordered_iter.idx_stack.push(curr_idx);
+                        ordered_iter.idx_stack.push(I::checked_from(curr_idx));
                         break;
                     }
                 }
@@ -42,31 +43,31 @@ impl<'a, K: Ord, V, I, const C: usize> Iter<'a, K, V, I, C> {
     }
 }
 
-impl<'a, K: Ord, V, I, const C: usize> Iterator for Iter<'a, K, V, I, C> {
+impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iterator for Iter<'a, K, V, I, C> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.idx_stack.pop() {
             Some(pop_idx) => {
-                let node = self.bst.arena.hard_get(pop_idx);
-                if let Some(gt_idx) = node.right_idx {
+                let node = self.bst.arena.hard_get(pop_idx.usize());
+                if let Some(gt_idx) = node.right_idx() {
                     let mut curr_idx = gt_idx;
                     loop {
                         let node = self.bst.arena.hard_get(curr_idx);
-                        match node.left_idx {
+                        match node.left_idx() {
                             Some(lt_idx) => {
-                                self.idx_stack.push(curr_idx);
+                                self.idx_stack.push(I::checked_from(curr_idx));
                                 curr_idx = lt_idx;
                             }
                             None => {
-                                self.idx_stack.push(curr_idx);
+                                self.idx_stack.push(I::checked_from(curr_idx));
                                 break;
                             }
                         }
                     }
                 }
 
-                let node = self.bst.arena.hard_get(pop_idx);
+                let node = self.bst.arena.hard_get(pop_idx.usize());
                 Some((&node.key, &node.val))
             }
             None => None,

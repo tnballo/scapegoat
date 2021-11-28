@@ -5,29 +5,42 @@ use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
 
+// Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+// All members in subset are <= host pointer width in size.
+// If caller obeys contract, `I` will be smallest unsigned capable of representing const `C` (e.g. static capacity).
+
 /// A simple arena allocator.
+/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
+/// Method APIs take/return `usize` and normalize to `I` internally.
+/// Sole associated function, `gen_idx_vec`, has return type that uses `I` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
-pub struct NodeArena<K, V, I, const N: usize> {
-    arena: SmallVec<[Option<Node<K, V, I>>; N]>,
+pub struct NodeArena<K, V, I, const C: usize> {
+    arena: SmallVec<[Option<Node<K, V, I>>; C]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
-    free_list: SmallVec<[I; N]>,
+    free_list: SmallVec<[I; C]>,
 }
 
-impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> NodeArena<K, V, I, N> {
+impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> NodeArena<K, V, I, C> {
     // Public API ------------------------------------------------------------------------------------------------------
+
+    // TODO: make const with tinyvec::ArrayVec::default()?
+    /// Associated constructor for index scratch vector.
+    pub fn new_idx_vec() -> SmallVec::<[I; C]> {
+        SmallVec::<[I; C]>::new()
+    }
 
     /// Constructor.
     pub fn new() -> Self {
         let na = NodeArena {
-            arena: SmallVec::<[Option::<Node<K, V, I>>; N]>::new(),
+            arena: SmallVec::<[Option::<Node<K, V, I>>; C]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: SmallVec::<[I; N]>::new()
+            free_list: SmallVec::<[I; C]>::new()
         };
 
         // Verify dependency's const generic constructors
-        debug_assert!((N == na.len()) && (N == na.free_list.len()));
+        debug_assert!((C == na.len()) && (C == na.free_list.len()));
 
         na
     }
@@ -38,7 +51,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
     pub fn capacity(&self) -> usize {
-        N
+        C
     }
 
     /// Returns an iterator over immutable arena elements.
@@ -118,7 +131,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     /// Sort the arena in caller-requested order and update all tree metadata accordingly
     /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
-    pub fn sort(&mut self, root_idx: usize, sort_metadata: SmallVec<[NodeGetHelper<I>; N]>) -> usize {
+    pub fn sort(&mut self, root_idx: usize, sort_metadata: SmallVec<[NodeGetHelper<I>; C]>) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
         let mut swap_history = NodeSwapHistHelper::<I, C>::new(); //  TODO: node shouldn't know C!
@@ -206,7 +219,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     }
 }
 
-impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default for NodeArena<K, V, I, N> {
+impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> Default for NodeArena<K, V, I, C> {
     fn default() -> Self {
         Self::new()
     }

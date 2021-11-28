@@ -3,12 +3,14 @@ use core::ops::{Sub, Div};
 use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
 
-// TODO: verify return types are usize, not I
-// TODO: should params also be usize, not I?
+// Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+// All members in subset are <= host pointer width in size.
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
 /// Binary tree node.
+/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `I` internally.
 #[derive(Clone)]
 pub struct Node<K, V, I> {
     pub key: K,
@@ -64,6 +66,8 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
 // Retrieval Helper ----------------------------------------------------------------------------------------------------
 
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
+/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `I` internally.
 pub struct NodeGetHelper<I> {
     node_idx: Option<I>,
     parent_idx: Option<I>,
@@ -96,16 +100,39 @@ impl<I: SmallUnsigned> NodeGetHelper<I> {
     }
 }
 
+// TODO: impl a To<Node<K,V>> so tree's public APIs can hide the `I` by promoting to a `usize` for external consumption.
+
 // Tree Rebuild Helper -------------------------------------------------------------------------------------------------
 
 /// Helper for in-place iterative rebuild.
+/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `I` internally.
 pub struct NodeRebuildHelper<I> {
     pub low_idx: I,
     pub high_idx: I,
     pub mid_idx: I,
 }
 
+/*
+TODO: this doesnt' work
+struct NrhI(NodeRebuildHelper::I);
+
+impl Div<<NrhI as core::ops::Sub>::Output> for NrhI
+where
+    NrhI: Div
+{
+    type Output = Self;
+
+    fn div(self, rhs: <NrhI as core::ops::Sub>::Output) -> Self::Output {
+        Self {
+            self / (rhs as NrhI)
+        }
+    }
+}
+*/
+
 impl<I: SmallUnsigned + Ord + Sub + Div> NodeRebuildHelper<I> {
+
     /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
         debug_assert!(
@@ -128,6 +155,8 @@ impl<I: SmallUnsigned + Ord + Sub + Div> NodeRebuildHelper<I> {
 
 /// A helper "cache" for swap operation history.
 /// If every index swap is logged, tracks mapping of original to current indexes.
+/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `I` internally.
 pub struct NodeSwapHistHelper<I, const C: usize> {
     /// Map `original_idx` -> `current_idx`
     history: SmallVec<[(I, I); C]>,

@@ -1,7 +1,6 @@
-use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
+use super::node::{Node, NodeRebuildHelper};
 use crate::MAX_ELEMS;
 
-use smallnum::small_unsigned;
 use smallvec::{IntoIter, SmallVec};
 
 /*
