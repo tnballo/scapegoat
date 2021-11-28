@@ -1,6 +1,7 @@
-use super::node::Node;
+
+use smallvec::SmallVec;
+
 use super::tree::SGTree;
-use super::types::IdxVec;
 
 // TODO: add pre-order and post-order iterators
 
@@ -8,16 +9,16 @@ use super::types::IdxVec;
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
-pub struct Iter<'a, K: Ord, V> {
+pub struct Iter<'a, K: Ord, V, I, const C: usize> {
     bst: &'a SGTree<K, V>,
-    idx_stack: IdxVec,
+    idx_stack: SmallVec::<[I; C]>,
 }
 
-impl<'a, K: Ord, V> Iter<'a, K, V> {
+impl<'a, K: Ord, V, I, const C: usize> Iter<'a, K, V, I, C> {
     pub fn new(bst: &'a SGTree<K, V>) -> Self {
         let mut ordered_iter = Iter {
             bst,
-            idx_stack: IdxVec::new(),
+            idx_stack: SmallVec::<[I; C]>::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {
@@ -41,7 +42,7 @@ impl<'a, K: Ord, V> Iter<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
+impl<'a, K: Ord, V, I, const C: usize> Iterator for Iter<'a, K, V, I, C> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -76,7 +77,7 @@ impl<'a, K: Ord, V> Iterator for Iter<'a, K, V> {
 // Mutable Reference iterator ----------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K: Ord, V> {
-    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V>>>,
+    arena_iter_mut: core::slice::IterMut<'a, Option<(K, V)>>,
 }
 
 impl<'a, K: Ord, V> IterMut<'a, K, V> {
@@ -93,7 +94,7 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.arena_iter_mut.next() {
-            Some(Some(node)) => Some((&node.key, &mut node.val)),
+            Some(Some((key, val))) => Some((key, val)),
             _ => None,
         }
     }
@@ -103,17 +104,17 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
-pub struct IntoIter<K: Ord, V> {
+pub struct IntoIter<K: Ord, V, I, const C: usize> {
     bst: SGTree<K, V>,
-    sorted_idxs: IdxVec,
+    sorted_idxs: SmallVec::<[I; C]>,
 }
 
-impl<K: Ord, V> IntoIter<K, V> {
+impl<K: Ord, V, I, const C: usize> IntoIter<K, V, I, C> {
     /// Constructor
     pub fn new(bst: SGTree<K, V>) -> Self {
         let mut ordered_iter = IntoIter {
             bst,
-            sorted_idxs: IdxVec::new(),
+            sorted_idxs: SmallVec::<[I; C]>::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {
@@ -125,7 +126,7 @@ impl<K: Ord, V> IntoIter<K, V> {
     }
 }
 
-impl<K: Ord, V> Iterator for IntoIter<K, V> {
+impl<K: Ord, V, I, const C: usize> Iterator for IntoIter<K, V, I, C> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {

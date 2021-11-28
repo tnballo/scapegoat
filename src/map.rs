@@ -1,3 +1,4 @@
+/*
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::iter::FromIterator;
@@ -962,3 +963,4 @@ impl<'a, K: Ord, V> Iterator for ValuesMut<'a, K, V> {
         self.inner.next().map(|(_, v)| v)
     }
 }
+*/

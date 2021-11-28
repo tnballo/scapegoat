@@ -11,7 +11,7 @@ use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::types::{
-    Idx, IdxVec, RebuildMetaVec, SortMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
+    RebuildMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
 };
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
@@ -30,17 +30,21 @@ pub struct SGTree<K: Ord, V> {
     pub(crate) arena: NodeArena<K, V, u64, MAX_ELEMS>, // TODO: changes high_assurance to only pack on SGTreeConst<K,V,C>
     // TODO: enum dispatch here to not mess up high_assurance packing for default?
     //pub(crate) arena: NodeArena<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>,
-    pub(crate) root_idx: Option<Idx>, // TODO: rename to opt_root_idx
+    pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
+
+    // CRITICAL TODO:
+    // TODO: tree needs to cast usize to arena's "I" when talking down!
+    // TODO: try debug_assert!() in smallnum to see if impacts benchmark later!
 
     // Query cache
-    max_idx: Idx,
-    min_idx: Idx,
-    curr_size: Idx,
+    max_idx: usize,
+    min_idx: usize,
+    curr_size: usize,
 
     // Balance control
     alpha_num: f32,
     alpha_denom: f32,
-    max_size: Idx,
+    max_size: usize,
     rebal_cnt: usize,
 }
 

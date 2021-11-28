@@ -4,6 +4,7 @@ use crate::MAX_ELEMS;
 use smallnum::small_unsigned;
 use smallvec::{IntoIter, SmallVec};
 
+/*
 // Index Variable ------------------------------------------------------------------------------------------------------
 
 #[cfg(not(feature = "high_assurance"))]
@@ -15,9 +16,11 @@ pub type Idx = small_unsigned!(MAX_ELEMS);
 // Arena Internals -----------------------------------------------------------------------------------------------------
 
 pub type ArenaVec<K, V> = SmallVec<[Option<Node<K, V>>; MAX_ELEMS]>;
+*/
 
 // Sorting Internals ---------------------------------------------------------------------------------------------------
 
+/*
 /// Working set of arena indexes
 pub type IdxVec = SmallVec<[Idx; MAX_ELEMS]>;
 
@@ -26,6 +29,7 @@ pub type SortMetaVec = SmallVec<[NodeGetHelper; MAX_ELEMS]>;
 
 /// Map of a sort's swap history
 pub type SortSwapVec = SmallVec<[(Idx, Idx); MAX_ELEMS]>;
+*/
 
 // List of node references
 pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;

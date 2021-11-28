@@ -60,7 +60,7 @@ assert!(example
 // Container indexing
 assert_eq!(example[&3], "the");
 
-// Fast (no search) head removal
+// O(1), e.g. constant, head removal
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
@@ -236,8 +236,10 @@ pub use crate::tree::{Node, NodeArena, NodeGetHelper, NodeRebuildHelper};
 mod tree;
 pub use crate::tree::{SGErr, SGTree};
 
+/*
 mod map;
 pub use crate::map::{IntoKeys, IntoValues, Keys, SGMap, Values, ValuesMut};
 
 mod set;
 pub use crate::set::SGSet;
+*/
