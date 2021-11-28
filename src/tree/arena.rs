@@ -15,9 +15,6 @@ pub struct NodeArena<K, V, I, const N: usize> {
 }
 
 impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> NodeArena<K, V, I, N> {
-
-    //type Idx = small_unsigned!(N);
-
     // Public API ------------------------------------------------------------------------------------------------------
 
     /// Constructor.
@@ -55,7 +52,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     }
 
     /// Add node to area, growing if necessary, and return addition index.
-    pub fn add(&mut self, node: Node<K, V, I>) -> I {
+    pub fn add(&mut self, node: Node<K, V, I>) -> usize {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
@@ -75,30 +72,30 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
                     "Internal invariant failed: overwrite of allocated node!"
                 );
                 self.arena[free_idx.usize()] = Some(node);
-                free_idx
+                free_idx.usize()
             }
             None => {
                 self.arena.push(Some(node));
-                I::checked_from(self.arena.len() - 1)
+                self.arena.len() - 1
             }
         }
     }
 
     /// Remove node at a given index from area, return it.
-    pub fn remove(&mut self, idx: I) -> Option<Node<K, V, I>> {
+    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V, I>> {
         debug_assert!(
-            idx < I::checked_from(self.arena.len()),
+            idx < self.arena.len(),
             "API misuse: requested removal past last index!"
         );
-        if idx < I::checked_from(self.arena.len()) {
+        if idx < self.arena.len() {
             // Move node to back, replacing with None, preserving order
             self.arena.push(None);
             let len = self.arena.len();
-            self.arena.swap(idx.usize(), len - 1);
+            self.arena.swap(idx, len - 1);
 
             // Append removed index to free list
             #[cfg(not(feature = "low_mem_insert"))]
-            self.free_list.push(idx);
+            self.free_list.push(I::checked_from(idx));
 
             // Retrieve node
             return match self.arena.pop() {
@@ -121,34 +118,33 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     /// Sort the arena in caller-requested order and update all tree metadata accordingly
     /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
-    pub fn sort(&mut self, root_idx: I, sort_metadata: SmallVec<[NodeGetHelper<I>; N]>) -> I {
-        debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx.is_some()));
+    pub fn sort(&mut self, root_idx: usize, sort_metadata: SmallVec<[NodeGetHelper<I>; N]>) -> usize {
+        debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
-        let mut swap_history = NodeSwapHistHelper::new();
+        let mut swap_history = NodeSwapHistHelper::<I, C>::new(); //  TODO: node shouldn't know C!
 
         // Sort as requested
         for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
-            let curr_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
-            let sorted_idx = I::checked_from(sorted_idx);
+            let curr_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
             if curr_idx != sorted_idx {
-                self.arena.swap(curr_idx.usize(), sorted_idx.usize());
+                self.arena.swap(curr_idx, sorted_idx);
                 swap_history.add(curr_idx, sorted_idx);
 
                 #[cfg(not(feature = "low_mem_insert"))]
-                self.free_list.retain(|i| *i != sorted_idx);
+                self.free_list.retain(|i| (*i).usize() != sorted_idx);
             }
         }
 
         // Update all parent-child relationships
         for ngh in sort_metadata {
-            if let Some(parent_idx) = ngh.parent_idx {
+            if let Some(parent_idx) = ngh.parent_idx() {
                 let curr_parent_idx = swap_history.curr_idx(parent_idx);
-                let curr_child_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
+                let curr_child_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
                 let parent_node = self.hard_get_mut(curr_parent_idx);
-                if ngh.is_right_child {
-                    parent_node.right_idx = Some(curr_child_idx);
+                if ngh.is_right_child() {
+                    parent_node.set_right_idx(Some(curr_child_idx));
                 } else {
-                    parent_node.left_idx = Some(curr_child_idx);
+                    parent_node.set_left_idx(Some(curr_child_idx));
                 }
             }
         }
@@ -159,7 +155,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: I) -> Node<K, V, I> {
+    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V, I> {
         match self.remove(idx) {
             Some(node) => node,
             None => {
@@ -169,16 +165,16 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     }
 
     /// Get a reference to a node.
-    pub fn get(&self, idx: I) -> Option<&Node<K, V, I>> {
-        match self.arena.get(idx.usize()) {
+    pub fn get(&self, idx: usize) -> Option<&Node<K, V, I>> {
+        match self.arena.get(idx) {
             Some(Some(node)) => Some(node),
             _ => None,
         }
     }
 
     /// Get mutable reference to a node.
-    pub fn get_mut(&mut self, idx: I) -> Option<&mut Node<K, V, I>> {
-        match self.arena.get_mut(idx.usize()) {
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Node<K, V, I>> {
+        match self.arena.get_mut(idx) {
             Some(Some(node)) => Some(node),
             _ => None,
         }
@@ -186,7 +182,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     /// Get reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get` instead.
-    pub fn hard_get(&self, idx: I) -> &Node<K, V, I> {
+    pub fn hard_get(&self, idx: usize) -> &Node<K, V, I> {
         match self.get(idx) {
             Some(node) => node,
             None => {
@@ -197,7 +193,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     /// Get mutable reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get_mut` instead.
-    pub fn hard_get_mut(&mut self, idx: I) -> &mut Node<K, V, I> {
+    pub fn hard_get_mut(&mut self, idx: usize) -> &mut Node<K, V, I> {
         match self.get_mut(idx) {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
@@ -210,7 +206,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     }
 }
 
-impl<K: Ord, V, I: Default + SmallUnsigned + PartialEq + PartialOrd, const N: usize> Default for NodeArena<K, V, I, N> {
+impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default for NodeArena<K, V, I, N> {
     fn default() -> Self {
         Self::new()
     }
@@ -221,12 +217,13 @@ mod tests {
     use super::{Node, NodeArena};
     use crate::tree::node::NodeGetHelper;
     use smallvec::smallvec;
+    use smallnum::small_unsigned;
 
     #[test]
     fn test_add_and_remove() {
-        let n_1 = Node::new(1, "n/a");
-        let n_2 = Node::new(2, "n/a");
-        let n_3 = Node::new(3, "n/a");
+        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
+        let n_2: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(2, "n/a");
+        let n_3: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(3, "n/a");
 
         let mut arena = NodeArena::new();
 
@@ -253,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_get_mut() {
-        let n_1 = Node::new(1, "n/a");
+        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)>  = Node::new(1, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
         assert_eq!(arena.get(n_1_idx).unwrap().val, "n/a");
@@ -264,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_hard_get_1() {
-        let n_1 = Node::new(0xD00DFEED_u64, "n/a");
+        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)>  = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
         let n_1_ref = arena.hard_get(n_1_idx);
@@ -274,7 +271,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_hard_get_2() {
-        let n_1 = Node::new(0xD00DFEED_u64, "n/a");
+        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)>  = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         arena.add(n_1);
         arena.hard_get(1); // OOB
@@ -282,13 +279,13 @@ mod tests {
 
     #[test]
     fn test_capacity() {
-        let arena = NodeArena::<i32, &str>::new();
-        assert_eq!(arena.capacity(), MAX_ELEMS);
+        let arena = NodeArena::<i32, &str, small_unsigned!(i32::MAX), 1337>::new();
+        assert_eq!(arena.capacity(), 1337);
     }
 
     #[test]
     fn test_sort() {
-        let mut arena = NodeArena::<usize, &str>::new();
+        let arena = NodeArena::<usize, &str, small_unsigned!(usize::MAX), 1024>::new();
 
         // Simple 3-node tree:
         //
@@ -302,8 +299,8 @@ mod tests {
         let mut n_2 = Node::new(2, "n/a");
         let n_3 = Node::new(3, "n/a");
 
-        n_2.left_idx = Some(2);
-        n_2.right_idx = Some(0);
+        n_2.set_left_idx(Some(2));
+        n_2.set_right_idx(Some(0));
 
         arena.add(n_3);
         arena.add(n_2);

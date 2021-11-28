@@ -166,7 +166,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
-            if let Some(node) = other.arena.remove(arena_idx as Idx) {
+            if let Some(node) = other.arena.remove(arena_idx) {
                 self.insert(node.key, node.val);
             }
         }

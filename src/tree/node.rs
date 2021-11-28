@@ -1,5 +1,10 @@
+use core::ops::{Sub, Div};
+
 use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
+
+// TODO: verify return types are usize, not I
+// TODO: should params also be usize, not I?
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
@@ -8,14 +13,14 @@ use smallnum::SmallUnsigned;
 pub struct Node<K, V, I> {
     pub key: K,
     pub val: V,
-    pub left_idx: Option<I>,
-    pub right_idx: Option<I>,
+    left_idx: Option<I>,
+    right_idx: Option<I>,
 
     #[cfg(feature = "fast_rebalance")]
     pub subtree_size: I,
 }
 
-impl<K, V, I> Node<K, V, I> {
+impl<K, V, I: SmallUnsigned> Node<K, V, I> {
     /// Constructor.
     pub fn new(key: K, val: V) -> Self {
         Node {
@@ -28,25 +33,66 @@ impl<K, V, I> Node<K, V, I> {
             subtree_size: 1,
         }
     }
+
+    /// Get left index as usize
+    pub fn left_idx(&self) -> Option<usize> {
+        self.left_idx.map(|i| i.usize())
+    }
+
+    /// Set left index
+    pub fn set_left_idx(&mut self, opt_idx: Option<usize>) {
+        match opt_idx {
+            Some(idx) => self.left_idx = Some(I::checked_from(idx)),
+            None => self.left_idx = None
+        }
+    }
+
+    /// Get right index as usize
+    pub fn right_idx(&self) -> Option<usize> {
+        self.right_idx.map(|i| i.usize())
+    }
+
+    /// Set right index
+    pub fn set_right_idx(&mut self, opt_idx: Option<usize>) {
+        match opt_idx {
+            Some(idx) => self.right_idx = Some(I::checked_from(idx)),
+            None => self.right_idx = None
+        }
+    }
 }
 
 // Retrieval Helper ----------------------------------------------------------------------------------------------------
 
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
 pub struct NodeGetHelper<I> {
-    pub node_idx: Option<I>,
-    pub parent_idx: Option<I>,
-    pub is_right_child: bool,
+    node_idx: Option<I>,
+    parent_idx: Option<I>,
+    is_right_child: bool,
 }
 
-impl<I> NodeGetHelper<I> {
+impl<I: SmallUnsigned> NodeGetHelper<I> {
     /// Constructor.
-    pub fn new(node_idx: Option<I>, parent_idx: Option<I>, is_right_child: bool) -> Self {
+    pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
-            node_idx,
-            parent_idx,
+            node_idx: node_idx.map(|i| I::checked_from(i)),
+            parent_idx: parent_idx.map(|i| I::checked_from(i)),
             is_right_child,
         }
+    }
+
+    /// Get node index as usize
+    pub fn node_idx(&self) -> Option<usize> {
+        self.node_idx.map(|i| i.usize())
+    }
+
+    /// Get parent index as usize
+    pub fn parent_idx(&self) -> Option<usize> {
+        self.node_idx.map(|i| i.usize())
+    }
+
+    // Tell if right or left child
+    pub const fn is_right_child(&self) -> bool {
+        self.is_right_child
     }
 }
 
@@ -59,17 +105,21 @@ pub struct NodeRebuildHelper<I> {
     pub mid_idx: I,
 }
 
-impl<I: SmallUnsigned + Ord> NodeRebuildHelper<I> {
+impl<I: SmallUnsigned + Ord + Sub + Div> NodeRebuildHelper<I> {
     /// Constructor.
-    pub fn new(low_idx: I, high_idx: I) -> Self {
+    pub fn new(low_idx: usize, high_idx: usize) -> Self {
         debug_assert!(
             high_idx >= low_idx,
             "Node rebuild helper low/high index reversed!"
         );
+
+        let low_idx = I::checked_from(low_idx);
+        let high_idx = I::checked_from(high_idx);
+
         NodeRebuildHelper {
             low_idx,
             high_idx,
-            mid_idx: low_idx + ((high_idx - low_idx) / 2),
+            mid_idx: low_idx + ((high_idx - low_idx) / I::checked_from(2)),
         }
     }
 }
@@ -83,7 +133,7 @@ pub struct NodeSwapHistHelper<I, const C: usize> {
     history: SmallVec<[(I, I); C]>,
 }
 
-impl<I: Ord, const C: usize> NodeSwapHistHelper<I, C> {
+impl<I: Ord + SmallUnsigned, const C: usize> NodeSwapHistHelper<I, C> {
     /// Constructor.
     pub fn new() -> Self {
         NodeSwapHistHelper {
@@ -93,11 +143,14 @@ impl<I: Ord, const C: usize> NodeSwapHistHelper<I, C> {
 
     /// Log the swap of elements at two indexes.
     /// Every swap performed must be logged with this method for the cache to remain accurate.
-    pub fn add(&mut self, pos_1: I, pos_2: I) {
+    pub fn add(&mut self, pos_1: usize, pos_2: usize) {
         debug_assert_ne!(pos_1, pos_2);
 
         let mut known_pos_1 = false;
         let mut known_pos_2 = false;
+
+        let pos_1 = I::checked_from(pos_1);
+        let pos_2 = I::checked_from(pos_2);
 
         // Update existing
         for (_, curr_idx) in self.history.iter_mut() {
@@ -122,17 +175,17 @@ impl<I: Ord, const C: usize> NodeSwapHistHelper<I, C> {
     }
 
     /// Retrieve the current value of an original index from the map.
-    pub fn curr_idx(&self, orig_pos: I) -> I {
-        debug_assert!(self.history.iter().filter(|(k, _)| *k == orig_pos).count() <= 1);
+    pub fn curr_idx(&self, orig_pos: usize) -> usize {
+        debug_assert!(self.history.iter().filter(|(k, _)| (*k).usize() == orig_pos).count() <= 1);
 
         match self
             .history
             .iter()
-            .filter(|(k, _)| *k == orig_pos)
+            .filter(|(k, _)| (*k).usize() == orig_pos)
             .map(|(_, curr)| *curr)
             .next()
         {
-            Some(curr_idx) => curr_idx,
+            Some(curr_idx) => curr_idx.usize(),
             None => orig_pos,
         }
     }
