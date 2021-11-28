@@ -1,4 +1,4 @@
-use core::ops::{Sub, Div};
+use core::ops::Sub;
 
 use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
@@ -113,25 +113,7 @@ pub struct NodeRebuildHelper<I> {
     pub mid_idx: I,
 }
 
-/*
-TODO: this doesnt' work
-struct NrhI(NodeRebuildHelper::I);
-
-impl Div<<NrhI as core::ops::Sub>::Output> for NrhI
-where
-    NrhI: Div
-{
-    type Output = Self;
-
-    fn div(self, rhs: <NrhI as core::ops::Sub>::Output) -> Self::Output {
-        Self {
-            self / (rhs as NrhI)
-        }
-    }
-}
-*/
-
-impl<I: SmallUnsigned + Ord + Sub + Div> NodeRebuildHelper<I> {
+impl<I: SmallUnsigned + Ord + Sub> NodeRebuildHelper<I> {
 
     /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
@@ -140,13 +122,10 @@ impl<I: SmallUnsigned + Ord + Sub + Div> NodeRebuildHelper<I> {
             "Node rebuild helper low/high index reversed!"
         );
 
-        let low_idx = I::checked_from(low_idx);
-        let high_idx = I::checked_from(high_idx);
-
         NodeRebuildHelper {
-            low_idx,
-            high_idx,
-            mid_idx: low_idx + ((high_idx - low_idx) / I::checked_from(2)),
+            low_idx: I::checked_from(low_idx),
+            high_idx: I::checked_from(high_idx),
+            mid_idx: I::checked_from(low_idx + ((high_idx - low_idx) / 2)),
         }
     }
 }

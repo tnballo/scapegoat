@@ -86,6 +86,8 @@ impl<'a, K: Ord, V> IterMut<'a, K, V> {
         bst.sort_arena();
         IterMut {
             arena_iter_mut: bst.arena.iter_mut(),
+            // TODO: figure this out
+            // arena_iter_mut: bst.arena.iter_mut().map(|n| (n.key, n.val))
         }
     }
 }
