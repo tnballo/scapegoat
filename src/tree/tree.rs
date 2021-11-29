@@ -292,14 +292,14 @@ impl<K: Ord, V> SGTree<K, V> {
         Q: Ord + ?Sized,
     {
         match self.priv_remove_by_key(key) {
-            Some(node) => {
+            Some((key, val)) => {
                 if self.max_size > (2 * self.curr_size) {
                     if let Some(root_idx) = self.root_idx {
                         self.rebuild(root_idx);
                         self.max_size = self.curr_size;
                     }
                 }
-                Some((node.key, node.val))
+                Some((key, val))
             }
             None => None,
         }
@@ -436,10 +436,7 @@ impl<K: Ord, V> SGTree<K, V> {
     where
         K: Ord,
     {
-        match self.priv_remove_by_idx(self.min_idx) {
-            Some(node) => Some((node.key, node.val)),
-            None => None,
-        }
+        self.priv_remove_by_idx(self.min_idx)
     }
 
     /// Returns a reference to the last key-value pair in the tree.
@@ -467,10 +464,7 @@ impl<K: Ord, V> SGTree<K, V> {
     where
         K: Ord,
     {
-        match self.priv_remove_by_idx(self.max_idx) {
-            Some(node) => Some((node.key, node.val)),
-            None => None,
-        }
+        self.priv_remove_by_idx(self.max_idx)
     }
 
     /// Returns the number of elements in the tree.
@@ -755,9 +749,9 @@ impl<K: Ord, V> SGTree<K, V> {
 
                     let parent_node = self.arena.hard_get_mut(parent_idx);
                     if ngh.is_right_child() {
-                        parent_node.right_idx() = ngh.node_idx();
+                        parent_node.set_right_idx(ngh.node_idx());
                     } else {
-                        parent_node.left_idx() = ngh.node_idx();
+                        parent_node.set_left_idx(ngh.node_idx());
                     }
                 }
 

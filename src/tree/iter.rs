@@ -3,8 +3,6 @@ use smallvec::SmallVec;
 
 use super::tree::SGTree;
 
-// TODO: add pre-order and post-order iterators
-
 // Immutable Reference iterator ----------------------------------------------------------------------------------------
 
 /// Uses iterative in-order tree traversal algorithm.
