@@ -30,6 +30,7 @@ pub type SortMetaVec = SmallVec<[NodeGetHelper; MAX_ELEMS]>;
 pub type SortSwapVec = SmallVec<[(Idx, Idx); MAX_ELEMS]>;
 */
 
+/*
 // List of node references
 pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
 
@@ -38,6 +39,7 @@ pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_
 
 // List of (index, node rebuild helper) pairs
 pub type RebuildMetaVec = SmallVec<[(Idx, NodeRebuildHelper); MAX_ELEMS]>;
+*/
 
 // Set -----------------------------------------------------------------------------------------------------------------
 

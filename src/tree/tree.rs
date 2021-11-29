@@ -1,3 +1,24 @@
+/*
+
+TODO: solution like "impl From<Node<K, V, I> for Node<K,V>"? Might need two node names.
+
+tb@baremetal:~/proj/scapegoat$ rg "Node<K, V>"
+src/tree/types.rs
+17:pub type ArenaVec<K, V> = SmallVec<[Option<Node<K, V>>; MAX_ELEMS]>;
+35:pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
+38:pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
+
+src/tree/tree.rs
+492:    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
+509:    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
+526:        // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
+672:    fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
+786:    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+797:    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+809:    fn priv_remove(&mut self, opt_path: Option<&IdxVec>, ngh: NodeGetHelper) -> Option<Node<K, V>> {
+1099:        // pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
+*/
+
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
@@ -10,9 +31,6 @@ use super::arena::NodeArena;
 use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
-use super::types::{
-    RebuildMetaVec, SortNodeRefIdxPairVec, SortNodeRefVec,
-};
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 use crate::MAX_ELEMS;
@@ -526,6 +544,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Flatten subtree into array of node indexs sorted by node key
     pub(crate) fn flatten_subtree_to_sorted_idxs(&self, idx: usize) -> IdxVec {
+        // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
         let mut subtree_node_idx_pairs: SortNodeRefIdxPairVec<K, V> =
             smallvec![(self.arena.hard_get(idx), idx)];
         let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
@@ -560,6 +579,7 @@ impl<K: Ord, V> SGTree<K, V> {
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
                 .map(|n| self.priv_get(None, &n.key))
+                // pub type SortMetaVec = SmallVec<[NodeGetHelper; MAX_ELEMS]>;
                 .collect::<SortMetaVec>();
 
             sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx().unwrap()).key);
@@ -671,6 +691,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
+        //pub type IdxVec = SmallVec<[Idx; MAX_ELEMS]>;
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -749,12 +770,12 @@ impl<K: Ord, V> SGTree<K, V> {
                 }
 
                 // Link to parent
-                if let Some(parent_idx) = ngh.parent_idx {
+                if let Some(parent_idx) = ngh.parent_idx() {
                     self.curr_size += 1;
                     self.max_size += 1;
 
                     let parent_node = self.arena.hard_get_mut(parent_idx);
-                    if ngh.is_right_child {
+                    if ngh.is_right_child() {
                         parent_node.right_idx() = ngh.node_idx();
                     } else {
                         parent_node.left_idx() = ngh.node_idx();
@@ -894,10 +915,10 @@ impl<K: Ord, V> SGTree<K, V> {
                 };
 
                 // Update parent or root
-                match ngh.parent_idx {
+                match ngh.parent_idx() {
                     Some(parent_idx) => {
                         let parent_node = self.arena.hard_get_mut(parent_idx);
-                        if ngh.is_right_child {
+                        if ngh.is_right_child() {
                             parent_node.right_idx() = new_child;
                         } else {
                             parent_node.left_idx() = new_child;
@@ -1096,6 +1117,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
     fn get_subtree_size(&self, idx: usize) -> usize {
+        // pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
         let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
@@ -1198,6 +1220,8 @@ impl<K: Ord, V> SGTree<K, V> {
         let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
+
+        // pub type RebuildMetaVec = SmallVec<[(Idx, NodeRebuildHelper); MAX_ELEMS]>;
         let mut subtree_worklist = RebuildMetaVec::new();
 
         // Init worklist with middle node (balanced subtree root)
@@ -1214,15 +1238,15 @@ impl<K: Ord, V> SGTree<K, V> {
                 let old_subtree_root = self.arena.hard_get(old_subtree_root_idx);
                 let ngh = self.priv_get(None, &old_subtree_root.key);
                 debug_assert!(
-                    ngh.parent_idx.is_some(),
+                    ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"
                 );
-                if let Some(parent_idx) = ngh.parent_idx {
+                if let Some(parent_idx) = ngh.parent_idx() {
                     let parent_node = self.arena.hard_get_mut(parent_idx);
-                    if ngh.is_right_child {
-                        parent_node.right_idx() = Some(subtree_root_arena_idx);
+                    if ngh.is_right_child() {
+                        parent_node.set_right_idx(Some(subtree_root_arena_idx));
                     } else {
-                        parent_node.left_idx() = Some(subtree_root_arena_idx);
+                        parent_node.set_left_idx(Some(subtree_root_arena_idx));
                     }
                 }
             }
@@ -1234,20 +1258,20 @@ impl<K: Ord, V> SGTree<K, V> {
                 .arena
                 .hard_get_mut(sorted_arena_idxs[sorted_idx.usize()]);
 
-            parent_node.left_idx() = None;
-            parent_node.right_idx() = None;
+            parent_node.set_left_idx(None);
+            parent_node.set_right_idx(None);
 
             // Set left child
             if parent_nrh.low_idx < parent_nrh.mid_idx {
                 let child_nrh = NodeRebuildHelper::new(parent_nrh.low_idx, parent_nrh.mid_idx - 1);
-                parent_node.left_idx() = Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]);
+                parent_node.set_left_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
 
             // Set right child
             if parent_nrh.mid_idx < parent_nrh.high_idx {
                 let child_nrh = NodeRebuildHelper::new(parent_nrh.mid_idx + 1, parent_nrh.high_idx);
-                parent_node.right_idx() = Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]);
+                parent_node.set_right_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
 
