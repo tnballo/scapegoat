@@ -1,6 +1,5 @@
-
-use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
+use smallvec::SmallVec;
 
 use super::tree::SGTree;
 
@@ -12,7 +11,7 @@ use super::tree::SGTree;
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
 pub struct Iter<'a, K: Ord, V, I, const C: usize> {
     bst: &'a SGTree<K, V>,
-    idx_stack: SmallVec::<[I; C]>,
+    idx_stack: SmallVec<[I; C]>,
 }
 
 impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iter<'a, K, V, I, C> {
@@ -109,7 +108,7 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
 pub struct IntoIter<K: Ord, V, I, const C: usize> {
     bst: SGTree<K, V>,
-    sorted_idxs: SmallVec::<[I; C]>,
+    sorted_idxs: SmallVec<[I; C]>,
 }
 
 impl<K: Ord, V, I, const C: usize> IntoIter<K, V, I, C> {
@@ -129,13 +128,13 @@ impl<K: Ord, V, I, const C: usize> IntoIter<K, V, I, C> {
     }
 }
 
-impl<K: Ord, V, I, const C: usize> Iterator for IntoIter<K, V, I, C> {
+impl<K: Ord, V, I: SmallUnsigned, const C: usize> Iterator for IntoIter<K, V, I, C> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.sorted_idxs.pop() {
-            Some(idx) => match self.bst.priv_remove_by_idx(idx) {
-                Some(node) => Some((node.key, node.val)),
+            Some(idx) => match self.bst.priv_remove_by_idx(idx.usize()) {
+                Some((key, val)) => Some((key, val)),
                 None => {
                     debug_assert!(false, "Use of invalid index in consuming iterator!");
                     None

@@ -1,24 +1,3 @@
-/*
-
-TODO: solution like "impl From<Node<K, V, I> for Node<K,V>"? Might need two node names.
-
-tb@baremetal:~/proj/scapegoat$ rg "Node<K, V>"
-src/tree/types.rs
-17:pub type ArenaVec<K, V> = SmallVec<[Option<Node<K, V>>; MAX_ELEMS]>;
-35:pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
-38:pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
-
-src/tree/tree.rs
-492:    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
-509:    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
-526:        // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
-672:    fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
-786:    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
-797:    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
-809:    fn priv_remove(&mut self, opt_path: Option<&IdxVec>, ngh: NodeGetHelper) -> Option<Node<K, V>> {
-1099:        // pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
-*/
-
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
@@ -32,8 +11,8 @@ use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 
-use crate::{ALPHA_DENOM, ALPHA_NUM};
 use crate::MAX_ELEMS;
+use crate::{ALPHA_DENOM, ALPHA_NUM};
 
 #[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
@@ -510,7 +489,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Remove a node by index.
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(not(feature = "fast_rebalance"))]
-    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
+    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         match self.arena.get(idx) {
             Some(node) => {
                 let ngh = self.priv_get(None, &node.key);
@@ -518,7 +497,7 @@ impl<K: Ord, V> SGTree<K, V> {
                     ngh.node_idx().unwrap() == idx,
                     "By-key retrieval index doesn't match arena storage index!"
                 );
-                self.priv_remove(None, ngh)
+                self.priv_remove(None, ngh.node_idx(), ngh.parent_idx(), ngh.is_right_child())
             }
             None => None,
         }
@@ -527,7 +506,7 @@ impl<K: Ord, V> SGTree<K, V> {
     // Remove a node by index.
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(feature = "fast_rebalance")]
-    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<Node<K, V>> { // TODO: this sig needs update if iter (crate caller, needs to know I)
+    pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         match self.arena.get(idx) {
             Some(node) => {
                 let mut path = NodeArena::new_idx_vec();
@@ -536,7 +515,12 @@ impl<K: Ord, V> SGTree<K, V> {
                     ngh.node_idx().unwrap() == idx,
                     "By-key retrieval index doesn't match arena storage index!"
                 );
-                self.priv_remove(Some(&path), ngh)
+                self.priv_remove(
+                    Some(&path),
+                    ngh.node_idx(),
+                    ngh.parent_idx(),
+                    ngh.is_right_child(),
+                )
             }
             None => None,
         }
@@ -595,7 +579,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q>(&self, mut opt_path: Option<&mut IdxVec>, key: &Q) -> NodeGetHelper
+    fn priv_get<Q, I: SmallUnsigned>(&self, mut opt_path: Option<&mut IdxVec>, key: &Q) -> NodeGetHelper<I>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -804,31 +788,44 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Remove a node by key.
     #[cfg(not(feature = "fast_rebalance"))]
-    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
         let ngh = self.priv_get(None, key);
-        self.priv_remove(None, ngh)
+        self.priv_remove(None, ngh.node_idx(), ngh.parent_idx(), ngh.is_right_child())
     }
 
     // Remove a node by key.
     #[cfg(feature = "fast_rebalance")]
-    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<Node<K, V>>
+    fn priv_remove_by_key<Q>(&mut self, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
         let mut path = NodeArena::new_idx_vec();
         let ngh = self.priv_get(Some(&mut path), key);
-        self.priv_remove(Some(&path), ngh)
+        self.priv_remove(
+            Some(&path),
+            ngh.node_idx(),
+            ngh.parent_idx(),
+            ngh.is_right_child(),
+        )
     }
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
+    // Last 3 parameters are copies of `NodeGetHelper`'s fields,
+    // but this decomposition avoids `I` (e.g. `NodeGetHelper<I>` in SGTree's method signatures)
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
-    fn priv_remove(&mut self, opt_path: Option<&IdxVec>, ngh: NodeGetHelper) -> Option<Node<K, V>> {
-        match ngh.node_idx() {
+    fn priv_remove(
+        &mut self,
+        opt_path: Option<&IdxVec>,
+        node_idx: Option<usize>,
+        parent_idx: Option<usize>,
+        is_right_child: bool,
+    ) -> Option<(K, V)> {
+        match node_idx {
             Some(node_idx) => {
                 let node_to_remove = self.arena.hard_get(node_idx);
 
@@ -871,7 +868,7 @@ impl<K: Ord, V> SGTree<K, V> {
                                         } else {
                                             let min_parent_node =
                                                 self.arena.hard_get_mut(min_parent_idx);
-                                            min_parent_node.left_idx() = unlink_new_child;
+                                            min_parent_node.set_left_idx(unlink_new_child);
 
                                             #[cfg(feature = "fast_rebalance")]
                                             {
@@ -886,7 +883,7 @@ impl<K: Ord, V> SGTree<K, V> {
                                         } else {
                                             let min_parent_node =
                                                 self.arena.hard_get_mut(min_parent_idx);
-                                            min_parent_node.left_idx() = None;
+                                            min_parent_node.set_left_idx(None);
 
                                             #[cfg(feature = "fast_rebalance")]
                                             {
@@ -901,8 +898,8 @@ impl<K: Ord, V> SGTree<K, V> {
 
                         // Re-link min node to removed node's children
                         let min_node = self.arena.hard_get_mut(min_idx);
-                        min_node.right_idx() = node_to_remove_right_idx;
-                        min_node.left_idx() = node_to_remove_left_idx;
+                        min_node.set_right_idx(node_to_remove_right_idx);
+                        min_node.set_left_idx(node_to_remove_left_idx);
 
                         #[cfg(feature = "fast_rebalance")]
                         {
@@ -915,10 +912,10 @@ impl<K: Ord, V> SGTree<K, V> {
                 };
 
                 // Update parent or root
-                match ngh.parent_idx() {
+                match parent_idx {
                     Some(parent_idx) => {
                         let parent_node = self.arena.hard_get_mut(parent_idx);
-                        if ngh.is_right_child() {
+                        if is_right_child {
                             parent_node.right_idx() = new_child;
                         } else {
                             parent_node.left_idx() = new_child;
@@ -953,7 +950,7 @@ impl<K: Ord, V> SGTree<K, V> {
                     }
                 }
 
-                Some(removed_node)
+                Some((removed_node.key, removed_node.val))
             }
             None => None,
         }

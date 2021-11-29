@@ -2,14 +2,14 @@ use core::slice::{Iter, IterMut};
 
 use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 
-use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
+use smallvec::SmallVec;
 
 // Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
 // If caller obeys contract, `I` will be smallest unsigned capable of representing const `C` (e.g. static capacity).
 
-/// A simple arena allocator.
+/// An arena allocator, meta programmable for low memory footprint.
 /// Users of it's APIs only need to declare `I` type or trait bounds at construction.
 /// Method APIs take/return `usize` and normalize to `I` internally.
 /// Sole associated function, `gen_idx_vec`, has return type that uses `I` - to a void duplicating `Vec` API here.
@@ -21,22 +21,24 @@ pub struct NodeArena<K, V, I, const C: usize> {
     free_list: SmallVec<[I; C]>,
 }
 
-impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> NodeArena<K, V, I, C> {
+impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize>
+    NodeArena<K, V, I, C>
+{
     // Public API ------------------------------------------------------------------------------------------------------
 
     // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
-    pub fn new_idx_vec() -> SmallVec::<[I; C]> {
+    pub fn new_idx_vec() -> SmallVec<[I; C]> {
         SmallVec::<[I; C]>::new()
     }
 
     /// Constructor.
     pub fn new() -> Self {
         let na = NodeArena {
-            arena: SmallVec::<[Option::<Node<K, V, I>>; C]>::new(),
+            arena: SmallVec::<[Option<Node<K, V, I>>; C]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: SmallVec::<[I; C]>::new()
+            free_list: SmallVec::<[I; C]>::new(),
         };
 
         // Verify dependency's const generic constructors
@@ -72,11 +74,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
         // O(n) find, linear search
         #[cfg(feature = "low_mem_insert")]
-        let opt_free_idx = self
-            .arena
-            .iter()
-            .position(|x| x.is_none())
-            .map(|i| i as I);
+        let opt_free_idx = self.arena.iter().position(|x| x.is_none()).map(|i| i as I);
 
         match opt_free_idx {
             Some(free_idx) => {
@@ -131,7 +129,11 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
     /// Sort the arena in caller-requested order and update all tree metadata accordingly
     /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
-    pub fn sort(&mut self, root_idx: usize, sort_metadata: SmallVec<[NodeGetHelper<I>; C]>) -> usize {
+    pub fn sort(
+        &mut self,
+        root_idx: usize,
+        sort_metadata: SmallVec<[NodeGetHelper<I>; C]>,
+    ) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
         let mut swap_history = NodeSwapHistHelper::<I, C>::new(); //  TODO: node shouldn't know C!
@@ -219,7 +221,9 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     }
 }
 
-impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> Default for NodeArena<K, V, I, C> {
+impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> Default
+    for NodeArena<K, V, I, C>
+{
     fn default() -> Self {
         Self::new()
     }
@@ -229,8 +233,8 @@ impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const
 mod tests {
     use super::{Node, NodeArena};
     use crate::tree::node::NodeGetHelper;
-    use smallvec::smallvec;
     use smallnum::small_unsigned;
+    use smallvec::smallvec;
 
     #[test]
     fn test_add_and_remove() {
@@ -263,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_get_mut() {
-        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)>  = Node::new(1, "n/a");
+        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
         assert_eq!(arena.get(n_1_idx).unwrap().val, "n/a");
@@ -274,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_hard_get_1() {
-        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)>  = Node::new(0xD00DFEED_u64, "n/a");
+        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
         let n_1_ref = arena.hard_get(n_1_idx);
@@ -284,7 +288,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_hard_get_2() {
-        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)>  = Node::new(0xD00DFEED_u64, "n/a");
+        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         arena.add(n_1);
         arena.hard_get(1); // OOB

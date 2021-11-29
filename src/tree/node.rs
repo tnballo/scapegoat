@@ -1,14 +1,16 @@
 use core::ops::Sub;
 
-use smallvec::SmallVec;
 use smallnum::SmallUnsigned;
+use smallvec::SmallVec;
 
 // Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
+// If caller obeys contract, `I` will be smallest unsigned capable of representing `arena::NodeArena`'s
+// const `C` (e.g. static capacity).
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
-/// Binary tree node.
+/// Binary tree node, meta programmable for low memory footprint.
 /// Users of it's APIs only need to declare `I` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `I` internally.
 #[derive(Clone)]
@@ -45,7 +47,7 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
     pub fn set_left_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.left_idx = Some(I::checked_from(idx)),
-            None => self.left_idx = None
+            None => self.left_idx = None,
         }
     }
 
@@ -58,7 +60,7 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
     pub fn set_right_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.right_idx = Some(I::checked_from(idx)),
-            None => self.right_idx = None
+            None => self.right_idx = None,
         }
     }
 }
@@ -100,8 +102,6 @@ impl<I: SmallUnsigned> NodeGetHelper<I> {
     }
 }
 
-// TODO: impl a To<Node<K,V>> so tree's public APIs can hide the `I` by promoting to a `usize` for external consumption.
-
 // Tree Rebuild Helper -------------------------------------------------------------------------------------------------
 
 /// Helper for in-place iterative rebuild.
@@ -114,7 +114,6 @@ pub struct NodeRebuildHelper<I> {
 }
 
 impl<I: SmallUnsigned + Ord + Sub> NodeRebuildHelper<I> {
-
     /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
         debug_assert!(
@@ -184,7 +183,13 @@ impl<I: Ord + SmallUnsigned, const C: usize> NodeSwapHistHelper<I, C> {
 
     /// Retrieve the current value of an original index from the map.
     pub fn curr_idx(&self, orig_pos: usize) -> usize {
-        debug_assert!(self.history.iter().filter(|(k, _)| (*k).usize() == orig_pos).count() <= 1);
+        debug_assert!(
+            self.history
+                .iter()
+                .filter(|(k, _)| (*k).usize() == orig_pos)
+                .count()
+                <= 1
+        );
 
         match self
             .history
@@ -204,8 +209,8 @@ impl<I: Ord + SmallUnsigned, const C: usize> NodeSwapHistHelper<I, C> {
 #[cfg(test)]
 mod tests {
     use super::Node;
-    use std::mem::size_of;
     use smallnum::small_unsigned;
+    use std::mem::size_of;
 
     #[cfg(feature = "high_assurance")]
     use crate::MAX_ELEMS;

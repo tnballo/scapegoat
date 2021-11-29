@@ -226,7 +226,6 @@ Contributions are welcome!
     html_logo_url = "https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg"
 )]
 
-
 include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 // Only expose arena internals for fuzzing harness

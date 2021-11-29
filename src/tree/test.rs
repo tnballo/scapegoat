@@ -52,7 +52,7 @@ fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
         let mut subtree_worklist = vec![sgt.arena.hard_get(root_idx)];
 
         while let Some(node) = subtree_worklist.pop() {
-            if let Some(left_idx) = node.left_idx {
+            if let Some(left_idx) = node.left_idx() {
                 let left_child_node = sgt.arena.hard_get(left_idx);
                 assert!(
                     left_child_node.key < node.key,
@@ -62,7 +62,7 @@ fn assert_logical_invariants<K: Ord, V>(sgt: &SGTree<K, V>) {
                 subtree_worklist.push(left_child_node);
             }
 
-            if let Some(right_idx) = node.right_idx {
+            if let Some(right_idx) = node.right_idx() {
                 let right_child_node = sgt.arena.hard_get(right_idx);
                 assert!(
                     right_child_node.key > node.key,
