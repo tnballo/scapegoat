@@ -549,7 +549,11 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, U: SmallUnsigned>(&self, mut opt_path: Option<&mut IdxVec>, key: &Q) -> NodeGetHelper<U>
+    fn priv_get<Q, U: SmallUnsigned>(
+        &self,
+        mut opt_path: Option<&mut IdxVec>,
+        key: &Q,
+    ) -> NodeGetHelper<U>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -781,7 +785,11 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
-    fn priv_remove<U: SmallUnsigned>(&mut self,opt_path: Option<&IdxVec>, ngh: NodeGetHelper<U>) -> Option<(K, V)> {
+    fn priv_remove<U: SmallUnsigned>(
+        &mut self,
+        opt_path: Option<&IdxVec>,
+        ngh: NodeGetHelper<U>,
+    ) -> Option<(K, V)> {
         match ngh.node_idx() {
             Some(node_idx) => {
                 let node_to_remove = self.arena.hard_get(node_idx);

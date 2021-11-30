@@ -28,8 +28,8 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 
     // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
-    pub fn new_idx_vec() -> SmallVec<[U; N]> {
-        SmallVec::<[U; N]>::new()
+    pub const fn new_idx_vec() -> SmallVec<[U; N]> {
+        SmallVec::<[U; N]>::default()
     }
 
     /// Constructor.
@@ -41,8 +41,10 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
             free_list: SmallVec::<[U; N]>::new(),
         };
 
-        // Verify dependency's const generic constructors
-        debug_assert!((N == na.len()) && (N == na.free_list.len()));
+        // Verify const generic invariants
+        debug_assert_eq!(N, na.free_list.len());
+        debug_assert_eq!(N, na.arena.len());
+        debug_assert_eq!(N, na.len());
 
         na
     }
@@ -52,7 +54,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     ///
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         N
     }
 
