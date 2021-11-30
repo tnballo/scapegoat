@@ -26,6 +26,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 {
     // Public API ------------------------------------------------------------------------------------------------------
 
+    // TODO: get rid of this function? Bad encapsulation?
     // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
     pub const fn new_idx_vec() -> SmallVec<[U; N]> {

@@ -4,7 +4,7 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::Index;
+use core::ops::{Index, Sub};
 
 use super::arena::NodeArena;
 use super::error::SGErr;
@@ -276,7 +276,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
             Some((key, val)) => {
                 if self.max_size > (2 * self.curr_size) {
                     if let Some(root_idx) = self.root_idx {
-                        self.rebuild(root_idx);
+                        self.rebuild::<usize>(root_idx);
                         self.max_size = self.curr_size;
                     }
                 }
@@ -619,7 +619,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert(&mut self, key: K, val: V) -> Option<V> {
+    fn priv_balancing_insert<U: Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
         let mut path = NodeArena::new_idx_vec();
         let new_node = Node::new(key, val);
 
@@ -638,7 +638,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         // Potential rebalance
         if path.len() > self.alpha_balance_depth(self.max_size) {
             if let Some(scapegoat_idx) = self.find_scapegoat(&path) {
-                self.rebuild(scapegoat_idx);
+                self.rebuild::<U>(scapegoat_idx);
             }
         }
 
@@ -649,7 +649,6 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert<U: SmallUnsigned>(&mut self, path: &mut SmallVec<[U; N]>, new_node: Node<K, V, U>) -> Option<V> {
-        //pub type IdxVec = SmallVec<[Idx; MAX_ELEMS]>;
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -1157,15 +1156,15 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     }
 
     // Iterative in-place rebuild for balanced subtree
-    fn rebuild(&mut self, idx: usize) {
+    fn rebuild<U: Ord + Sub + SmallUnsigned>(&mut self, idx: usize) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
-        self.rebalance_subtree_from_sorted_idxs(idx, &sorted_sub);
+        self.rebalance_subtree_from_sorted_idxs::<U>(idx, &sorted_sub);
         self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
     }
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
-    fn rebalance_subtree_from_sorted_idxs(
+    fn rebalance_subtree_from_sorted_idxs<U: Ord + Sub + SmallUnsigned>(
         &mut self,
         old_subtree_root_idx: usize,
         sorted_arena_idxs: &[usize],
@@ -1182,13 +1181,11 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
-
-        // pub type RebuildMetaVec = SmallVec<[(Idx, NodeRebuildHelper); MAX_ELEMS]>;
-        let mut subtree_worklist = RebuildMetaVec::new();
+        let mut subtree_worklist = SmallVec::<[(U, NodeRebuildHelper<U>); N]>::new();
 
         // Init worklist with middle node (balanced subtree root)
         subtree_worklist.push((
-            subtree_root_sorted_idx,
+            U::checked_from(subtree_root_sorted_idx),
             NodeRebuildHelper::new(0, sorted_last_idx),
         ));
 
@@ -1198,7 +1195,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 self.root_idx = Some(subtree_root_arena_idx);
             } else {
                 let old_subtree_root = self.arena.hard_get(old_subtree_root_idx);
-                let ngh = self.priv_get(None, &old_subtree_root.key);
+                let ngh: NodeGetHelper<U> = self.priv_get(None, &old_subtree_root.key);
                 debug_assert!(
                     ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"
@@ -1225,14 +1222,14 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
             // Set left child
             if parent_nrh.low_idx < parent_nrh.mid_idx {
-                let child_nrh = NodeRebuildHelper::new(parent_nrh.low_idx, parent_nrh.mid_idx - 1);
+                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(parent_nrh.low_idx.usize(), parent_nrh.mid_idx.usize() - 1);
                 parent_node.set_left_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
 
             // Set right child
             if parent_nrh.mid_idx < parent_nrh.high_idx {
-                let child_nrh = NodeRebuildHelper::new(parent_nrh.mid_idx + 1, parent_nrh.high_idx);
+                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(parent_nrh.mid_idx.usize() + 1, parent_nrh.high_idx.usize());
                 parent_node.set_right_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
