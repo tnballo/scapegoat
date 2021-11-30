@@ -5,44 +5,44 @@ use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
-// Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+// Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
-// If caller obeys contract, `I` will be smallest unsigned capable of representing const `C` (e.g. static capacity).
+// If caller obeys contract, `U` will be smallest unsigned capable of representing const `N` (e.g. static capacity).
 
 /// An arena allocator, meta programmable for low memory footprint.
-/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
-/// Method APIs take/return `usize` and normalize to `I` internally.
-/// Sole associated function, `gen_idx_vec`, has return type that uses `I` - to a void duplicating `Vec` API here.
+/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
+/// Method APIs take/return `usize` and normalize to `U` internally.
+/// Sole associated function, `gen_idx_vec`, has return type that uses `U` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
-pub struct NodeArena<K, V, I, const C: usize> {
-    arena: SmallVec<[Option<Node<K, V, I>>; C]>,
+pub struct NodeArena<K, V, U, const N: usize> {
+    arena: SmallVec<[Option<Node<K, V, U>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
-    free_list: SmallVec<[I; C]>,
+    free_list: SmallVec<[U; N]>,
 }
 
-impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize>
-    NodeArena<K, V, I, C>
+impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
+    NodeArena<K, V, U, N>
 {
     // Public API ------------------------------------------------------------------------------------------------------
 
     // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
-    pub fn new_idx_vec() -> SmallVec<[I; C]> {
-        SmallVec::<[I; C]>::new()
+    pub fn new_idx_vec() -> SmallVec<[U; N]> {
+        SmallVec::<[U; N]>::new()
     }
 
     /// Constructor.
     pub fn new() -> Self {
         let na = NodeArena {
-            arena: SmallVec::<[Option<Node<K, V, I>>; C]>::new(),
+            arena: SmallVec::<[Option<Node<K, V, U>>; N]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: SmallVec::<[I; C]>::new(),
+            free_list: SmallVec::<[U; N]>::new(),
         };
 
         // Verify dependency's const generic constructors
-        debug_assert!((C == na.len()) && (C == na.free_list.len()));
+        debug_assert!((N == na.len()) && (N == na.free_list.len()));
 
         na
     }
@@ -53,28 +53,28 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
     pub fn capacity(&self) -> usize {
-        C
+        N
     }
 
     /// Returns an iterator over immutable arena elements.
-    pub fn iter(&self) -> Iter<'_, Option<Node<K, V, I>>> {
+    pub fn iter(&self) -> Iter<'_, Option<Node<K, V, U>>> {
         self.arena.iter()
     }
 
     /// Returns an iterator over arena elements that allows modifying each value.
-    pub fn iter_mut(&mut self) -> IterMut<'_, Option<Node<K, V, I>>> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, Option<Node<K, V, U>>> {
         self.arena.iter_mut()
     }
 
     /// Add node to area, growing if necessary, and return addition index.
-    pub fn add(&mut self, node: Node<K, V, I>) -> usize {
+    pub fn add(&mut self, node: Node<K, V, U>) -> usize {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
 
         // O(n) find, linear search
         #[cfg(feature = "low_mem_insert")]
-        let opt_free_idx = self.arena.iter().position(|x| x.is_none()).map(|i| i as I);
+        let opt_free_idx = self.arena.iter().position(|x| x.is_none()).map(|i| i as U);
 
         match opt_free_idx {
             Some(free_idx) => {
@@ -93,7 +93,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     }
 
     /// Remove node at a given index from area, return it.
-    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V, I>> {
+    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V, U>> {
         debug_assert!(
             idx < self.arena.len(),
             "API misuse: requested removal past last index!"
@@ -106,7 +106,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
             // Append removed index to free list
             #[cfg(not(feature = "low_mem_insert"))]
-            self.free_list.push(I::checked_from(idx));
+            self.free_list.push(U::checked_from(idx));
 
             // Retrieve node
             return match self.arena.pop() {
@@ -132,11 +132,11 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     pub fn sort(
         &mut self,
         root_idx: usize,
-        sort_metadata: SmallVec<[NodeGetHelper<I>; C]>,
+        sort_metadata: SmallVec<[NodeGetHelper<U>; N]>,
     ) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
-        let mut swap_history = NodeSwapHistHelper::<I, C>::new(); //  TODO: node shouldn't know C!
+        let mut swap_history = NodeSwapHistHelper::<U, N>::new(); //  TODO: node shouldn't know N!
 
         // Sort as requested
         for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
@@ -170,7 +170,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V, I> {
+    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V, U> {
         match self.remove(idx) {
             Some(node) => node,
             None => {
@@ -180,7 +180,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     }
 
     /// Get a reference to a node.
-    pub fn get(&self, idx: usize) -> Option<&Node<K, V, I>> {
+    pub fn get(&self, idx: usize) -> Option<&Node<K, V, U>> {
         match self.arena.get(idx) {
             Some(Some(node)) => Some(node),
             _ => None,
@@ -188,7 +188,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     }
 
     /// Get mutable reference to a node.
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Node<K, V, I>> {
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Node<K, V, U>> {
         match self.arena.get_mut(idx) {
             Some(Some(node)) => Some(node),
             _ => None,
@@ -197,7 +197,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
     /// Get reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get` instead.
-    pub fn hard_get(&self, idx: usize) -> &Node<K, V, I> {
+    pub fn hard_get(&self, idx: usize) -> &Node<K, V, U> {
         match self.get(idx) {
             Some(node) => node,
             None => {
@@ -208,7 +208,7 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
 
     /// Get mutable reference to a node at a known-good index (simpler callsite and error handling).
     /// This function can panic. If the index might be invalid, use `get_mut` instead.
-    pub fn hard_get_mut(&mut self, idx: usize) -> &mut Node<K, V, I> {
+    pub fn hard_get_mut(&mut self, idx: usize) -> &mut Node<K, V, U> {
         match self.get_mut(idx) {
             Some(node) => node,
             None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
@@ -221,8 +221,8 @@ impl<K, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: u
     }
 }
 
-impl<K: Ord, V, I: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const C: usize> Default
-    for NodeArena<K, V, I, C>
+impl<K: Ord, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
+    for NodeArena<K, V, U, N>
 {
     fn default() -> Self {
         Self::new()

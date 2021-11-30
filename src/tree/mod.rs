@@ -21,5 +21,3 @@ pub use error::SGErr;
 #[allow(clippy::module_inception)]
 mod tree;
 pub use tree::SGTree;
-
-// TODO: Within this module, rename `I` to `U` and `C` to `N`, will be more clear!

@@ -11,7 +11,6 @@ use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 
-use crate::MAX_ELEMS;
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
 #[allow(unused_imports)] // micromath only used if `no_std`
@@ -22,15 +21,15 @@ use smallvec::smallvec;
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
-pub struct SGTree<K: Ord, V> {
+pub struct SGTree<K: Ord, V, const N: usize> {
     // Storage
-    pub(crate) arena: NodeArena<K, V, u64, MAX_ELEMS>, // TODO: changes high_assurance to only pack on SGTreeConst<K,V,C>
+    pub(crate) arena: NodeArena<K, V, u64, N>, // TODO: changes high_assurance to only pack on SGTreeConst<K,V,N>
     // TODO: enum dispatch here to not mess up high_assurance packing for default?
     //pub(crate) arena: NodeArena<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>,
     pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
 
     // CRITICAL TODO:
-    // TODO: tree needs to cast usize to arena's "I" when talking down!
+    // TODO: tree needs to cast usize to arena's "U" when talking down!
     // TODO: try debug_assert!() in smallnum to see if impacts benchmark later!
 
     // Query cache
@@ -45,13 +44,13 @@ pub struct SGTree<K: Ord, V> {
     rebal_cnt: usize,
 }
 
-impl<K: Ord, V> SGTree<K, V> {
+impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Public API ------------------------------------------------------------------------------------------------------
 
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
-            arena: NodeArena::<K, V, u64, MAX_ELEMS>::new(), // TODO: cannot be usize here, since small unsigned doesn't return it! Down side for 32-bit systems
+            arena: NodeArena::<K, V, u64, N>::new(), // TODO: enum dispatch for computed unsigned type
             root_idx: None,
             max_idx: 0,
             min_idx: 0,
@@ -62,24 +61,6 @@ impl<K: Ord, V> SGTree<K, V> {
             rebal_cnt: 0,
         }
     }
-
-    /*
-    /// TODO: docs
-    pub fn with_capacity<const C: usize>(capacity: C) -> Self {
-        SGTree {
-            //arena: NodeArena::<K, V, small_unsigned!(C), C>::new(), // TODO
-            arena: NodeArena::<K, V, usize, C>::new(),
-            root_idx: None,
-            max_idx: 0,
-            min_idx: 0,
-            curr_size: 0,
-            alpha_num: ALPHA_NUM,
-            alpha_denom: ALPHA_DENOM,
-            max_size: 0,
-            rebal_cnt: 0,
-        }
-    }
-    */
 
     /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
     /// `a` tunes how "aggressively" the data structure self-balances.
@@ -146,7 +127,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGTree<K, V>)
+    pub fn append(&mut self, other: &mut SGTree<K, V, N>)
     where
         K: Ord,
     {
@@ -172,7 +153,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGTree<K, V>) -> Result<(), SGErr> {
+    pub fn append(&mut self, other: &mut SGTree<K, V, N>) -> Result<(), SGErr> {
         // Nothing to append!
         if other.is_empty() {
             return Ok(());
@@ -568,7 +549,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, I: SmallUnsigned>(&self, mut opt_path: Option<&mut IdxVec>, key: &Q) -> NodeGetHelper<I>
+    fn priv_get<Q, U: SmallUnsigned>(&self, mut opt_path: Option<&mut IdxVec>, key: &Q) -> NodeGetHelper<U>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -800,7 +781,7 @@ impl<K: Ord, V> SGTree<K, V> {
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
-    fn priv_remove<I: SmallUnsigned>(&mut self,opt_path: Option<&IdxVec>, ngh: NodeGetHelper<I>) -> Option<(K, V)> {
+    fn priv_remove<U: SmallUnsigned>(&mut self,opt_path: Option<&IdxVec>, ngh: NodeGetHelper<U>) -> Option<(K, V)> {
         match ngh.node_idx() {
             Some(node_idx) => {
                 let node_to_remove = self.arena.hard_get(node_idx);
@@ -1274,7 +1255,7 @@ impl<K: Ord, V> SGTree<K, V> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<K, V> Debug for SGTree<K, V>
+impl<K, V, const N: usize> Debug for SGTree<K, V, N>
 where
     K: Ord + Debug,
     V: Debug,
@@ -1285,7 +1266,7 @@ where
 }
 
 // Default
-impl<K, V> Default for SGTree<K, V>
+impl<K, V, const N: usize> Default for SGTree<K, V, N>
 where
     K: Ord,
 {
@@ -1295,7 +1276,7 @@ where
 }
 
 // From array
-impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V>
+impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V, N>
 where
     K: Ord,
 {
@@ -1312,7 +1293,7 @@ where
 }
 
 // Indexing
-impl<K, V, Q> Index<&Q> for SGTree<K, V>
+impl<K, V, Q, const N: usize> Index<&Q> for SGTree<K, V, N>
 where
     K: Borrow<Q> + Ord,
     Q: Ord + ?Sized,
@@ -1330,11 +1311,11 @@ where
 }
 
 // Extension from iterator.
-impl<K, V> Extend<(K, V)> for SGTree<K, V>
+impl<K, V, const N: usize> Extend<(K, V)> for SGTree<K, V, N>
 where
     K: Ord,
 {
-    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |(k, v)| {
             #[cfg(not(feature = "high_assurance"))]
             self.insert(k, v);
@@ -1346,7 +1327,7 @@ where
 }
 
 // Extension from reference iterator.
-impl<'a, K, V> Extend<(&'a K, &'a V)> for SGTree<K, V>
+impl<'a, K, V, const N: usize> Extend<(&'a K, &'a V)> for SGTree<K, V, N>
 where
     K: Ord + Copy,
     V: Copy,
@@ -1357,18 +1338,18 @@ where
 }
 
 // PartialEq
-impl<K, V> PartialEq for SGTree<K, V>
+impl<K, V, const N: usize> PartialEq for SGTree<K, V, N>
 where
     K: Ord + PartialEq,
     V: PartialEq,
 {
-    fn eq(&self, other: &SGTree<K, V>) -> bool {
+    fn eq(&self, other: &SGTree<K, V, N>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
 // Eq
-impl<K, V> Eq for SGTree<K, V>
+impl<K, V, const N: usize> Eq for SGTree<K, V, N>
 where
     K: Ord + Eq,
     V: Eq,
@@ -1376,29 +1357,29 @@ where
 }
 
 // PartialOrd
-impl<K, V> PartialOrd for SGTree<K, V>
+impl<K, V, const N: usize> PartialOrd for SGTree<K, V, N>
 where
     K: Ord + PartialOrd,
     V: PartialOrd,
 {
-    fn partial_cmp(&self, other: &SGTree<K, V>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &SGTree<K, V, N>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 // Ord
-impl<K, V> Ord for SGTree<K, V>
+impl<K, V, const N: usize> Ord for SGTree<K, V, N>
 where
     K: Ord,
     V: Ord,
 {
-    fn cmp(&self, other: &SGTree<K, V>) -> Ordering {
+    fn cmp(&self, other: &SGTree<K, V, N>) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
 // Hash
-impl<K, V> Hash for SGTree<K, V>
+impl<K, V, const N: usize> Hash for SGTree<K, V, N>
 where
     K: Ord + Hash,
     V: Hash,
@@ -1413,7 +1394,7 @@ where
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construct from iterator.
-impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
+impl<K: Ord, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgt = SGTree::new();
 
@@ -1430,7 +1411,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for SGTree<K, V> {
 }
 
 // Reference iterator, mutable
-impl<'a, K: Ord, V> IntoIterator for &'a mut SGTree<K, V> {
+impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1440,9 +1421,9 @@ impl<'a, K: Ord, V> IntoIterator for &'a mut SGTree<K, V> {
 }
 
 // Reference iterator, immutable
-impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
+impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a SGTree<K, V, N> {
     type Item = (&'a K, &'a V);
-    type IntoIter = Iter<'a, K, V>;
+    type IntoIter = Iter<'a, K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -1450,9 +1431,9 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGTree<K, V> {
 }
 
 // Consuming iterator
-impl<K: Ord, V> IntoIterator for SGTree<K, V> {
+impl<K: Ord, V, const N: usize> IntoIterator for SGTree<K, V, N> {
     type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter::new(self)

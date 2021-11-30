@@ -3,20 +3,22 @@ use smallvec::SmallVec;
 
 use super::tree::SGTree;
 
+// Remove U and always use usize here to keep U out of SGTree Signature?
+
 // Immutable Reference iterator ----------------------------------------------------------------------------------------
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
-pub struct Iter<'a, K: Ord, V, I, const C: usize> {
-    bst: &'a SGTree<K, V>,
-    idx_stack: SmallVec<[I; C]>,
+pub struct Iter<'a, K: Ord, V, U, const N: usize> {
+    bst: &'a SGTree<K, V, N>,
+    idx_stack: SmallVec<[U; N]>,
 }
 
-impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iter<'a, K, V, I, C> {
-    pub fn new(bst: &'a SGTree<K, V>) -> Self {
+impl<'a, K: Ord, V, U: SmallUnsigned, const N: usize> Iter<'a, K, V, U, N> {
+    pub fn new(bst: &'a SGTree<K, V, N>) -> Self {
         let mut ordered_iter = Iter {
             bst,
-            idx_stack: SmallVec::<[I; C]>::new(),
+            idx_stack: SmallVec::<[U; N]>::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {
@@ -25,11 +27,11 @@ impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iter<'a, K, V, I, C> {
                 let node = ordered_iter.bst.arena.hard_get(curr_idx);
                 match node.left_idx() {
                     Some(lt_idx) => {
-                        ordered_iter.idx_stack.push(I::checked_from(curr_idx));
+                        ordered_iter.idx_stack.push(U::checked_from(curr_idx));
                         curr_idx = lt_idx;
                     }
                     None => {
-                        ordered_iter.idx_stack.push(I::checked_from(curr_idx));
+                        ordered_iter.idx_stack.push(U::checked_from(curr_idx));
                         break;
                     }
                 }
@@ -40,7 +42,7 @@ impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iter<'a, K, V, I, C> {
     }
 }
 
-impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iterator for Iter<'a, K, V, I, C> {
+impl<'a, K: Ord, V, U: SmallUnsigned, const N: usize> Iterator for Iter<'a, K, V, U, N> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -53,11 +55,11 @@ impl<'a, K: Ord, V, I: SmallUnsigned, const C: usize> Iterator for Iter<'a, K, V
                         let node = self.bst.arena.hard_get(curr_idx);
                         match node.left_idx() {
                             Some(lt_idx) => {
-                                self.idx_stack.push(I::checked_from(curr_idx));
+                                self.idx_stack.push(U::checked_from(curr_idx));
                                 curr_idx = lt_idx;
                             }
                             None => {
-                                self.idx_stack.push(I::checked_from(curr_idx));
+                                self.idx_stack.push(U::checked_from(curr_idx));
                                 break;
                             }
                         }
@@ -78,8 +80,8 @@ pub struct IterMut<'a, K: Ord, V> {
     arena_iter_mut: core::slice::IterMut<'a, Option<(K, V)>>,
 }
 
-impl<'a, K: Ord, V> IterMut<'a, K, V> {
-    pub fn new(bst: &'a mut SGTree<K, V>) -> Self {
+impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V> {
+    pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
             arena_iter_mut: bst.arena.iter_mut(),
@@ -89,7 +91,7 @@ impl<'a, K: Ord, V> IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
+impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -104,17 +106,17 @@ impl<'a, K: Ord, V> Iterator for IterMut<'a, K, V> {
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
-pub struct IntoIter<K: Ord, V, I, const C: usize> {
-    bst: SGTree<K, V>,
-    sorted_idxs: SmallVec<[I; C]>,
+pub struct IntoIter<K: Ord, V, U, const N: usize> {
+    bst: SGTree<K, V, N>,
+    sorted_idxs: SmallVec<[U; N]>,
 }
 
-impl<K: Ord, V, I, const C: usize> IntoIter<K, V, I, C> {
+impl<K: Ord, V, U, const N: usize> IntoIter<K, V, U, N> {
     /// Constructor
-    pub fn new(bst: SGTree<K, V>) -> Self {
+    pub fn new(bst: SGTree<K, V, N>) -> Self {
         let mut ordered_iter = IntoIter {
             bst,
-            sorted_idxs: SmallVec::<[I; C]>::new(),
+            sorted_idxs: SmallVec::<[U; N]>::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.root_idx {
@@ -126,7 +128,7 @@ impl<K: Ord, V, I, const C: usize> IntoIter<K, V, I, C> {
     }
 }
 
-impl<K: Ord, V, I: SmallUnsigned, const C: usize> Iterator for IntoIter<K, V, I, C> {
+impl<K: Ord, V, U: SmallUnsigned, const N: usize> Iterator for IntoIter<K, V, U, N> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {

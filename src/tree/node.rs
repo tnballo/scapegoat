@@ -3,28 +3,28 @@ use core::ops::Sub;
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
-// Note: structures in this file generic for `I` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+// Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
-// If caller obeys contract, `I` will be smallest unsigned capable of representing `arena::NodeArena`'s
-// const `C` (e.g. static capacity).
+// If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::NodeArena`'s
+// const `N` (e.g. static capacity).
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
 /// Binary tree node, meta programmable for low memory footprint.
-/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
-/// All APIs take/return `usize` and normalize to `I` internally.
+/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `U` internally.
 #[derive(Clone)]
-pub struct Node<K, V, I> {
+pub struct Node<K, V, U> {
     pub key: K,
     pub val: V,
-    left_idx: Option<I>,
-    right_idx: Option<I>,
+    left_idx: Option<U>,
+    right_idx: Option<U>,
 
     #[cfg(feature = "fast_rebalance")]
-    pub subtree_size: I,
+    pub subtree_size: U,
 }
 
-impl<K, V, I: SmallUnsigned> Node<K, V, I> {
+impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     /// Constructor.
     pub fn new(key: K, val: V) -> Self {
         Node {
@@ -46,7 +46,7 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
     /// Set left index
     pub fn set_left_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
-            Some(idx) => self.left_idx = Some(I::checked_from(idx)),
+            Some(idx) => self.left_idx = Some(U::checked_from(idx)),
             None => self.left_idx = None,
         }
     }
@@ -59,7 +59,7 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
     /// Set right index
     pub fn set_right_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
-            Some(idx) => self.right_idx = Some(I::checked_from(idx)),
+            Some(idx) => self.right_idx = Some(U::checked_from(idx)),
             None => self.right_idx = None,
         }
     }
@@ -68,20 +68,20 @@ impl<K, V, I: SmallUnsigned> Node<K, V, I> {
 // Retrieval Helper ----------------------------------------------------------------------------------------------------
 
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
-/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
-/// All APIs take/return `usize` and normalize to `I` internally.
-pub struct NodeGetHelper<I> {
-    node_idx: Option<I>,
-    parent_idx: Option<I>,
+/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `U` internally.
+pub struct NodeGetHelper<U> {
+    node_idx: Option<U>,
+    parent_idx: Option<U>,
     is_right_child: bool,
 }
 
-impl<I: SmallUnsigned> NodeGetHelper<I> {
+impl<U: SmallUnsigned> NodeGetHelper<U> {
     /// Constructor.
     pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
-            node_idx: node_idx.map(|i| I::checked_from(i)),
-            parent_idx: parent_idx.map(|i| I::checked_from(i)),
+            node_idx: node_idx.map(|i| U::checked_from(i)),
+            parent_idx: parent_idx.map(|i| U::checked_from(i)),
             is_right_child,
         }
     }
@@ -105,15 +105,15 @@ impl<I: SmallUnsigned> NodeGetHelper<I> {
 // Tree Rebuild Helper -------------------------------------------------------------------------------------------------
 
 /// Helper for in-place iterative rebuild.
-/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
-/// All APIs take/return `usize` and normalize to `I` internally.
-pub struct NodeRebuildHelper<I> {
-    pub low_idx: I,
-    pub high_idx: I,
-    pub mid_idx: I,
+/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `U` internally.
+pub struct NodeRebuildHelper<U> {
+    pub low_idx: U,
+    pub high_idx: U,
+    pub mid_idx: U,
 }
 
-impl<I: SmallUnsigned + Ord + Sub> NodeRebuildHelper<I> {
+impl<U: SmallUnsigned + Ord + Sub> NodeRebuildHelper<U> {
     /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
         debug_assert!(
@@ -122,9 +122,9 @@ impl<I: SmallUnsigned + Ord + Sub> NodeRebuildHelper<I> {
         );
 
         NodeRebuildHelper {
-            low_idx: I::checked_from(low_idx),
-            high_idx: I::checked_from(high_idx),
-            mid_idx: I::checked_from(low_idx + ((high_idx - low_idx) / 2)),
+            low_idx: U::checked_from(low_idx),
+            high_idx: U::checked_from(high_idx),
+            mid_idx: U::checked_from(low_idx + ((high_idx - low_idx) / 2)),
         }
     }
 }
@@ -133,18 +133,18 @@ impl<I: SmallUnsigned + Ord + Sub> NodeRebuildHelper<I> {
 
 /// A helper "cache" for swap operation history.
 /// If every index swap is logged, tracks mapping of original to current indexes.
-/// Users of it's APIs only need to declare `I` type or trait bounds at construction.
-/// All APIs take/return `usize` and normalize to `I` internally.
-pub struct NodeSwapHistHelper<I, const C: usize> {
+/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
+/// All APIs take/return `usize` and normalize to `U` internally.
+pub struct NodeSwapHistHelper<U, const N: usize> {
     /// Map `original_idx` -> `current_idx`
-    history: SmallVec<[(I, I); C]>,
+    history: SmallVec<[(U, U); N]>,
 }
 
-impl<I: Ord + SmallUnsigned, const C: usize> NodeSwapHistHelper<I, C> {
+impl<U: Ord + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
     /// Constructor.
     pub fn new() -> Self {
         NodeSwapHistHelper {
-            history: SmallVec::<[(I, I); C]>::new(),
+            history: SmallVec::<[(U, U); N]>::new(),
         }
     }
 
@@ -156,8 +156,8 @@ impl<I: Ord + SmallUnsigned, const C: usize> NodeSwapHistHelper<I, C> {
         let mut known_pos_1 = false;
         let mut known_pos_2 = false;
 
-        let pos_1 = I::checked_from(pos_1);
-        let pos_2 = I::checked_from(pos_2);
+        let pos_1 = U::checked_from(pos_1);
+        let pos_2 = U::checked_from(pos_2);
 
         // Update existing
         for (_, curr_idx) in self.history.iter_mut() {
