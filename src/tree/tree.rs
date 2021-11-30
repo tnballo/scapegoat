@@ -231,7 +231,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     /// let (first_key, first_value) = tree.iter().next().unwrap();
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
-    pub fn iter(&self) -> Iter<'_, K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V, N> {
         Iter::new(self)
     }
 
@@ -259,7 +259,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     /// let (second_key, second_value) = tree.iter().skip(1).next().unwrap();
     /// assert_eq!((*second_key, *second_value), ("b", 12));
     /// ```
-    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V, N> {
         IterMut::new(self)
     }
 
@@ -648,7 +648,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
-    fn priv_insert(&mut self, path: &mut IdxVec, new_node: Node<K, V>) -> Option<V> {
+    fn priv_insert<U: SmallUnsigned>(&mut self, path: &mut IdxVec, new_node: Node<K, V, U>) -> Option<V> {
         //pub type IdxVec = SmallVec<[Idx; MAX_ELEMS]>;
         match self.root_idx {
             // Sorted insert
@@ -962,10 +962,10 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         // Drain non-matches
         let mut drained_sgt = Self::new();
         for i in remove_idxs {
-            if let Some(node) = self.priv_remove_by_idx(i) {
+            if let Some((key, val)) = self.priv_remove_by_idx(i) {
                 #[cfg(not(feature = "high_assurance"))]
                 {
-                    drained_sgt.insert(node.key, node.val);
+                    drained_sgt.insert(key, val);
                 }
                 #[cfg(feature = "high_assurance")]
                 {
@@ -1421,7 +1421,7 @@ impl<K: Ord, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N> {
 // Reference iterator, mutable
 impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N> {
     type Item = (&'a K, &'a mut V);
-    type IntoIter = IterMut<'a, K, V>;
+    type IntoIter = IterMut<'a, K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()

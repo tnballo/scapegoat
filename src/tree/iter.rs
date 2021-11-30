@@ -73,11 +73,11 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
 
 // Mutable Reference iterator ------------------------------------------------------------------------------------------
 
-pub struct IterMut<'a, K: Ord, V> {
+pub struct IterMut<'a, K: Ord, V, const N: usize> {
     arena_iter_mut: core::slice::IterMut<'a, Option<(K, V)>>,
 }
 
-impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V> {
+impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V, N> {
     pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
@@ -88,7 +88,7 @@ impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V> {
+impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V, N> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
