@@ -23,7 +23,7 @@ include = [
 [dependencies]
 smallvec = { version = "1.7", features = ["const_generics"] } # Has no dependencies of it's own
 micromath = "2.0" # Has no dependenceis of it's own
-#smallnum = "0.2"  # Has no dependencies of it's own
+#smallnum = "0.X"  # Has no dependencies of it's own
 smallnum = { path = "../smallnum"}
 
 [dev-dependencies]
