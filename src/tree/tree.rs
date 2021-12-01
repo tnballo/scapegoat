@@ -533,8 +533,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
                 .map(|n| self.priv_get(None, &n.key))
-                // pub type SortMetaVec = SmallVec<[NodeGetHelper; MAX_ELEMS]>;
-                .collect::<SortMetaVec>();
+                .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
 
             sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx().unwrap()).key);
             let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);

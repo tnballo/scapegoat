@@ -135,11 +135,11 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     pub fn sort(
         &mut self,
         root_idx: usize,
-        sort_metadata: SmallVec<[NodeGetHelper<U>; N]>,
+        sort_metadata: SmallVec<[NodeGetHelper<usize>; N]>, // `usize` instead of `U` avoids `U` in tree iter sigs
     ) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
-        let mut swap_history = NodeSwapHistHelper::<U, N>::new(); //  TODO: node shouldn't know N!
+        let mut swap_history = NodeSwapHistHelper::<U, N>::new();
 
         // Sort as requested
         for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
