@@ -1,14 +1,20 @@
 use core::ops::Sub;
 
+use super::node_dispatch::SmallNode;
+
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
 // TODO: node enum dispatch, needed? Or not if arena enum dispatch is implemented?
 
-// Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
-// All members in subset are <= host pointer width in size.
-// If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::NodeArena`'s
-// const `N` (e.g. static capacity).
+/*
+Note:
+
+Structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+All members in subset are <= host pointer width in size.
+If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::NodeArena`'s
+const `N` (e.g. static capacity).
+*/
 
 // Tree Node -----------------------------------------------------------------------------------------------------------
 
@@ -39,27 +45,31 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
             subtree_size: 1,
         }
     }
+}
 
-    /// Get left index as usize
-    pub fn left_idx(&self) -> Option<usize> {
+impl<K, V, U: SmallUnsigned> SmallNode<K,V> for Node<K, V, U> {
+
+
+    /// Get left index as `usize`
+    fn left_idx(&self) -> Option<usize> {
         self.left_idx.map(|i| i.usize())
     }
 
     /// Set left index
-    pub fn set_left_idx(&mut self, opt_idx: Option<usize>) {
+    fn set_left_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.left_idx = Some(U::checked_from(idx)),
             None => self.left_idx = None,
         }
     }
 
-    /// Get right index as usize
-    pub fn right_idx(&self) -> Option<usize> {
+    /// Get right index as `usize`
+    fn right_idx(&self) -> Option<usize> {
         self.right_idx.map(|i| i.usize())
     }
 
     /// Set right index
-    pub fn set_right_idx(&mut self, opt_idx: Option<usize>) {
+    fn set_right_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.right_idx = Some(U::checked_from(idx)),
             None => self.right_idx = None,
@@ -88,12 +98,12 @@ impl<U: SmallUnsigned> NodeGetHelper<U> {
         }
     }
 
-    /// Get node index as usize
+    /// Get node index as `usize`
     pub fn node_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }
 
-    /// Get parent index as usize
+    /// Get parent index as `usize`
     pub fn parent_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }

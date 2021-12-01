@@ -1,6 +1,8 @@
 mod types;
 pub(crate) use types::{ElemRefIter, ElemRefVec};
 
+mod node_dispatch;
+
 #[cfg(test)]
 mod test;
 

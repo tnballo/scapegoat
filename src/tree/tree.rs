@@ -10,6 +10,7 @@ use super::arena::NodeArena;
 use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
+use super::node_dispatch::SmallNode;
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 

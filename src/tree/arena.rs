@@ -1,15 +1,28 @@
 use core::slice::{Iter, IterMut};
 
 use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
+use super::node_dispatch::SmallNode;
 
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
 // TODO: arena enum dispatch, definitely needed
 
-// Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
-// All members in subset are <= host pointer width in size.
-// If caller obeys contract, `U` will be smallest unsigned capable of representing const `N` (e.g. static capacity).
+/*
+Note:
+
+Structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+All members in subset are <= host pointer width in size.
+If caller obeys contract, `U` will be smallest unsigned capable of representing const `N` (e.g. static capacity).
+*/
+
+pub trait SmallArena {
+    /// Constructor.
+    fn new() -> Self;
+
+    // TODO: implement
+
+}
 
 /// An arena allocator, meta programmable for low memory footprint.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
@@ -28,7 +41,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 {
     // Public API ------------------------------------------------------------------------------------------------------
 
-    // TODO: get rid of this function? Bad encapsulation?
+    // TODO: get rid of this function b/c `U` in signature!
     // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
     pub const fn new_idx_vec() -> SmallVec<[U; N]> {
