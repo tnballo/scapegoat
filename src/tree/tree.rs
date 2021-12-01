@@ -191,7 +191,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        self.priv_balancing_insert(key, val)
+        self.priv_balancing_insert::<usize>(key, val)
     }
 
     /// Insert a key-value pair into the tree.
@@ -205,7 +205,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         K: Ord,
     {
         match self.capacity() > self.len() {
-            true => Ok(self.priv_balancing_insert(key, val)),
+            true => Ok(self.priv_balancing_insert::<usize>(key, val)),
             false => Err(SGErr::StackCapacityExceeded),
         }
     }
@@ -499,9 +499,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Flatten subtree into array of node indexs sorted by node key
     pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned>(&self, idx: usize) -> SmallVec<[U; N]> {
         // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
-        let mut subtree_node_idx_pairs: SortNodeRefIdxPairVec<K, V> =
-            smallvec![(self.arena.hard_get(idx), idx)];
-        let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
+        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, U>, U); N]> = smallvec![(self.arena.hard_get(idx), idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> = smallvec![self.arena.hard_get(idx)];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
@@ -1018,14 +1017,14 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
     #[cfg(not(feature = "alt_impl"))]
-    fn find_scapegoat(&self, path: &[usize]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[usize]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
 
         let mut node_subtree_size = 1; // Newly inserted
         let mut parent_path_idx = path.len() - 1; // Parent of newly inserted
-        let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+        let mut parent_subtree_size = self.get_subtree_size::<U>(path[parent_path_idx]);
 
         while (parent_path_idx > 0)
             && (self.alpha_denom * node_subtree_size as f32)
@@ -1033,7 +1032,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
-            parent_subtree_size = self.get_subtree_size_differential(
+            parent_subtree_size = self.get_subtree_size_differential::<U>(
                 path[parent_path_idx],     // Parent index
                 path[parent_path_idx + 1], // Child index
                 node_subtree_size,         // Child subtree size
@@ -1048,7 +1047,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
     #[cfg(feature = "alt_impl")]
-    fn find_scapegoat(&self, path: &[usize]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[usize]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
@@ -1062,7 +1061,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             i += 1;
-            parent_subtree_size = self.get_subtree_size_differential(
+            parent_subtree_size = self.get_subtree_size_differential::<U>(
                 path[parent_path_idx],     // Parent index
                 path[parent_path_idx + 1], // Child index
                 node_subtree_size,         // Child subtree size
@@ -1076,9 +1075,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
-    fn get_subtree_size(&self, idx: usize) -> usize {
-        // pub type SortNodeRefVec<'a, K, V> = SmallVec<[&'a Node<K, V>; MAX_ELEMS]>;
-        let mut subtree_worklist: SortNodeRefVec<K, V> = smallvec![self.arena.hard_get(idx)];
+    fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
+        let mut subtree_worklist:SmallVec<[&Node<K, V, U>; N]> = smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
@@ -1098,13 +1096,13 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Retrieve cached subtree size
     #[cfg(feature = "fast_rebalance")]
-    fn get_subtree_size(&self, idx: usize) -> usize {
+    fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
         self.arena.hard_get(idx).subtree_size
     }
 
     // Differential subtree size helper
     #[cfg(not(feature = "fast_rebalance"))]
-    fn get_subtree_size_differential(
+    fn get_subtree_size_differential<U: SmallUnsigned>(
         &self,
         parent_idx: usize,
         child_idx: usize,
@@ -1125,19 +1123,19 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
         let other_child_subtree_size = if is_right_child {
             match parent.left_idx() {
-                Some(idx) => self.get_subtree_size(idx),
+                Some(idx) => self.get_subtree_size::<U>(idx),
                 None => 0,
             }
         } else {
             match parent.right_idx() {
-                Some(idx) => self.get_subtree_size(idx),
+                Some(idx) => self.get_subtree_size::<U>(idx),
                 None => 0,
             }
         };
 
         let computed_subtree_size = child_subtree_size + other_child_subtree_size + 1;
 
-        debug_assert_eq!(computed_subtree_size, self.get_subtree_size(parent_idx));
+        debug_assert_eq!(computed_subtree_size, self.get_subtree_size::<U>(parent_idx));
 
         computed_subtree_size
     }
@@ -1242,9 +1240,9 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         }
 
         debug_assert!(
-            self.get_subtree_size(subtree_root_arena_idx) == (sorted_arena_idxs.len()),
+            self.get_subtree_size::<U>(subtree_root_arena_idx) == (sorted_arena_idxs.len()),
             "Internal invariant failed: rebalance changed node count! {} -> {}",
-            self.get_subtree_size(subtree_root_arena_idx),
+            self.get_subtree_size::<U>(subtree_root_arena_idx),
             sorted_arena_idxs.len()
         );
     }

@@ -5,6 +5,8 @@ use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
+// TODO: arena enum dispatch, definitely needed
+
 // Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
 // If caller obeys contract, `U` will be smallest unsigned capable of representing const `N` (e.g. static capacity).

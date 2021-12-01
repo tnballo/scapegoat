@@ -73,6 +73,9 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
 
 // Mutable Reference iterator ------------------------------------------------------------------------------------------
 
+// TODO: if enum dipatch works out, could use concrete associated type like ArenaEnum::Node to hide `U` at this interface?
+// Want to avoid enum dispatch for `Node` itself.
+
 pub struct IterMut<'a, K: Ord, V, const N: usize> {
     arena_iter_mut: core::slice::IterMut<'a, Option<(K, V)>>,
 }

@@ -3,6 +3,8 @@ use core::ops::Sub;
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
+// TODO: node enum dispatch, needed? Or not if arena enum dispatch is implemented?
+
 // Note: structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 // All members in subset are <= host pointer width in size.
 // If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::NodeArena`'s
