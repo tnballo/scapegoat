@@ -146,7 +146,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
             if let Some(node) = other.arena.remove(arena_idx) {
-                self.insert(node.key, node.val);
+                self.insert(node.key(), node.val());
             }
         }
         other.clear();
@@ -170,7 +170,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         if (self.len() + other.len()) <= self.capacity() {
             for arena_idx in 0..other.arena.len() {
                 if let Some(node) = other.arena.remove(arena_idx) {
-                    self.insert(node.key, node.val)?;
+                    self.insert(node.key(), node.val())?;
                 }
             }
             other.clear();
@@ -330,7 +330,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         match ngh.node_idx() {
             Some(idx) => {
                 let node = self.arena.hard_get(idx);
-                Some((&node.key, &node.val))
+                Some((&node.key(), &node.val()))
             }
             None => None,
         }
@@ -361,7 +361,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         match ngh.node_idx() {
             Some(idx) => {
                 let node = self.arena.hard_get_mut(idx);
-                Some(&mut node.val)
+                Some(&mut node.val())
             }
             None => None,
         }
@@ -401,7 +401,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     {
         self.arena
             .get(self.min_idx)
-            .map(|node| (&node.key, &node.val))
+            .map(|node| (&node.key(), &node.val()))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -429,7 +429,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     {
         self.arena
             .get(self.max_idx)
-            .map(|node| (&node.key, &node.val))
+            .map(|node| (&node.key(), &node.val()))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -468,7 +468,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         match self.arena.get(idx) {
             Some(node) => {
-                let ngh: NodeGetHelper<usize> = self.priv_get(None, &node.key);
+                let ngh: NodeGetHelper<usize> = self.priv_get(None, &node.key());
                 debug_assert!(
                     ngh.node_idx().unwrap() == idx,
                     "By-key retrieval index doesn't match arena storage index!"
@@ -486,7 +486,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         match self.arena.get(idx) {
             Some(node) => {
                 let mut path = NodeArena::new_idx_vec();
-                let ngh = self.priv_get(Some(&mut path), &node.key);
+                let ngh = self.priv_get(Some(&mut path), &node.key());
                 debug_assert!(
                     ngh.node_idx().unwrap() == idx,
                     "By-key retrieval index doesn't match arena storage index!"
@@ -524,7 +524,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
         // Sort by Node key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key.cmp(&b.0.key));
+        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key().cmp(&b.0.key()));
 
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
@@ -537,10 +537,10 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 .iter()
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
-                .map(|n| self.priv_get(None, &n.key))
+                .map(|n| self.priv_get(None, &n.key()))
                 .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
 
-            sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx().unwrap()).key);
+            sort_metadata.sort_by_key(|ngh| &self.arena.hard_get(ngh.node_idx().unwrap()).key());
             let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
 
             self.root_idx = Some(sorted_root_idx);
@@ -574,7 +574,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                         path.push(U::checked_from(curr_idx));
                     }
 
-                    match key.cmp(node.key.borrow()) {
+                    match key.cmp(node.key().borrow()) {
                         Ordering::Less => match node.left_idx() {
                             Some(lt_idx) => {
                                 opt_parent_idx = Some(curr_idx);
@@ -668,7 +668,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                     let mut curr_node = self.arena.hard_get_mut(curr_idx);
                     path.push(U::checked_from(curr_idx));
 
-                    match &new_node.key.cmp(&curr_node.key) {
+                    match &new_node.key().cmp(&curr_node.key()) {
                         Ordering::Less => {
                             match curr_node.left_idx() {
                                 Some(left_idx) => curr_idx = left_idx,
@@ -676,7 +676,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                                     // New min check
                                     let mut new_min_found = false;
                                     let min_node = self.arena.hard_get(self.min_idx);
-                                    if new_node.key < min_node.key {
+                                    if new_node.key() < min_node.key() {
                                         new_min_found = true;
                                     }
 
@@ -698,8 +698,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                             }
                         }
                         Ordering::Equal => {
-                            curr_node.key = new_node.key; // Necessary b/c Eq may not consider all struct members
-                            opt_val = Some(mem::replace(&mut curr_node.val, new_node.val)); // Overwrite value
+                            curr_node.key() = new_node.key(); // Necessary b/c Eq may not consider all struct members
+                            opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
                         }
@@ -710,7 +710,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                                     // New max check
                                     let mut new_max_found = false;
                                     let max_node = self.arena.hard_get(self.max_idx);
-                                    if new_node.key > max_node.key {
+                                    if new_node.key() > max_node.key() {
                                         new_max_found = true;
                                     }
 
@@ -922,7 +922,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                     }
                 }
 
-                Some((removed_node.key, removed_node.val))
+                Some((removed_node.key(), removed_node.val()))
             }
             None => None,
         }
@@ -976,7 +976,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 }
                 #[cfg(feature = "high_assurance")]
                 {
-                    assert!(drained_sgt.insert(node.key, node.val).is_ok());
+                    assert!(drained_sgt.insert(node.key(), node.val()).is_ok());
                 }
             }
         }
@@ -1206,7 +1206,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 self.root_idx = Some(subtree_root_arena_idx);
             } else {
                 let old_subtree_root = self.arena.hard_get(old_subtree_root_idx);
-                let ngh: NodeGetHelper<U> = self.priv_get(None, &old_subtree_root.key);
+                let ngh: NodeGetHelper<U> = self.priv_get(None, &old_subtree_root.key());
                 debug_assert!(
                     ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"
