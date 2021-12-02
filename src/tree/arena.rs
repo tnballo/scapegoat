@@ -34,9 +34,8 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 {
     // Public API ------------------------------------------------------------------------------------------------------
 
-    // TODO: get rid of this function b/c `U` in signature!
-    /// Associated constructor for index scratch vector.
-    pub const fn new_idx_vec() -> SmallVec<[U; N]> {
+    /// Const associated constructor for index scratch vector.
+    pub fn new_idx_vec() -> SmallVec<[U; N]> {
         SmallVec::<[U; N]>::default()
     }
 
@@ -62,7 +61,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     ///
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
-    pub const fn capacity(&self) -> usize {
+    pub fn capacity(&self) -> usize {
         N
     }
 
@@ -200,14 +199,20 @@ impl<K, V, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
     type Output = SmallNodeDispatch<K, V>;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.arena[index].unwrap()
+        match &self.arena[index] {
+            Some(node) => &node,
+            None => unreachable!()
+        }
     }
 }
 
 /// Mutable indexing
 impl<K, V, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.arena[index].unwrap()
+        match self.arena.index_mut(index) {
+            Some(node) => node,
+            None => unreachable!()
+        }
     }
 }
 

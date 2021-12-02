@@ -42,19 +42,36 @@ pub trait SmallNode<K, V> {
 
 #[derive(Clone)]
 pub enum SmallNodeDispatch<K, V> {
-    USIZE(Node<K, V, usize>),
-    U8(Node<K, V, u8>),
-    U16(Node<K, V, u16>),
-    U32(Node<K, V, u32>),
-    U64(Node<K, V, u64>),
-    U128(Node<K, V, u128>),
+    NodeUSIZE(Node<K, V, usize>),
+    NodeU8(Node<K, V, u8>),
+
+    #[cfg(any(
+        target_pointer_width = "16",
+        target_pointer_width = "32",
+        target_pointer_width = "64",
+        target_pointer_width = "128",
+    ))]
+    NodeU16(Node<K, V, u16>),
+
+    #[cfg(any(
+        target_pointer_width = "32",
+        target_pointer_width = "64",
+        target_pointer_width = "128",
+    ))]
+    NodeU32(Node<K, V, u32>),
+
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
+    NodeU64(Node<K, V, u64>),
+
+    #[cfg(target_pointer_width = "128")]
+    NodeU128(Node<K, V, u128>),
 }
 
 impl<K, V> SmallNodeDispatch<K, V> {
     pub const fn new(key: K, val: V, uint: SmallUnsignedLabel) -> Self {
         match uint {
-            USIZE => SmallNodeDispatch::USIZE(Node::<K, V, usize>::new(key, val)),
-            U8 => SmallNodeDispatch::U8(Node::<K, V, u8>::new(key, val)),
+            SmallUnsignedLabel::USIZE => SmallNodeDispatch::NodeUSIZE(Node::<K, V, usize>::new(key, val)),
+            SmallUnsignedLabel::U8 => SmallNodeDispatch::NodeU8(Node::<K, V, u8>::new(key, val)),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -62,20 +79,22 @@ impl<K, V> SmallNodeDispatch<K, V> {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            U16 => SmallNodeDispatch::U16(Node::<K, V, u16>::new(key, val)),
+            SmallUnsignedLabel::U16 => SmallNodeDispatch::NodeU16(Node::<K, V, u16>::new(key, val)),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            U32 => SmallNodeDispatch::U32(Node::<K, V, u32>::new(key, val)),
+            SmallUnsignedLabel::U32 => SmallNodeDispatch::NodeU32(Node::<K, V, u32>::new(key, val)),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            U64 => SmallNodeDispatch::U64(Node::<K, V, u64>::new(key, val)),
+            SmallUnsignedLabel::U64 => SmallNodeDispatch::NodeU64(Node::<K, V, u64>::new(key, val)),
 
             #[cfg(target_pointer_width = "128")]
-            U128 => SmallNodeDispatch::U128(Node::<K, V, u128>::new(key, val)),
+            SmallUnsignedLabel::U128 => SmallNodeDispatch::NodeU128(Node::<K, V, u128>::new(key, val)),
+
+            _ => unreachable!()
         }
     }
 }
@@ -83,8 +102,8 @@ impl<K, V> SmallNodeDispatch<K, V> {
 macro_rules! dispatch_args {
     ( $self:ident, $func:ident, $args:expr $(,)? ) => {
         match $self {
-            SmallNodeDispatch::USIZE(node) => node.$func($args),
-            SmallNodeDispatch::U8(node) => node.$func($args),
+            SmallNodeDispatch::NodeUSIZE(node) => node.$func($args),
+            SmallNodeDispatch::NodeU8(node) => node.$func($args),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -92,20 +111,20 @@ macro_rules! dispatch_args {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::U16(node) => node.$func($args),
+            SmallNodeDispatch::NodeU16(node) => node.$func($args),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::U32(node) => node.$func($args),
+            SmallNodeDispatch::NodeU32(node) => node.$func($args),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            SmallNodeDispatch::U64(node) => node.$func($args),
+            SmallNodeDispatch::NodeU64(node) => node.$func($args),
 
             #[cfg(target_pointer_width = "128")]
-            SmallNodeDispatch::U128(node) => node.$func($args),
+            SmallNodeDispatch::NodeU128(node) => node.$func($args),
         }
     };
 }
@@ -113,8 +132,8 @@ macro_rules! dispatch_args {
 macro_rules! dispatch_no_args {
     ( $self:ident, $func:ident $(,)? ) => {
         match $self {
-            SmallNodeDispatch::USIZE(node) => node.$func(),
-            SmallNodeDispatch::U8(node) => node.$func(),
+            SmallNodeDispatch::NodeUSIZE(node) => node.$func(),
+            SmallNodeDispatch::NodeU8(node) => node.$func(),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -122,20 +141,20 @@ macro_rules! dispatch_no_args {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::U16(node) => node.$func(),
+            SmallNodeDispatch::NodeU16(node) => node.$func(),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::U32(node) => node.$func(),
+            SmallNodeDispatch::NodeU32(node) => node.$func(),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            SmallNodeDispatch::U64(node) => node.$func(),
+            SmallNodeDispatch::NodeU64(node) => node.$func(),
 
             #[cfg(target_pointer_width = "128")]
-            SmallNodeDispatch::U128(node) => node.$func(),
+            SmallNodeDispatch::NodeU128(node) => node.$func(),
         }
     };
 }

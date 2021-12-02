@@ -24,7 +24,8 @@ use smallvec::{smallvec, SmallVec};
 #[derive(Clone)]
 pub struct SGTree<K: Ord, V, const N: usize> {
     // Storage
-    pub(crate) arena: NodeArena<K, V, u64, N>, // TODO: changes high_assurance to only pack on SGTreeConst<K,V,N>
+    // CRITICAL TODO: this need to be dispatched! Make sig NodeArena<SmallNodeDispatch<K,V>> or add new arena dispatcher???
+    pub(crate) arena: NodeArena<K, V, u64, N>,
     // TODO: enum dispatch here to not mess up high_assurance packing for default?
     //pub(crate) arena: NodeArena<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>,
     pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
@@ -620,8 +621,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert<U: Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
-        let mut path = NodeArena::new_idx_vec();
+    fn priv_balancing_insert<U: Default + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
+        let mut path: SmallVec<[U; N]> = NodeArena::<K, V, U, N>::new_idx_vec();
         let new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
 
         // Insert
@@ -660,7 +661,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                 // Iterative traversal
                 let mut curr_idx = idx;
                 let mut opt_val = None;
-                let ngh;
+                let ngh: NodeGetHelper<U>;
                 loop {
                     let mut curr_node = self.arena[curr_idx];
                     path.push(U::checked_from(curr_idx));
@@ -695,7 +696,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                             }
                         }
                         Ordering::Equal => {
-                            curr_node.key() = new_node.key(); // Necessary b/c Eq may not consider all struct members
+                            curr_node.set_key(new_node.key()); // Necessary b/c Eq may not consider all struct members
                             opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
@@ -943,15 +944,17 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
         // TODO: this implementation is rather inefficient!
 
-        let mut key_idxs = NodeArena::new_idx_vec();
-        let mut remove_idxs = NodeArena::new_idx_vec();
+        // Note: this uses `usize` as a `U` stand-in to encapsulate `U` away for public APIs
+
+        let mut key_idxs = NodeArena::<K, V, usize, N>::new_idx_vec();
+        let mut remove_idxs = NodeArena::<K, V, usize, N>::new_idx_vec();
 
         // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
         self.sort_arena();
 
         // Safely treat mutable ref as immutable, init list of node's arena indexes
         for (k, _) in &(*self) {
-            let ngh = self.priv_get(None, k.borrow());
+            let ngh: NodeGetHelper<usize> = self.priv_get(None, k.borrow());
             debug_assert!(ngh.node_idx().is_some());
             key_idxs.push(ngh.node_idx().unwrap());
         }
@@ -1024,14 +1027,14 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
     #[cfg(not(feature = "alt_impl"))]
-    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[usize]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
 
         let mut node_subtree_size = 1; // Newly inserted
         let mut parent_path_idx = path.len() - 1; // Parent of newly inserted
-        let mut parent_subtree_size = self.get_subtree_size::<U>(path[parent_path_idx]);
+        let mut parent_subtree_size = self.get_subtree_size::<U>(path[parent_path_idx].usize());
 
         while (parent_path_idx > 0)
             && (self.alpha_denom * node_subtree_size as f32)
@@ -1040,21 +1043,21 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             parent_subtree_size = self.get_subtree_size_differential::<U>(
-                path[parent_path_idx],     // Parent index
-                path[parent_path_idx + 1], // Child index
+                path[parent_path_idx].usize(),     // Parent index
+                path[parent_path_idx + 1].usize(), // Child index
                 node_subtree_size,         // Child subtree size
             );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
         }
 
-        Some(path[parent_path_idx])
+        Some(path[parent_path_idx].usize())
     }
 
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
     #[cfg(feature = "alt_impl")]
-    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[usize]) -> Option<usize> {
+    fn find_scapegoat_2<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
@@ -1062,22 +1065,22 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         let mut i = 0;
         let mut node_subtree_size = 1; // Newly inserted
         let mut parent_path_idx = path.len() - 1; // Parent of newly inserted
-        let mut parent_subtree_size = self.get_subtree_size(path[parent_path_idx]);
+        let mut parent_subtree_size = self.get_subtree_size::<U>(path[parent_path_idx].usize());
 
         while (parent_path_idx > 0) && (i <= self.alpha_balance_depth(node_subtree_size)) {
             node_subtree_size = parent_subtree_size;
             parent_path_idx -= 1;
             i += 1;
             parent_subtree_size = self.get_subtree_size_differential::<U>(
-                path[parent_path_idx],     // Parent index
-                path[parent_path_idx + 1], // Child index
+                path[parent_path_idx].usize(),     // Parent index
+                path[parent_path_idx + 1].usize(), // Child index
                 node_subtree_size,         // Child subtree size
             );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
         }
 
-        Some(path[parent_path_idx])
+        Some(path[parent_path_idx].usize())
     }
 
     // Iterative subtree size computation
