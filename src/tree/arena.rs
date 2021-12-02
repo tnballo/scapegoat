@@ -7,6 +7,8 @@ use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
+// CRITICAL TODO: very that all use of "arena.capacity()" is correct and should not be "arena.len()"
+
 /*
 Note:
 
@@ -33,7 +35,6 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
     // Public API ------------------------------------------------------------------------------------------------------
 
     // TODO: get rid of this function b/c `U` in signature!
-    // TODO: make const with tinyvec::ArrayVec::default()?
     /// Associated constructor for index scratch vector.
     pub const fn new_idx_vec() -> SmallVec<[U; N]> {
         SmallVec::<[U; N]>::default()
@@ -260,10 +261,10 @@ mod tests {
         let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
-        assert_eq!(arena.get(n_1_idx).unwrap().val(), "n/a");
+        assert_eq!(arena[n_1_idx].val(), "n/a");
         let n_1_mut_ref = arena.get_mut(n_1_idx).unwrap();
         n_1_mut_ref.val() = "This is a value. There are many like it but this one is mine.";
-        assert_ne!(arena.get(n_1_idx).unwrap().val(), "n/a");
+        assert_ne!(arena[n_1_idx].val(), "n/a");
     }
 
     #[test]

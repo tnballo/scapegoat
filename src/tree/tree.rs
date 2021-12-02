@@ -9,14 +9,14 @@ use core::ops::{Index, Sub};
 use super::arena::NodeArena;
 use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
-use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
-use super::node_dispatch::SmallNode;
+use super::node::{NodeGetHelper, NodeRebuildHelper};
+use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
 #[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
-use smallnum::{small_unsigned, SmallUnsigned}; //TODO: will use small_unsigned later
+use smallnum::{small_unsigned, small_unsigned_label, SmallUnsigned, SmallUnsignedLabel}; //TODO: will use small_unsigned later
 use smallvec::{smallvec, SmallVec};
 
 /// A memory-efficient, self-balancing binary search tree.
@@ -399,9 +399,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        self.arena
-            .get(self.min_idx)
-            .map(|node| (&node.key(), &node.val()))
+        let node = self.arena[self.min_idx];
+        Some((&node.key(), &node.val()))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -427,9 +426,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        self.arena
-            .get(self.max_idx)
-            .map(|node| (&node.key(), &node.val()))
+        let node = self.arena[self.max_idx];
+        Some((&node.key(), &node.val()))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -466,16 +464,16 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(not(feature = "fast_rebalance"))]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
-        match self.arena.get(idx) {
-            Some(node) => {
-                let ngh: NodeGetHelper<usize> = self.priv_get(None, &node.key());
-                debug_assert!(
-                    ngh.node_idx().unwrap() == idx,
-                    "By-key retrieval index doesn't match arena storage index!"
-                );
-                self.priv_remove(None, ngh)
-            }
-            None => None,
+        if (0..self.arena.len()).contains(&idx) {
+            let node = self.arena[idx];
+            let ngh: NodeGetHelper<usize> = self.priv_get(None, &node.key());
+            debug_assert!(
+                ngh.node_idx().unwrap() == idx,
+                "By-key retrieval index doesn't match arena storage index!"
+            );
+            self.priv_remove(None, ngh)
+        } else {
+            None
         }
     }
 
@@ -483,17 +481,17 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(feature = "fast_rebalance")]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
-        match self.arena.get(idx) {
-            Some(node) => {
-                let mut path = NodeArena::new_idx_vec();
-                let ngh = self.priv_get(Some(&mut path), &node.key());
-                debug_assert!(
-                    ngh.node_idx().unwrap() == idx,
-                    "By-key retrieval index doesn't match arena storage index!"
-                );
-                self.priv_remove(Some(&path), ngh)
-            }
-            None => None,
+        if (0..self.arena.len()).contains(&idx) {
+            let node = self.arena[idx];
+            let mut path = NodeArena::new_idx_vec();
+            let ngh = self.priv_get(Some(&mut path), &node.key());
+            debug_assert!(
+                ngh.node_idx().unwrap() == idx,
+                "By-key retrieval index doesn't match arena storage index!"
+            );
+            self.priv_remove(Some(&path), ngh)
+        } else {
+            None
         }
     }
 
@@ -502,27 +500,26 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         &self,
         idx: usize,
     ) -> SmallVec<[U; N]> {
-        // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
-        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, U>, U); N]> =
-            smallvec![(self.arena[idx], idx)];
-        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> =
-            smallvec![self.arena[idx]];
+        let mut subtree_node_idx_pairs: SmallVec<[(&SmallNodeDispatch<K, V>, U); N]> =
+            smallvec![(&self.arena[idx], U::checked_from(idx))];
+        let mut subtree_worklist: SmallVec<[&SmallNodeDispatch<K, V>; N]> =
+            smallvec![&self.arena[idx]];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
                 let left_child_node = self.arena[left_idx];
-                subtree_node_idx_pairs.push((left_child_node, left_idx));
-                subtree_worklist.push(left_child_node);
+                subtree_node_idx_pairs.push((&left_child_node, U::checked_from(left_idx)));
+                subtree_worklist.push(&left_child_node);
             }
 
             if let Some(right_idx) = node.right_idx() {
                 let right_child_node = self.arena[right_idx];
-                subtree_node_idx_pairs.push((right_child_node, right_idx));
-                subtree_worklist.push(right_child_node);
+                subtree_node_idx_pairs.push((&right_child_node, U::checked_from(right_idx)));
+                subtree_worklist.push(&right_child_node);
             }
         }
 
-        // Sort by Node key
+        // Sort by SmallNode key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
         subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key().cmp(&b.0.key()));
 
@@ -625,7 +622,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Re-balances the tree if necessary.
     fn priv_balancing_insert<U: Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
         let mut path = NodeArena::new_idx_vec();
-        let new_node = Node::new(key, val);
+        let new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
 
         // Insert
         let opt_val = self.priv_insert(&mut path, new_node);
@@ -655,7 +652,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     fn priv_insert<U: SmallUnsigned>(
         &mut self,
         path: &mut SmallVec<[U; N]>,
-        new_node: Node<K, V, U>,
+        new_node: SmallNodeDispatch<K, V>,
     ) -> Option<V> {
         match self.root_idx {
             // Sorted insert
@@ -1086,19 +1083,19 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
     fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
-        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> =
-            smallvec![self.arena[idx]];
+        let mut subtree_worklist: SmallVec<[&SmallNodeDispatch<K, V>; N]> =
+            smallvec![&self.arena[idx]];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
             subtree_size += 1;
 
             if let Some(left_idx) = node.left_idx() {
-                subtree_worklist.push(self.arena[left_idx]);
+                subtree_worklist.push(&self.arena[left_idx]);
             }
 
             if let Some(right_idx) = node.right_idx() {
-                subtree_worklist.push(self.arena[right_idx]);
+                subtree_worklist.push(&self.arena[right_idx]);
             }
         }
 
