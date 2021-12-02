@@ -22,7 +22,7 @@ impl<'a, K: Ord, V, const N: usize> Iter<'a, K, V, N> {
         if let Some(root_idx) = ordered_iter.bst.root_idx {
             let mut curr_idx = root_idx;
             loop {
-                let node = ordered_iter.bst.arena.hard_get(curr_idx);
+                let node = ordered_iter.bst.arena[curr_idx];
                 match node.left_idx() {
                     Some(lt_idx) => {
                         ordered_iter.idx_stack.push(curr_idx);
@@ -46,11 +46,11 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.idx_stack.pop() {
             Some(pop_idx) => {
-                let node = self.bst.arena.hard_get(pop_idx);
+                let node = self.bst.arena[pop_idx];
                 if let Some(gt_idx) = node.right_idx() {
                     let mut curr_idx = gt_idx;
                     loop {
-                        let node = self.bst.arena.hard_get(curr_idx);
+                        let node = self.bst.arena[curr_idx];
                         match node.left_idx() {
                             Some(lt_idx) => {
                                 self.idx_stack.push(curr_idx);
@@ -64,7 +64,7 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
                     }
                 }
 
-                let node = self.bst.arena.hard_get(pop_idx);
+                let node = self.bst.arena[pop_idx];
                 Some((&node.key(), &node.val()))
             }
             None => None,

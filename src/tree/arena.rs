@@ -1,4 +1,5 @@
 use core::slice::{Iter, IterMut};
+use core::ops::{Index, IndexMut};
 
 use super::node::{NodeGetHelper, NodeSwapHistHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
@@ -135,6 +136,17 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
         None
     }
 
+    /// Remove node at a known-good index (simpler callsite and error handling) from area.
+    /// This function can panic. If the index might be invalid, use `remove` instead.
+    pub fn hard_remove(&mut self, idx: usize) -> SmallNodeDispatch<K, V> {
+        match self.remove(idx) {
+            Some(node) => node,
+            None => {
+                panic!("Internal invariant failed: attempted removal of node from invalid index.")
+            }
+        }
+    }
+
     /// Sort the arena in caller-requested order and update all tree metadata accordingly
     /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
     pub fn sort(
@@ -163,7 +175,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
             if let Some(parent_idx) = ngh.parent_idx() {
                 let curr_parent_idx = swap_history.curr_idx(parent_idx);
                 let curr_child_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
-                let parent_node = self.hard_get_mut(curr_parent_idx);
+                let parent_node = self[curr_parent_idx];
                 if ngh.is_right_child() {
                     parent_node.set_right_idx(Some(curr_child_idx));
                 } else {
@@ -176,56 +188,25 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
         swap_history.curr_idx(root_idx)
     }
 
-    /// Remove node at a known-good index (simpler callsite and error handling) from area.
-    /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: usize) -> SmallNodeDispatch<K, V> {
-        match self.remove(idx) {
-            Some(node) => node,
-            None => {
-                panic!("Internal invariant failed: attempted removal of node from invalid index.")
-            }
-        }
-    }
-
-    /// Get a reference to a node.
-    pub fn get(&self, idx: usize) -> Option<&SmallNodeDispatch<K, V>> {
-        match self.arena.get(idx) {
-            Some(Some(node)) => Some(node),
-            _ => None,
-        }
-    }
-
-    /// Get mutable reference to a node.
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut SmallNodeDispatch<K, V>> {
-        match self.arena.get_mut(idx) {
-            Some(Some(node)) => Some(node),
-            _ => None,
-        }
-    }
-
-    /// Get reference to a node at a known-good index (simpler callsite and error handling).
-    /// This function can panic. If the index might be invalid, use `get` instead.
-    pub fn hard_get(&self, idx: usize) -> &SmallNodeDispatch<K, V> {
-        match self.get(idx) {
-            Some(node) => node,
-            None => {
-                panic!("Internal invariant failed: attempted retrieval of node from invalid index.")
-            }
-        }
-    }
-
-    /// Get mutable reference to a node at a known-good index (simpler callsite and error handling).
-    /// This function can panic. If the index might be invalid, use `get_mut` instead.
-    pub fn hard_get_mut(&mut self, idx: usize) -> &mut SmallNodeDispatch<K, V> {
-        match self.get_mut(idx) {
-            Some(node) => node,
-            None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
-        }
-    }
-
-    /// Returns the number of entries in the arena, some of which may be `None`.
+      /// Returns the number of entries in the arena, some of which may be `None`.
     pub fn len(&self) -> usize {
         self.arena.len()
+    }
+}
+
+/// Immutable indexing
+impl<K, V, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
+    type Output = SmallNodeDispatch<K, V>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.arena[index].unwrap()
+    }
+}
+
+/// Mutable indexing
+impl<K, V, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.arena[index].unwrap()
     }
 }
 
@@ -237,6 +218,7 @@ impl<K: Ord, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const
     }
 }
 
+// TODO: must be re-written for dispatch
 #[cfg(test)]
 mod tests {
     use super::{Node, NodeArena};
@@ -261,7 +243,7 @@ mod tests {
         assert_eq!(n_3_idx, 2);
 
         let n_2_removed = arena.remove(n_2_idx).unwrap();
-        assert_eq!(n_2_removed.key, 2);
+        assert_eq!(n_2_removed.key(), 2);
         assert!(arena.arena[1].is_none());
 
         let n_4 = Node::new(4, "n/a");
@@ -278,10 +260,10 @@ mod tests {
         let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
-        assert_eq!(arena.get(n_1_idx).unwrap().val, "n/a");
+        assert_eq!(arena.get(n_1_idx).unwrap().val(), "n/a");
         let n_1_mut_ref = arena.get_mut(n_1_idx).unwrap();
-        n_1_mut_ref.val = "This is a value. There are many like it but this one is mine.";
-        assert_ne!(arena.get(n_1_idx).unwrap().val, "n/a");
+        n_1_mut_ref.val() = "This is a value. There are many like it but this one is mine.";
+        assert_ne!(arena.get(n_1_idx).unwrap().val(), "n/a");
     }
 
     #[test]
@@ -289,8 +271,8 @@ mod tests {
         let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         let n_1_idx = arena.add(n_1);
-        let n_1_ref = arena.hard_get(n_1_idx);
-        assert_eq!(n_1_ref.key, 0xD00DFEED_u64);
+        let n_1_ref = arena[n_1_idx];
+        assert_eq!(n_1_ref.key(), 0xD00DFEED_u64);
     }
 
     #[test]
@@ -299,7 +281,7 @@ mod tests {
         let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
         let mut arena = NodeArena::new();
         arena.add(n_1);
-        arena.hard_get(1); // OOB
+        arena[1]; // OOB
     }
 
     #[test]
@@ -332,9 +314,9 @@ mod tests {
         arena.add(n_1);
 
         // Unsorted (insertion/"physical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key, 3);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key, 1);
+        assert_eq!(arena.arena[0].as_ref().unwrap().key(), 3);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key(), 2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key(), 1);
 
         // Would be supplied for the above tree
         let sort_metadata = smallvec! {
@@ -358,8 +340,8 @@ mod tests {
         arena.sort(1, sort_metadata);
 
         // Sorted ("logical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key, 1);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key, 3);
+        assert_eq!(arena.arena[0].as_ref().unwrap().key(), 1);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key(), 2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key(), 3);
     }
 }

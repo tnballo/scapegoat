@@ -58,7 +58,7 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
             ArenaMethod::HardGet { idx } => {
                 match idx_set.get(&idx.try_into().unwrap()) {
                     Some(valid_idx) => {
-                        let _ = arena.hard_get(*valid_idx);
+                        let _ = arena[*valid_idx];
                     },
                     None => continue,
                 }
@@ -66,7 +66,7 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
             ArenaMethod::HardGetMut { idx } => {
                 match idx_set.get(&idx.try_into().unwrap()) {
                     Some(valid_idx) => {
-                        let _ = arena.hard_get_mut(*valid_idx);
+                        let _ = arena[*valid_idx];
                     },
                     None => continue,
                 }

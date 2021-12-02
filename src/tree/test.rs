@@ -49,11 +49,11 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str, CAPACITY>, Vec<u
 fn assert_logical_invariants<K: Ord, V, const N: usize>(sgt: &SGTree<K, V, N>) {
     if let Some(root_idx) = sgt.root_idx {
         let mut child_idxs = vec![root_idx]; // Count as "child" to make sure there's no other ref to this index
-        let mut subtree_worklist = vec![sgt.arena.hard_get(root_idx)];
+        let mut subtree_worklist = vec![sgt.arena[root_idx]];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
-                let left_child_node = sgt.arena.hard_get(left_idx);
+                let left_child_node = sgt.arena[left_idx];
                 assert!(
                     left_child_node.key < node.key,
                     "Internal invariant failed: left child >= parent!"
@@ -63,7 +63,7 @@ fn assert_logical_invariants<K: Ord, V, const N: usize>(sgt: &SGTree<K, V, N>) {
             }
 
             if let Some(right_idx) = node.right_idx() {
-                let right_child_node = sgt.arena.hard_get(right_idx);
+                let right_child_node = sgt.arena[right_idx];
                 assert!(
                     right_child_node.key > node.key,
                     "Internal invariant failed: right child <= parent!"
