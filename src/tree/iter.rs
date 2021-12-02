@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use super::tree::SGTree;
-use super::node_dispatch::SmallNode;
+use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 
 // Immutable Reference iterator ----------------------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
                 }
 
                 let node = self.bst.arena.hard_get(pop_idx);
-                Some((&node.key, &node.val))
+                Some((&node.key(), &node.val()))
             }
             None => None,
         }
@@ -74,11 +74,8 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
 
 // Mutable Reference iterator ------------------------------------------------------------------------------------------
 
-// TODO: if enum dipatch works out, could use concrete associated type like ArenaEnum::Node to hide `U` at this interface?
-// Want to avoid enum dispatch for `Node` itself.
-
 pub struct IterMut<'a, K: Ord, V, const N: usize> {
-    arena_iter_mut: core::slice::IterMut<'a, Option<(K, V)>>,
+    arena_iter_mut: core::slice::IterMut<'a, Option<SmallNodeDispatch<K, V>>>,
 }
 
 impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V, N> {
@@ -86,8 +83,6 @@ impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V, N> {
         bst.sort_arena();
         IterMut {
             arena_iter_mut: bst.arena.iter_mut(),
-            // TODO: figure this out
-            // arena_iter_mut: bst.arena.iter_mut().map(|n| (n.key, n.val))
         }
     }
 }
@@ -97,7 +92,7 @@ impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.arena_iter_mut.next() {
-            Some(Some((key, val))) => Some((key, val)),
+            Some(Some(node)) => Some((&node.key(), &mut node.val())),
             _ => None,
         }
     }

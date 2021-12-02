@@ -5,8 +5,6 @@ use super::node_dispatch::SmallNode;
 use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
-// TODO: node enum dispatch, needed? Or not if arena enum dispatch is implemented?
-
 /*
 Note:
 
@@ -23,18 +21,18 @@ const `N` (e.g. static capacity).
 /// All APIs take/return `usize` and normalize to `U` internally.
 #[derive(Clone)]
 pub struct Node<K, V, U> {
-    pub key: K,
-    pub val: V,
+    key: K,
+    val: V,
     left_idx: Option<U>,
     right_idx: Option<U>,
 
     #[cfg(feature = "fast_rebalance")]
-    pub subtree_size: U,
+    subtree_size: U,
 }
 
 impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     /// Constructor.
-    pub fn new(key: K, val: V) -> Self {
+    pub const fn new(key: K, val: V) -> Self {
         Node {
             key,
             val,
@@ -47,8 +45,26 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     }
 }
 
-impl<K, V, U: SmallUnsigned> SmallNode<K,V> for Node<K, V, U> {
+impl<K, V, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
+    /// Get key.
+    fn key(&self) -> K {
+        self.key
+    }
 
+    /// Set key.
+    fn set_key(&mut self, key: K) {
+        self.key = key;
+    }
+
+    /// Get value.
+    fn val(&self) -> V {
+        self.val
+    }
+
+    /// Set value.
+    fn set_val(&mut self, val: V) {
+        self.val = val;
+    }
 
     /// Get left index as `usize`
     fn left_idx(&self) -> Option<usize> {
@@ -75,6 +91,18 @@ impl<K, V, U: SmallUnsigned> SmallNode<K,V> for Node<K, V, U> {
             None => self.right_idx = None,
         }
     }
+
+    /// Get subtree size.
+    #[cfg(feature = "fast_rebalance")]
+    fn subtree_size(&self) -> usize {
+        self.subtree_size.usize()
+    }
+
+    /// Set subtree size.
+    #[cfg(feature = "fast_rebalance")]
+    fn set_subtree_size(&mut self, size: usize) {
+        self.subtree_size = U::checked_from(size);
+    }
 }
 
 // Retrieval Helper ----------------------------------------------------------------------------------------------------
@@ -90,7 +118,7 @@ pub struct NodeGetHelper<U> {
 
 impl<U: SmallUnsigned> NodeGetHelper<U> {
     /// Constructor.
-    pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
+    pub const fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
             node_idx: node_idx.map(|i| U::checked_from(i)),
             parent_idx: parent_idx.map(|i| U::checked_from(i)),
@@ -99,12 +127,12 @@ impl<U: SmallUnsigned> NodeGetHelper<U> {
     }
 
     /// Get node index as `usize`
-    pub fn node_idx(&self) -> Option<usize> {
+    pub const fn node_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }
 
     /// Get parent index as `usize`
-    pub fn parent_idx(&self) -> Option<usize> {
+    pub const fn parent_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }
 
@@ -154,9 +182,9 @@ pub struct NodeSwapHistHelper<U, const N: usize> {
 
 impl<U: Ord + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
     /// Constructor.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         NodeSwapHistHelper {
-            history: SmallVec::<[(U, U); N]>::new(),
+            history: SmallVec::<[(U, U); N]>::default(),
         }
     }
 

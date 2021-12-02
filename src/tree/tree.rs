@@ -498,10 +498,15 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     }
 
     // Flatten subtree into array of node indexs sorted by node key
-    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned>(&self, idx: usize) -> SmallVec<[U; N]> {
+    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned>(
+        &self,
+        idx: usize,
+    ) -> SmallVec<[U; N]> {
         // pub type SortNodeRefIdxPairVec<'a, K, V> = SmallVec<[(&'a Node<K, V>, Idx); MAX_ELEMS]>;
-        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, U>, U); N]> = smallvec![(self.arena.hard_get(idx), idx)];
-        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> = smallvec![self.arena.hard_get(idx)];
+        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, U>, U); N]> =
+            smallvec![(self.arena.hard_get(idx), idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> =
+            smallvec![self.arena.hard_get(idx)];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
@@ -647,7 +652,11 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
-    fn priv_insert<U: SmallUnsigned>(&mut self, path: &mut SmallVec<[U; N]>, new_node: Node<K, V, U>) -> Option<V> {
+    fn priv_insert<U: SmallUnsigned>(
+        &mut self,
+        path: &mut SmallVec<[U; N]>,
+        new_node: Node<K, V, U>,
+    ) -> Option<V> {
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -1077,7 +1086,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
     fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
-        let mut subtree_worklist:SmallVec<[&Node<K, V, U>; N]> = smallvec![self.arena.hard_get(idx)];
+        let mut subtree_worklist: SmallVec<[&Node<K, V, U>; N]> =
+            smallvec![self.arena.hard_get(idx)];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
@@ -1136,7 +1146,10 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
         let computed_subtree_size = child_subtree_size + other_child_subtree_size + 1;
 
-        debug_assert_eq!(computed_subtree_size, self.get_subtree_size::<U>(parent_idx));
+        debug_assert_eq!(
+            computed_subtree_size,
+            self.get_subtree_size::<U>(parent_idx)
+        );
 
         computed_subtree_size
     }
@@ -1220,14 +1233,20 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
             // Set left child
             if parent_nrh.low_idx < parent_nrh.mid_idx {
-                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(parent_nrh.low_idx.usize(), parent_nrh.mid_idx.usize() - 1);
+                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(
+                    parent_nrh.low_idx.usize(),
+                    parent_nrh.mid_idx.usize() - 1,
+                );
                 parent_node.set_left_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }
 
             // Set right child
             if parent_nrh.mid_idx < parent_nrh.high_idx {
-                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(parent_nrh.mid_idx.usize() + 1, parent_nrh.high_idx.usize());
+                let child_nrh: NodeRebuildHelper<U> = NodeRebuildHelper::new(
+                    parent_nrh.mid_idx.usize() + 1,
+                    parent_nrh.high_idx.usize(),
+                );
                 parent_node.set_right_idx(Some(sorted_arena_idxs[child_nrh.mid_idx.usize()]));
                 subtree_worklist.push((child_nrh.mid_idx, child_nrh));
             }

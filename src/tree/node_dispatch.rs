@@ -1,9 +1,22 @@
 use super::node::Node;
+use smallnum::SmallUnsignedLabel;
 
-// Enum Dispatch -------------------------------------------------------------------------------------------------------
+// Size-optimized Node Trait -------------------------------------------------------------------------------------------
 
-/// Encapsulate `U`.
-pub trait SmallNode<K,V> {
+/// Interfaces encapsulates `U`.
+pub trait SmallNode<K, V> {
+    /// Get key.
+    fn key(&self) -> K;
+
+    /// Set key.
+    fn set_key(&mut self, key: K);
+
+    /// Get value.
+    fn val(&self) -> V;
+
+    /// Set value.
+    fn set_val(&mut self, val: V);
+
     /// Get left index as `usize`.
     fn left_idx(&self) -> Option<usize>;
 
@@ -15,21 +28,21 @@ pub trait SmallNode<K,V> {
 
     /// Set right index.
     fn set_right_idx(&mut self, opt_idx: Option<usize>);
+
+    /// Get subtree size.
+    #[cfg(feature = "fast_rebalance")]
+    fn subtree_size(&self) -> usize;
+
+    /// Set subtree size.
+    #[cfg(feature = "fast_rebalance")]
+    fn set_subtree_size(&mut self, size: usize);
 }
 
-// TODO: add to smallnum as macro with const -> UINT?
-// so caller can to `small_unsigned!(my number)` and `small_unsigned_type!(MY_NUM)`
-pub enum UINT {
-    UINT,
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
-}
+// Enum Dispatch -------------------------------------------------------------------------------------------------------
 
-pub enum EnumSmallNode<K, V> {
-    UINT(Node<K, V, usize>),
+#[derive(Clone)]
+pub enum SmallNodeDispatch<K, V> {
+    USIZE(Node<K, V, usize>),
     U8(Node<K, V, u8>),
     U16(Node<K, V, u16>),
     U32(Node<K, V, u32>),
@@ -37,11 +50,11 @@ pub enum EnumSmallNode<K, V> {
     U128(Node<K, V, u128>),
 }
 
-impl<K, V> EnumSmallNode<K, V> {
-    fn new(key: K, val: V, uint: UINT) -> Self {
+impl<K, V> SmallNodeDispatch<K, V> {
+    pub const fn new(key: K, val: V, uint: SmallUnsignedLabel) -> Self {
         match uint {
-            UINT::UINT => EnumSmallNode::UINT(Node::<K,V, usize>::new(key, val)),
-            UINT::U8 => EnumSmallNode::U8(Node::<K,V, u8>::new(key, val)),
+            USIZE => SmallNodeDispatch::USIZE(Node::<K, V, usize>::new(key, val)),
+            U8 => SmallNodeDispatch::U8(Node::<K, V, u8>::new(key, val)),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -49,30 +62,29 @@ impl<K, V> EnumSmallNode<K, V> {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            UINT::U16 => EnumSmallNode::U16(Node::<K,V, u16>::new(key, val)),
+            U16 => SmallNodeDispatch::U16(Node::<K, V, u16>::new(key, val)),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            UINT::U32 => EnumSmallNode::U32(Node::<K,V, u32>::new(key, val)),
+            U32 => SmallNodeDispatch::U32(Node::<K, V, u32>::new(key, val)),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            UINT::U64 => EnumSmallNode::U64(Node::<K,V, u64>::new(key, val)),
+            U64 => SmallNodeDispatch::U64(Node::<K, V, u64>::new(key, val)),
 
             #[cfg(target_pointer_width = "128")]
-            UINT::U128 => EnumSmallNode::U128(Node::<K,V, u128>::new(key, val)),
+            U128 => SmallNodeDispatch::U128(Node::<K, V, u128>::new(key, val)),
         }
     }
 }
 
-// TODO: write a macro these method bodies, to reduce boilerplate!
-impl<K, V> SmallNode<K, V> for EnumSmallNode<K, V> {
-    fn left_idx(&self) -> Option<usize> {
-        match self {
-            EnumSmallNode::UINT(node) => node.left_idx(),
-            EnumSmallNode::U8(node) => node.left_idx(),
+macro_rules! dispatch_args {
+    ( $self:ident, $func:ident, $args:expr $(,)? ) => {
+        match $self {
+            SmallNodeDispatch::USIZE(node) => node.$func($args),
+            SmallNodeDispatch::U8(node) => node.$func($args),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -80,105 +92,94 @@ impl<K, V> SmallNode<K, V> for EnumSmallNode<K, V> {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            EnumSmallNode::U16(node) => node.left_idx(),
+            SmallNodeDispatch::U16(node) => node.$func($args),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            EnumSmallNode::U32(node) => node.left_idx(),
+            SmallNodeDispatch::U32(node) => node.$func($args),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            EnumSmallNode::U64(node) => node.left_idx(),
+            SmallNodeDispatch::U64(node) => node.$func($args),
 
             #[cfg(target_pointer_width = "128")]
-            EnumSmallNode::U128(node) => node.left_idx(),
+            SmallNodeDispatch::U128(node) => node.$func($args),
         }
+    };
+}
+
+macro_rules! dispatch_no_args {
+    ( $self:ident, $func:ident $(,)? ) => {
+        match $self {
+            SmallNodeDispatch::USIZE(node) => node.$func(),
+            SmallNodeDispatch::U8(node) => node.$func(),
+
+            #[cfg(any(
+                target_pointer_width = "16",
+                target_pointer_width = "32",
+                target_pointer_width = "64",
+                target_pointer_width = "128",
+            ))]
+            SmallNodeDispatch::U16(node) => node.$func(),
+
+            #[cfg(any(
+                target_pointer_width = "32",
+                target_pointer_width = "64",
+                target_pointer_width = "128",
+            ))]
+            SmallNodeDispatch::U32(node) => node.$func(),
+
+            #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
+            SmallNodeDispatch::U64(node) => node.$func(),
+
+            #[cfg(target_pointer_width = "128")]
+            SmallNodeDispatch::U128(node) => node.$func(),
+        }
+    };
+}
+
+impl<K, V> SmallNode<K, V> for SmallNodeDispatch<K, V> {
+    fn key(&self) -> K {
+        dispatch_no_args!(self, key)
+    }
+
+    fn set_key(&mut self, key: K) {
+        dispatch_args!(self, set_key, key);
+    }
+
+    fn val(&self) -> V {
+        dispatch_no_args!(self, val)
+    }
+
+    fn set_val(&mut self, val: V) {
+        dispatch_args!(self, set_val, val);
+    }
+
+    fn left_idx(&self) -> Option<usize> {
+        dispatch_no_args!(self, left_idx)
     }
 
     fn set_left_idx(&mut self, opt_idx: Option<usize>) {
-        match self {
-            EnumSmallNode::UINT(node) => node.set_left_idx(opt_idx),
-            EnumSmallNode::U8(node) => node.set_left_idx(opt_idx),
-
-            #[cfg(any(
-                target_pointer_width = "16",
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U16(node) => node.set_left_idx(opt_idx),
-
-            #[cfg(any(
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U32(node) => node.set_left_idx(opt_idx),
-
-            #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            EnumSmallNode::U64(node) => node.set_left_idx(opt_idx),
-
-            #[cfg(target_pointer_width = "128")]
-            EnumSmallNode::U128(node) => node.set_left_idx(opt_idx),
-        }
+        dispatch_args!(self, set_left_idx, opt_idx);
     }
 
     fn right_idx(&self) -> Option<usize> {
-        match self {
-            EnumSmallNode::UINT(node) => node.right_idx(),
-            EnumSmallNode::U8(node) => node.right_idx(),
-
-            #[cfg(any(
-                target_pointer_width = "16",
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U16(node) => node.right_idx(),
-
-            #[cfg(any(
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U32(node) => node.right_idx(),
-
-            #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            EnumSmallNode::U64(node) => node.right_idx(),
-
-            #[cfg(target_pointer_width = "128")]
-            EnumSmallNode::U128(node) => node.right_idx(),
-        }
+        dispatch_no_args!(self, right_idx)
     }
 
     fn set_right_idx(&mut self, opt_idx: Option<usize>) {
-        match self {
-            EnumSmallNode::UINT(node) => node.set_right_idx(opt_idx),
-            EnumSmallNode::U8(node) => node.set_right_idx(opt_idx),
+        dispatch_args!(self, set_right_idx, opt_idx);
+    }
 
-            #[cfg(any(
-                target_pointer_width = "16",
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U16(node) => node.set_right_idx(opt_idx),
+    #[cfg(feature = "fast_rebalance")]
+    fn subtree_size(&self) -> usize {
+        dispatch_no_args!(self, subtree_size)
+    }
 
-            #[cfg(any(
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            EnumSmallNode::U32(node) => node.set_right_idx(opt_idx),
-
-            #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            EnumSmallNode::U64(node) => node.set_right_idx(opt_idx),
-
-            #[cfg(target_pointer_width = "128")]
-            EnumSmallNode::U128(node) => node.set_right_idx(opt_idx),
-        }
-
+    #[cfg(feature = "fast_rebalance")]
+    fn set_subtree_size(&mut self, size: usize) {
+        dispatch_args!(self, set_subtree_size, size);
     }
 }
