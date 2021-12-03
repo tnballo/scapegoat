@@ -22,14 +22,14 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 /// Method APIs take/return `usize` and normalize to `U` internally.
 /// Sole associated function, `gen_idx_vec`, has return type that uses `U` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
-pub struct NodeArena<K, V: Default, U, const N: usize> {
+pub struct NodeArena<K: Default, V: Default, U, const N: usize> {
     arena: SmallVec<[Option<SmallNodeDispatch<K, V>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
     free_list: SmallVec<[U; N]>,
 }
 
-impl<K, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
+impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
     NodeArena<K, V, U, N>
 {
     // Public API ------------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ impl<K, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + Partia
             if let Some(parent_idx) = ngh.parent_idx() {
                 let curr_parent_idx = swap_history.curr_idx(parent_idx);
                 let curr_child_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
-                let parent_node = self[curr_parent_idx];
+                let parent_node = &mut self[curr_parent_idx];
                 if ngh.is_right_child() {
                     parent_node.set_right_idx(Some(curr_child_idx));
                 } else {
@@ -195,7 +195,7 @@ impl<K, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + Partia
 }
 
 /// Immutable indexing
-impl<K, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
+impl<K: Default, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
     type Output = SmallNodeDispatch<K, V>;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -207,7 +207,7 @@ impl<K, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
 }
 
 /// Mutable indexing
-impl<K, V: Default, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
+impl<K: Default, V: Default, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self.arena.index_mut(index) {
             Some(node) => node,
@@ -216,7 +216,7 @@ impl<K, V: Default, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N>
     }
 }
 
-impl<K: Ord, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
+impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
     for NodeArena<K, V, U, N>
 {
     fn default() -> Self {

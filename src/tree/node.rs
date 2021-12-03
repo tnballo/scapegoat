@@ -45,7 +45,7 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     }
 }
 
-impl<K, V: Default, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
+impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K, V, U> {
     /// Get key.
     fn key(&self) -> &K {
         &self.key
@@ -56,9 +56,19 @@ impl<K, V: Default, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
         self.key = key;
     }
 
+    // Take key, replacing current with `K::Default()`.
+    fn take_key(&mut self) -> K {
+        core::mem::replace(&mut self.key, K::default())
+    }
+
     /// Get value.
     fn val(&self) -> &V {
         &self.val
+    }
+
+    /// Get mutable value.
+    fn val_mut(&mut self) -> &mut V {
+        &mut self.val
     }
 
     // Take value, replacing current with `V::Default()`.
@@ -121,7 +131,7 @@ pub struct NodeGetHelper<U> {
     is_right_child: bool,
 }
 
-impl<U: SmallUnsigned> NodeGetHelper<U> {
+impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
     /// Constructor.
     pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
@@ -158,7 +168,7 @@ pub struct NodeRebuildHelper<U> {
     pub mid_idx: U,
 }
 
-impl<U: SmallUnsigned + Ord + Sub> NodeRebuildHelper<U> {
+impl<U: SmallUnsigned + Ord + Sub + Copy> NodeRebuildHelper<U> {
     /// Constructor.
     pub fn new(low_idx: usize, high_idx: usize) -> Self {
         debug_assert!(

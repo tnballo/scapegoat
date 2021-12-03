@@ -22,7 +22,7 @@ use smallvec::{smallvec, SmallVec};
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
-pub struct SGTree<K, V: Default, const N: usize> {
+pub struct SGTree<K: Default, V: Default, const N: usize> {
     // Storage
     // CRITICAL TODO: this need to be dispatched! Make sig NodeArena<SmallNodeDispatch<K,V>> or add new arena dispatcher???
     pub(crate) arena: NodeArena<K, V, u64, N>,
@@ -146,8 +146,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
-            if let Some(node) = other.arena.remove(arena_idx) {
-                self.insert(*node.key(), *node.val());
+            if let Some(mut node) = other.arena.remove(arena_idx) {
+                self.insert(node.take_key(), node.take_val());
             }
         }
         other.clear();
@@ -170,8 +170,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         // Rip elements directly out of other's arena and clear it
         if (self.len() + other.len()) <= self.capacity() {
             for arena_idx in 0..other.arena.len() {
-                if let Some(node) = other.arena.remove(arena_idx) {
-                    self.insert(*node.key(), *node.val())?;
+                if let Some(mut node) = other.arena.remove(arena_idx) {
+                    self.insert(node.take_key(), node.take_val());
                 }
             }
             other.clear();
@@ -193,6 +193,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
+        // CRITICAL TODO: this results in Node<K, V, usize>! Not what we want, need to work around! Or this that not true b/c line 626, the dispatch constructor?
         self.priv_balancing_insert::<usize>(key, val)
     }
 
@@ -330,8 +331,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         let ngh: NodeGetHelper<usize> = self.priv_get(None, key);
         match ngh.node_idx() {
             Some(idx) => {
-                let node = self.arena[idx];
-                Some((&node.key(), &node.val()))
+                let node = &self.arena[idx];
+                Some((node.key(), node.val()))
             }
             None => None,
         }
@@ -361,8 +362,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         let ngh: NodeGetHelper<usize> = self.priv_get(None, key);
         match ngh.node_idx() {
             Some(idx) => {
-                let node = self.arena[idx];
-                Some(&mut node.val())
+                let node = &self.arena[idx];
+                Some(&mut node.val()) // TODO: add a val_mut?
             }
             None => None,
         }
@@ -400,8 +401,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        let node = self.arena[self.min_idx];
-        Some((&node.key(), &node.val()))
+        let node = &self.arena[self.min_idx];
+        Some((node.key(), node.val()))
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -427,8 +428,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        let node = self.arena[self.max_idx];
-        Some((&node.key(), &node.val()))
+        let node = &self.arena[self.max_idx];
+        Some((node.key(), node.val()))
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -466,8 +467,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     #[cfg(not(feature = "fast_rebalance"))]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         if (0..self.arena.len()).contains(&idx) {
-            let node = self.arena[idx];
-            let ngh: NodeGetHelper<usize> = self.priv_get(None, &node.key());
+            let node = &self.arena[idx];
+            let ngh: NodeGetHelper<usize> = self.priv_get(None, node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
                 "By-key retrieval index doesn't match arena storage index!"
@@ -483,9 +484,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     #[cfg(feature = "fast_rebalance")]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         if (0..self.arena.len()).contains(&idx) {
-            let node = self.arena[idx];
+            let node = &self.arena[idx];
             let mut path = NodeArena::new_idx_vec();
-            let ngh = self.priv_get(Some(&mut path), &node.key());
+            let ngh = self.priv_get(Some(&mut path), node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
                 "By-key retrieval index doesn't match arena storage index!"
@@ -497,7 +498,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     // Flatten subtree into array of node indexs sorted by node key
-    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned>(
+    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned + Copy>(
         &self,
         idx: usize,
     ) -> SmallVec<[U; N]> {
@@ -508,13 +509,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
-                let left_child_node = self.arena[left_idx];
+                let left_child_node = &self.arena[left_idx];
                 subtree_node_idx_pairs.push((&left_child_node, U::checked_from(left_idx)));
                 subtree_worklist.push(&left_child_node);
             }
 
             if let Some(right_idx) = node.right_idx() {
-                let right_child_node = self.arena[right_idx];
+                let right_child_node = &self.arena[right_idx];
                 subtree_node_idx_pairs.push((&right_child_node, U::checked_from(right_idx)));
                 subtree_worklist.push(&right_child_node);
             }
@@ -551,7 +552,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, U: SmallUnsigned>(
+    fn priv_get<Q, U: SmallUnsigned + Copy>(
         &self,
         mut opt_path: Option<&mut SmallVec<[U; N]>>,
         key: &Q,
@@ -566,7 +567,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 let mut curr_idx = root_idx;
                 let mut is_right_child = false;
                 loop {
-                    let node = self.arena[curr_idx];
+                    let node = &self.arena[curr_idx];
 
                     if let Some(ref mut path) = opt_path {
                         path.push(U::checked_from(curr_idx));
@@ -623,6 +624,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Re-balances the tree if necessary.
     fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
         let mut path: SmallVec<[U; N]> = NodeArena::<K, V, U, N>::new_idx_vec();
+
+        // Node storage size decided here! `SmallUnsignedLabel` argument simulates passing a type
         let new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
 
         // Insert
@@ -650,7 +653,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
-    fn priv_insert<U: SmallUnsigned>(
+    fn priv_insert<U: SmallUnsigned + Copy>(
         &mut self,
         path: &mut SmallVec<[U; N]>,
         new_node: SmallNodeDispatch<K, V>,
@@ -663,7 +666,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 let mut opt_val = None;
                 let ngh: NodeGetHelper<U>;
                 loop {
-                    let mut curr_node = self.arena[curr_idx];
+                    let mut curr_node = &self.arena[curr_idx];
                     path.push(U::checked_from(curr_idx));
 
                     match &new_node.key().cmp(&curr_node.key()) {
@@ -673,7 +676,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                 None => {
                                     // New min check
                                     let mut new_min_found = false;
-                                    let min_node = self.arena[self.min_idx];
+                                    let min_node = &self.arena[self.min_idx];
                                     if new_node.key() < min_node.key() {
                                         new_min_found = true;
                                     }
@@ -697,7 +700,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         }
                         Ordering::Equal => {
                             // Replace necessary b/c Eq may not consider all struct members
-                            let node = mem::replace(&mut curr_node, new_node);
+                            let mut node = mem::replace(&mut curr_node, &new_node);
                             opt_val = Some(node.take_val());
                             //curr_node.set_key(*new_node.key());
                             //opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
@@ -710,7 +713,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                 None => {
                                     // New max check
                                     let mut new_max_found = false;
-                                    let max_node = self.arena[self.max_idx];
+                                    let max_node = &self.arena[self.max_idx];
                                     if new_node.key() > max_node.key() {
                                         new_max_found = true;
                                     }
@@ -740,7 +743,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                     self.curr_size += 1;
                     self.max_size += 1;
 
-                    let parent_node = self.arena[parent_idx];
+                    let parent_node = &mut self.arena[parent_idx];
                     if ngh.is_right_child() {
                         parent_node.set_right_idx(ngh.node_idx());
                     } else {
@@ -793,14 +796,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
-    fn priv_remove<U: SmallUnsigned>(
+    fn priv_remove<U: SmallUnsigned + Copy>(
         &mut self,
         opt_path: Option<&SmallVec<[U; N]>>,
         ngh: NodeGetHelper<U>,
     ) -> Option<(K, V)> {
         match ngh.node_idx() {
             Some(node_idx) => {
-                let node_to_remove = self.arena[node_idx];
+                let node_to_remove = &self.arena[node_idx];
 
                 // Copy out child indexes to reduce scope of above immutable borrow
                 let node_to_remove_left_idx = node_to_remove.left_idx();
@@ -825,7 +828,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         let min_node_subtree_size = node_to_remove.subtree_size - 1;
 
                         loop {
-                            let min_node = self.arena[min_idx];
+                            let min_node = &self.arena[min_idx];
                             match min_node.left_idx() {
                                 // Continue search for min node
                                 Some(lt_idx) => {
@@ -839,8 +842,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                         if min_parent_idx == node_idx {
                                             node_to_remove_right_idx = unlink_new_child;
                                         } else {
-                                            let min_parent_node =
-                                                self.arena[min_parent_idx];
+                                            let min_parent_node = &mut self.arena[min_parent_idx];
                                             min_parent_node.set_left_idx(unlink_new_child);
 
                                             #[cfg(feature = "fast_rebalance")]
@@ -854,8 +856,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                         if min_parent_idx == node_idx {
                                             node_to_remove_right_idx = None;
                                         } else {
-                                            let min_parent_node =
-                                                self.arena[min_parent_idx];
+                                            let min_parent_node = &mut self.arena[min_parent_idx];
                                             min_parent_node.set_left_idx(None);
 
                                             #[cfg(feature = "fast_rebalance")]
@@ -870,7 +871,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         }
 
                         // Re-link min node to removed node's children
-                        let min_node = self.arena[min_idx];
+                        let min_node = &mut self.arena[min_idx];
                         min_node.set_right_idx(node_to_remove_right_idx);
                         min_node.set_left_idx(node_to_remove_left_idx);
 
@@ -887,7 +888,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 // Update parent or root
                 match ngh.parent_idx() {
                     Some(parent_idx) => {
-                        let parent_node = self.arena[parent_idx];
+                        let parent_node = &mut self.arena[parent_idx];
                         if ngh.is_right_child() {
                             parent_node.set_right_idx(new_child);
                         } else {
@@ -900,7 +901,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 }
 
                 // Perform removal
-                let removed_node = self.arena.hard_remove(node_idx);
+                let mut removed_node = self.arena.hard_remove(node_idx);
                 self.curr_size -= 1;
 
                 // Update min/max
@@ -923,7 +924,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                     }
                 }
 
-                Some((*removed_node.key(), *removed_node.val()))
+                Some((removed_node.take_key(), removed_node.take_val()))
             }
             None => None,
         }
@@ -993,7 +994,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             Some(root_idx) => {
                 let mut curr_idx = root_idx;
                 loop {
-                    let node = self.arena[curr_idx];
+                    let node = &self.arena[curr_idx];
                     match node.left_idx() {
                         Some(lt_idx) => curr_idx = lt_idx,
                         None => {
@@ -1013,7 +1014,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             Some(root_idx) => {
                 let mut curr_idx = root_idx;
                 loop {
-                    let node = self.arena[curr_idx];
+                    let node = &self.arena[curr_idx];
                     match node.right_idx() {
                         Some(gt_idx) => curr_idx = gt_idx,
                         None => {
@@ -1060,7 +1061,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
     #[cfg(feature = "alt_impl")]
-    fn find_scapegoat_2<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
@@ -1122,7 +1123,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         child_idx: usize,
         child_subtree_size: usize,
     ) -> usize {
-        let parent = self.arena[parent_idx];
+        let parent = &self.arena[parent_idx];
 
         debug_assert!(
             (parent.right_idx() == Some(child_idx)) || (parent.left_idx() == Some(child_idx))
@@ -1208,14 +1209,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             if sorted_arena_idxs.contains(&root_idx) {
                 self.root_idx = Some(subtree_root_arena_idx);
             } else {
-                let old_subtree_root = self.arena[old_subtree_root_idx];
+                let old_subtree_root = &self.arena[old_subtree_root_idx];
                 let ngh: NodeGetHelper<U> = self.priv_get(None, &old_subtree_root.key());
                 debug_assert!(
                     ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"
                 );
                 if let Some(parent_idx) = ngh.parent_idx() {
-                    let parent_node = self.arena[parent_idx];
+                    let parent_node = &mut self.arena[parent_idx];
                     if ngh.is_right_child() {
                         parent_node.set_right_idx(Some(subtree_root_arena_idx));
                     } else {
@@ -1227,7 +1228,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         // Iteratively re-assign all children
         while let Some((sorted_idx, parent_nrh)) = subtree_worklist.pop() {
-            let parent_node = self
+            let parent_node = &mut self
                 .arena[sorted_arena_idxs[sorted_idx.usize()]];
 
             parent_node.set_left_idx(None);

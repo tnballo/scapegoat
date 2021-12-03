@@ -11,8 +11,14 @@ pub trait SmallNode<K, V: Default> {
     /// Set key.
     fn set_key(&mut self, key: K);
 
+    // Take key, replacing current with `K::Default()`.
+    fn take_key(&mut self) -> K;
+
     /// Get value.
     fn val(&self) -> &V;
+
+    /// Get mutable value.
+    fn val_mut(&mut self) -> &mut V;
 
     /// Set value.
     fn set_val(&mut self, val: V);
@@ -44,7 +50,7 @@ pub trait SmallNode<K, V: Default> {
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
-pub enum SmallNodeDispatch<K, V: Default> {
+pub enum SmallNodeDispatch<K: Default, V: Default> {
     NodeUSIZE(Node<K, V, usize>),
     NodeU8(Node<K, V, u8>),
 
@@ -70,7 +76,7 @@ pub enum SmallNodeDispatch<K, V: Default> {
     NodeU128(Node<K, V, u128>),
 }
 
-impl<K, V: Default> SmallNodeDispatch<K, V> {
+impl<K: Default, V: Default> SmallNodeDispatch<K, V> {
     pub fn new(key: K, val: V, uint: SmallUnsignedLabel) -> Self {
         match uint {
             SmallUnsignedLabel::USIZE => SmallNodeDispatch::NodeUSIZE(Node::<K, V, usize>::new(key, val)),
@@ -162,7 +168,7 @@ macro_rules! dispatch_no_args {
     };
 }
 
-impl<K, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
+impl<K: Default, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
     fn key(&self) -> &K {
         dispatch_no_args!(self, key)
     }
@@ -171,8 +177,16 @@ impl<K, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
         dispatch_args!(self, set_key, key);
     }
 
+    fn take_key(&mut self) -> K {
+        dispatch_no_args!(self, take_key)
+    }
+
     fn val(&self) -> &V {
         dispatch_no_args!(self, val)
+    }
+
+    fn val_mut(&mut self) -> &mut V {
+        dispatch_no_args!(self, val_mut)
     }
 
     fn set_val(&mut self, val: V) {
