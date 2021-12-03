@@ -22,14 +22,14 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 /// Method APIs take/return `usize` and normalize to `U` internally.
 /// Sole associated function, `gen_idx_vec`, has return type that uses `U` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
-pub struct NodeArena<K, V, U, const N: usize> {
+pub struct NodeArena<K, V: Default, U, const N: usize> {
     arena: SmallVec<[Option<SmallNodeDispatch<K, V>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
     free_list: SmallVec<[U; N]>,
 }
 
-impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
+impl<K, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
     NodeArena<K, V, U, N>
 {
     // Public API ------------------------------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ impl<K, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: u
 }
 
 /// Immutable indexing
-impl<K, V, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
+impl<K, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
     type Output = SmallNodeDispatch<K, V>;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -207,7 +207,7 @@ impl<K, V, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
 }
 
 /// Mutable indexing
-impl<K, V, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
+impl<K, V: Default, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self.arena.index_mut(index) {
             Some(node) => node,
@@ -216,7 +216,7 @@ impl<K, V, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
     }
 }
 
-impl<K: Ord, V, U: Default + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
+impl<K: Ord, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
     for NodeArena<K, V, U, N>
 {
     fn default() -> Self {

@@ -7,12 +7,12 @@ use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
-pub struct Iter<'a, K: Ord, V, const N: usize> {
+pub struct Iter<'a, K, V: Default, const N: usize> {
     bst: &'a SGTree<K, V, N>,
     idx_stack: SmallVec<[usize; N]>,
 }
 
-impl<'a, K: Ord, V, const N: usize> Iter<'a, K, V, N> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iter<'a, K, V, N> {
     pub fn new(bst: &'a SGTree<K, V, N>) -> Self {
         let mut ordered_iter = Iter {
             bst,
@@ -40,7 +40,7 @@ impl<'a, K: Ord, V, const N: usize> Iter<'a, K, V, N> {
     }
 }
 
-impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, V, N> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -74,11 +74,11 @@ impl<'a, K: Ord, V, const N: usize> Iterator for Iter<'a, K, V, N> {
 
 // Mutable Reference iterator ------------------------------------------------------------------------------------------
 
-pub struct IterMut<'a, K: Ord, V, const N: usize> {
+pub struct IterMut<'a, K, V: Default, const N: usize> {
     arena_iter_mut: core::slice::IterMut<'a, Option<SmallNodeDispatch<K, V>>>,
 }
 
-impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V, N> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> IterMut<'a, K, V, N> {
     pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
@@ -87,7 +87,7 @@ impl<'a, K: Ord, V, const N: usize> IterMut<'a, K, V, N> {
     }
 }
 
-impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V, N> {
+impl<'a, K: Ord, V: Default, const N: usize> Iterator for IterMut<'a, K, V, N> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -102,12 +102,12 @@ impl<'a, K: Ord, V, const N: usize> Iterator for IterMut<'a, K, V, N> {
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
-pub struct IntoIter<K: Ord, V, const N: usize> {
+pub struct IntoIter<K, V: Default, const N: usize> {
     bst: SGTree<K, V, N>,
     sorted_idxs: SmallVec<[usize; N]>,
 }
 
-impl<K: Ord, V, const N: usize> IntoIter<K, V, N> {
+impl<K: Ord + Default, V: Default, const N: usize> IntoIter<K, V, N> {
     /// Constructor
     pub fn new(bst: SGTree<K, V, N>) -> Self {
         let mut ordered_iter = IntoIter {
@@ -124,7 +124,7 @@ impl<K: Ord, V, const N: usize> IntoIter<K, V, N> {
     }
 }
 
-impl<K: Ord, V, const N: usize> Iterator for IntoIter<K, V, N> {
+impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoIter<K, V, N> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {

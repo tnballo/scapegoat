@@ -4,18 +4,21 @@ use smallnum::SmallUnsignedLabel;
 // Size-optimized Node Trait -------------------------------------------------------------------------------------------
 
 /// Interfaces encapsulates `U`.
-pub trait SmallNode<K, V> {
+pub trait SmallNode<K, V: Default> {
     /// Get key.
-    fn key(&self) -> K;
+    fn key(&self) -> &K;
 
     /// Set key.
     fn set_key(&mut self, key: K);
 
     /// Get value.
-    fn val(&self) -> V;
+    fn val(&self) -> &V;
 
     /// Set value.
     fn set_val(&mut self, val: V);
+
+    // Take value, replacing current with `V::Default()`.
+    fn take_val(&mut self) -> V;
 
     /// Get left index as `usize`.
     fn left_idx(&self) -> Option<usize>;
@@ -41,7 +44,7 @@ pub trait SmallNode<K, V> {
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
-pub enum SmallNodeDispatch<K, V> {
+pub enum SmallNodeDispatch<K, V: Default> {
     NodeUSIZE(Node<K, V, usize>),
     NodeU8(Node<K, V, u8>),
 
@@ -67,8 +70,8 @@ pub enum SmallNodeDispatch<K, V> {
     NodeU128(Node<K, V, u128>),
 }
 
-impl<K, V> SmallNodeDispatch<K, V> {
-    pub const fn new(key: K, val: V, uint: SmallUnsignedLabel) -> Self {
+impl<K, V: Default> SmallNodeDispatch<K, V> {
+    pub fn new(key: K, val: V, uint: SmallUnsignedLabel) -> Self {
         match uint {
             SmallUnsignedLabel::USIZE => SmallNodeDispatch::NodeUSIZE(Node::<K, V, usize>::new(key, val)),
             SmallUnsignedLabel::U8 => SmallNodeDispatch::NodeU8(Node::<K, V, u8>::new(key, val)),
@@ -159,8 +162,8 @@ macro_rules! dispatch_no_args {
     };
 }
 
-impl<K, V> SmallNode<K, V> for SmallNodeDispatch<K, V> {
-    fn key(&self) -> K {
+impl<K, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
+    fn key(&self) -> &K {
         dispatch_no_args!(self, key)
     }
 
@@ -168,12 +171,16 @@ impl<K, V> SmallNode<K, V> for SmallNodeDispatch<K, V> {
         dispatch_args!(self, set_key, key);
     }
 
-    fn val(&self) -> V {
+    fn val(&self) -> &V {
         dispatch_no_args!(self, val)
     }
 
     fn set_val(&mut self, val: V) {
         dispatch_args!(self, set_val, val);
+    }
+
+    fn take_val(&mut self) -> V {
+        dispatch_no_args!(self, take_val)
     }
 
     fn left_idx(&self) -> Option<usize> {

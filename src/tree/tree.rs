@@ -22,7 +22,7 @@ use smallvec::{smallvec, SmallVec};
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
-pub struct SGTree<K: Ord, V, const N: usize> {
+pub struct SGTree<K, V: Default, const N: usize> {
     // Storage
     // CRITICAL TODO: this need to be dispatched! Make sig NodeArena<SmallNodeDispatch<K,V>> or add new arena dispatcher???
     pub(crate) arena: NodeArena<K, V, u64, N>,
@@ -46,7 +46,7 @@ pub struct SGTree<K: Ord, V, const N: usize> {
     rebal_cnt: usize,
 }
 
-impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
+impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Public API ------------------------------------------------------------------------------------------------------
 
     /// Makes a new, empty `SGTree`.
@@ -147,7 +147,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         // Rip elements directly out of other's arena and clear it
         for arena_idx in 0..other.arena.len() {
             if let Some(node) = other.arena.remove(arena_idx) {
-                self.insert(node.key(), node.val());
+                self.insert(*node.key(), *node.val());
             }
         }
         other.clear();
@@ -171,7 +171,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
         if (self.len() + other.len()) <= self.capacity() {
             for arena_idx in 0..other.arena.len() {
                 if let Some(node) = other.arena.remove(arena_idx) {
-                    self.insert(node.key(), node.val())?;
+                    self.insert(*node.key(), *node.val())?;
                 }
             }
             other.clear();
@@ -621,7 +621,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert<U: Default + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
+    fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
         let mut path: SmallVec<[U; N]> = NodeArena::<K, V, U, N>::new_idx_vec();
         let new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
 
@@ -696,8 +696,11 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                             }
                         }
                         Ordering::Equal => {
-                            curr_node.set_key(new_node.key()); // Necessary b/c Eq may not consider all struct members
-                            opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
+                            // Replace necessary b/c Eq may not consider all struct members
+                            let node = mem::replace(&mut curr_node, new_node);
+                            opt_val = Some(node.take_val());
+                            //curr_node.set_key(*new_node.key());
+                            //opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
                         }
@@ -920,7 +923,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
                     }
                 }
 
-                Some((removed_node.key(), removed_node.val()))
+                Some((*removed_node.key(), *removed_node.val()))
             }
             None => None,
         }
@@ -1167,7 +1170,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
     }
 
     // Iterative in-place rebuild for balanced subtree
-    fn rebuild<U: Ord + Sub + SmallUnsigned>(&mut self, idx: usize) {
+    fn rebuild<U: Copy + Ord + Sub + SmallUnsigned>(&mut self, idx: usize) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs::<U>(idx, &sorted_sub);
         self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
@@ -1175,7 +1178,7 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
-    fn rebalance_subtree_from_sorted_idxs<U: Ord + Sub + SmallUnsigned>(
+    fn rebalance_subtree_from_sorted_idxs<U: Copy + Ord + Sub + SmallUnsigned>(
         &mut self,
         old_subtree_root_idx: usize,
         sorted_arena_idxs: &[usize],
@@ -1278,8 +1281,8 @@ impl<K: Ord, V, const N: usize> SGTree<K, V, N> {
 // Debug
 impl<K, V, const N: usize> Debug for SGTree<K, V, N>
 where
-    K: Ord + Debug,
-    V: Debug,
+    K: Ord + Debug + Default,
+    V: Debug + Default,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1289,7 +1292,8 @@ where
 // Default
 impl<K, V, const N: usize> Default for SGTree<K, V, N>
 where
-    K: Ord,
+    K: Ord + Default,
+    V: Default,
 {
     fn default() -> Self {
         Self::new()
@@ -1299,7 +1303,8 @@ where
 // From array
 impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V, N>
 where
-    K: Ord,
+    K: Ord + Default,
+    V: Default,
 {
     /// ```
     /// use scapegoat::SGTree;
@@ -1316,8 +1321,9 @@ where
 // Indexing
 impl<K, V, Q, const N: usize> Index<&Q> for SGTree<K, V, N>
 where
-    K: Borrow<Q> + Ord,
+    K: Borrow<Q> + Ord + Default,
     Q: Ord + ?Sized,
+    V: Default,
 {
     type Output = V;
 
@@ -1334,7 +1340,8 @@ where
 // Extension from iterator.
 impl<K, V, const N: usize> Extend<(K, V)> for SGTree<K, V, N>
 where
-    K: Ord,
+    K: Ord + Default,
+    V: Default,
 {
     fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |(k, v)| {
@@ -1350,8 +1357,8 @@ where
 // Extension from reference iterator.
 impl<'a, K, V, const N: usize> Extend<(&'a K, &'a V)> for SGTree<K, V, N>
 where
-    K: Ord + Copy,
-    V: Copy,
+    K: Ord + Copy + Default,
+    V: Copy + Default,
 {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
@@ -1361,8 +1368,8 @@ where
 // PartialEq
 impl<K, V, const N: usize> PartialEq for SGTree<K, V, N>
 where
-    K: Ord + PartialEq,
-    V: PartialEq,
+    K: Ord + PartialEq + Default,
+    V: PartialEq + Default,
 {
     fn eq(&self, other: &SGTree<K, V, N>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
@@ -1372,16 +1379,16 @@ where
 // Eq
 impl<K, V, const N: usize> Eq for SGTree<K, V, N>
 where
-    K: Ord + Eq,
-    V: Eq,
+    K: Ord + Eq + Default,
+    V: Eq + Default,
 {
 }
 
 // PartialOrd
 impl<K, V, const N: usize> PartialOrd for SGTree<K, V, N>
 where
-    K: Ord + PartialOrd,
-    V: PartialOrd,
+    K: Ord + PartialOrd + Default,
+    V: PartialOrd + Default,
 {
     fn partial_cmp(&self, other: &SGTree<K, V, N>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
@@ -1391,8 +1398,8 @@ where
 // Ord
 impl<K, V, const N: usize> Ord for SGTree<K, V, N>
 where
-    K: Ord,
-    V: Ord,
+    K: Ord + Default,
+    V: Ord + Default,
 {
     fn cmp(&self, other: &SGTree<K, V, N>) -> Ordering {
         self.iter().cmp(other.iter())
@@ -1402,8 +1409,8 @@ where
 // Hash
 impl<K, V, const N: usize> Hash for SGTree<K, V, N>
 where
-    K: Ord + Hash,
-    V: Hash,
+    K: Ord + Hash + Default,
+    V: Hash + Default,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for i in self {
@@ -1415,7 +1422,11 @@ where
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construct from iterator.
-impl<K: Ord, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N> {
+impl<K, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut sgt = SGTree::new();
 
@@ -1432,7 +1443,11 @@ impl<K: Ord, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N> {
 }
 
 // Reference iterator, mutable
-impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N> {
+impl<'a, K, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V, N>;
 
@@ -1442,7 +1457,11 @@ impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N> {
 }
 
 // Reference iterator, immutable
-impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a SGTree<K, V, N> {
+impl<'a, K, V, const N: usize> IntoIterator for &'a SGTree<K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V, N>;
 
@@ -1452,7 +1471,11 @@ impl<'a, K: Ord, V, const N: usize> IntoIterator for &'a SGTree<K, V, N> {
 }
 
 // Consuming iterator
-impl<K: Ord, V, const N: usize> IntoIterator for SGTree<K, V, N> {
+impl<K, V, const N: usize> IntoIterator for SGTree<K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
     type Item = (K, V);
     type IntoIter = IntoIter<K, V, N>;
 

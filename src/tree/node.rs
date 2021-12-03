@@ -32,7 +32,7 @@ pub struct Node<K, V, U> {
 
 impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     /// Constructor.
-    pub const fn new(key: K, val: V) -> Self {
+    pub fn new(key: K, val: V) -> Self {
         Node {
             key,
             val,
@@ -45,10 +45,10 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
     }
 }
 
-impl<K, V, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
+impl<K, V: Default, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
     /// Get key.
-    fn key(&self) -> K {
-        self.key
+    fn key(&self) -> &K {
+        &self.key
     }
 
     /// Set key.
@@ -57,8 +57,13 @@ impl<K, V, U: SmallUnsigned> SmallNode<K, V> for Node<K, V, U> {
     }
 
     /// Get value.
-    fn val(&self) -> V {
-        self.val
+    fn val(&self) -> &V {
+        &self.val
+    }
+
+    // Take value, replacing current with `V::Default()`.
+    fn take_val(&mut self) -> V {
+        core::mem::replace(&mut self.val, V::default())
     }
 
     /// Set value.
@@ -118,7 +123,7 @@ pub struct NodeGetHelper<U> {
 
 impl<U: SmallUnsigned> NodeGetHelper<U> {
     /// Constructor.
-    pub const fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
+    pub fn new(node_idx: Option<usize>, parent_idx: Option<usize>, is_right_child: bool) -> Self {
         NodeGetHelper {
             node_idx: node_idx.map(|i| U::checked_from(i)),
             parent_idx: parent_idx.map(|i| U::checked_from(i)),
@@ -127,17 +132,17 @@ impl<U: SmallUnsigned> NodeGetHelper<U> {
     }
 
     /// Get node index as `usize`
-    pub const fn node_idx(&self) -> Option<usize> {
+    pub fn node_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }
 
     /// Get parent index as `usize`
-    pub const fn parent_idx(&self) -> Option<usize> {
+    pub fn parent_idx(&self) -> Option<usize> {
         self.node_idx.map(|i| i.usize())
     }
 
     // Tell if right or left child
-    pub const fn is_right_child(&self) -> bool {
+    pub fn is_right_child(&self) -> bool {
         self.is_right_child
     }
 }
@@ -180,9 +185,9 @@ pub struct NodeSwapHistHelper<U, const N: usize> {
     history: SmallVec<[(U, U); N]>,
 }
 
-impl<U: Ord + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
+impl<U: Ord + Copy + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
     /// Constructor.
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         NodeSwapHistHelper {
             history: SmallVec::<[(U, U); N]>::default(),
         }
