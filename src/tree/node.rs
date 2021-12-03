@@ -66,9 +66,9 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
         &self.val
     }
 
-    /// Get mutable value.
-    fn val_mut(&mut self) -> &mut V {
-        &mut self.val
+    /// Get key and mutable value.
+    fn get_mut(&mut self) -> (&K, &mut V) {
+        (&self.key, &mut self.val)
     }
 
     // Take value, replacing current with `V::Default()`.

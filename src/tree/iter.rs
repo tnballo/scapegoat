@@ -92,7 +92,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.arena_iter_mut.next() {
-            Some(Some(node)) => Some((node.key(), node.val_mut())), // Change `mut` method to return `(&K, &mut V)`?
+            Some(Some(node)) => Some(node.get_mut()), // Change `mut` method to return `(&K, &mut V)`?
             _ => None,
         }
     }

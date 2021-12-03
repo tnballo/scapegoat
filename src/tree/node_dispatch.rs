@@ -17,8 +17,8 @@ pub trait SmallNode<K, V: Default> {
     /// Get value.
     fn val(&self) -> &V;
 
-    /// Get mutable value.
-    fn val_mut(&mut self) -> &mut V;
+    /// Get key and mutable value.
+    fn get_mut(&mut self) -> (&K, &mut V);
 
     /// Set value.
     fn set_val(&mut self, val: V);
@@ -185,8 +185,8 @@ impl<K: Default, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
         dispatch_no_args!(self, val)
     }
 
-    fn val_mut(&mut self) -> &mut V {
-        dispatch_no_args!(self, val_mut)
+    fn get_mut(&mut self) -> (&K, &mut V) {
+        dispatch_no_args!(self, get_mut)
     }
 
     fn set_val(&mut self, val: V) {

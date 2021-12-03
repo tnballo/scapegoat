@@ -362,8 +362,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         let ngh: NodeGetHelper<usize> = self.priv_get(None, key);
         match ngh.node_idx() {
             Some(idx) => {
-                let node = &self.arena[idx];
-                Some(&mut node.val()) // TODO: add a val_mut?
+                let (_, val) = self.arena[idx].get_mut();
+                Some(val)
             }
             None => None,
         }
@@ -539,7 +539,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 .map(|n| self.priv_get(None, &n.key()))
                 .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
 
-            sort_metadata.sort_by_key(|ngh| &self.arena[ngh.node_idx().unwrap()].key());
+            sort_metadata.sort_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
             let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
 
             self.root_idx = Some(sorted_root_idx);
@@ -624,12 +624,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Re-balances the tree if necessary.
     fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
         let mut path: SmallVec<[U; N]> = NodeArena::<K, V, U, N>::new_idx_vec();
-
-        // Node storage size decided here! `SmallUnsignedLabel` argument simulates passing a type
-        let new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
-
-        // Insert
-        let opt_val = self.priv_insert(&mut path, new_node);
+        let opt_val = self.priv_insert(&mut path, key, val);
 
         #[cfg(feature = "fast_rebalance")]
         {
@@ -656,8 +651,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     fn priv_insert<U: SmallUnsigned + Copy>(
         &mut self,
         path: &mut SmallVec<[U; N]>,
-        new_node: SmallNodeDispatch<K, V>,
+        key: K,
+        val: V,
     ) -> Option<V> {
+
+        // Node storage size decided here! `SmallUnsignedLabel` argument simulates passing a type
+        let mut new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
+
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -666,10 +666,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 let mut opt_val = None;
                 let ngh: NodeGetHelper<U>;
                 loop {
-                    let mut curr_node = &self.arena[curr_idx];
+                    let curr_node = &mut self.arena[curr_idx];
                     path.push(U::checked_from(curr_idx));
 
-                    match &new_node.key().cmp(&curr_node.key()) {
+                    match new_node.key().cmp(&curr_node.key()) {
                         Ordering::Less => {
                             match curr_node.left_idx() {
                                 Some(left_idx) => curr_idx = left_idx,
@@ -699,11 +699,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                             }
                         }
                         Ordering::Equal => {
-                            // Replace necessary b/c Eq may not consider all struct members
-                            let mut node = mem::replace(&mut curr_node, &new_node);
-                            opt_val = Some(node.take_val());
-                            //curr_node.set_key(*new_node.key());
-                            //opt_val = Some(mem::replace(&mut curr_node.val(), new_node.val())); // Overwrite value
+                            // Replacing key necessary b/c custom Eq impl may not consider all K's fields
+                            curr_node.set_key(new_node.take_key());
+
+                            // Replacing val necessary b/c it may be different
+                            opt_val = Some(curr_node.take_val());
+                            curr_node.set_val(new_node.take_val());
+
+                            // Key/val updated "in-place": no need to update `curr_node`'s parent or children
                             ngh = NodeGetHelper::new(None, None, false);
                             break;
                         }
