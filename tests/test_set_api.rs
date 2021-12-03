@@ -1,3 +1,5 @@
+/* TODO: re-write/re-enable these tests
+
 use scapegoat::SGSet;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
@@ -290,3 +292,4 @@ fn test_set_is_disjoint() {
     assert!(a.is_disjoint(&b));
     assert!(!a.is_disjoint(&c));
 }
+*/

@@ -46,7 +46,7 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str, CAPACITY>, Vec<u
 // 1. A right child node's key is always greater than it's parent's key.
 // 2. A left child node's key is always less than it's parent's key.
 // 3. Every node has at most 1 parent.
-fn assert_logical_invariants<K: Ord, V, const N: usize>(sgt: &SGTree<K, V, N>) {
+fn assert_logical_invariants<K: Ord + Default, V: Default, const N: usize>(sgt: &SGTree<K, V, N>) {
     if let Some(root_idx) = sgt.root_idx {
         let mut child_idxs = vec![root_idx]; // Count as "child" to make sure there's no other ref to this index
         let mut subtree_worklist = vec![sgt.arena[root_idx]];
