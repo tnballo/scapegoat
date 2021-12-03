@@ -48,10 +48,13 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
             free_list: SmallVec::<[U; N]>::new(),
         };
 
-        // Verify const generic invariants
-        debug_assert_eq!(N, na.free_list.len());
-        debug_assert_eq!(N, na.arena.len());
-        debug_assert_eq!(N, na.len());
+        debug_assert_eq!(0, na.free_list.len());
+        debug_assert_eq!(0, na.arena.len());
+        debug_assert_eq!(0, na.len());
+
+        debug_assert_eq!(N, na.free_list.capacity());
+        debug_assert_eq!(N, na.arena.capacity());
+        debug_assert_eq!(N, na.capacity());
 
         na
     }
@@ -224,21 +227,23 @@ impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + Par
     }
 }
 
-// TODO: must be re-written for dispatch
 #[cfg(test)]
 mod tests {
-    use super::{Node, NodeArena};
+    use super::NodeArena;
     use crate::tree::node::NodeGetHelper;
-    use smallnum::small_unsigned;
+    use crate::tree::node_dispatch::{SmallNode, SmallNodeDispatch};
+    use smallnum::{small_unsigned, small_unsigned_label, SmallUnsignedLabel};
     use smallvec::smallvec;
+
+    const CAPACITY: usize = 1024;
 
     #[test]
     fn test_add_and_remove() {
-        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
-        let n_2: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(2, "n/a");
-        let n_3: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(3, "n/a");
+        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
+        let n_2 = SmallNodeDispatch::new(2, "n/a", small_unsigned_label!(CAPACITY) );
+        let n_3 = SmallNodeDispatch::new(3, "n/a", small_unsigned_label!(CAPACITY));
 
-        let mut arena = NodeArena::new();
+        let mut arena: NodeArena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = NodeArena::new();
 
         let n_1_idx = arena.add(n_1);
         let n_2_idx = arena.add(n_2);
@@ -249,56 +254,59 @@ mod tests {
         assert_eq!(n_3_idx, 2);
 
         let n_2_removed = arena.remove(n_2_idx).unwrap();
-        assert_eq!(n_2_removed.key(), 2);
+        assert_eq!(n_2_removed.key(), &2);
         assert!(arena.arena[1].is_none());
 
-        let n_4 = Node::new(4, "n/a");
+        let n_4 = SmallNodeDispatch::new(4, "n/a", small_unsigned_label!(CAPACITY));
         let n_4_idx = arena.add(n_4);
         assert_eq!(n_4_idx, 1);
 
-        let n_5 = Node::new(5, "n/a");
+        let n_5 = SmallNodeDispatch::new(5, "n/a", small_unsigned_label!(CAPACITY));
         let n_5_idx = arena.add(n_5);
         assert_eq!(n_5_idx, 3);
     }
 
     #[test]
-    fn test_get_mut() {
-        let n_1: Node<i32, &str, small_unsigned!(i32::MAX)> = Node::new(1, "n/a");
-        let mut arena = NodeArena::new();
+    fn test_index_mut() {
+        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
+        let mut arena: NodeArena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = NodeArena::new();
         let n_1_idx = arena.add(n_1);
-        assert_eq!(arena[n_1_idx].val(), "n/a");
-        let n_1_mut_ref = arena.get_mut(n_1_idx).unwrap();
-        n_1_mut_ref.val() = "This is a value. There are many like it but this one is mine.";
-        assert_ne!(arena[n_1_idx].val(), "n/a");
+        assert_eq!(arena[n_1_idx].val(), &"n/a");
+        let n_1_mut_ref = &mut arena[n_1_idx];
+        n_1_mut_ref.set_val("This is a value. There are many like it but this one is mine.");
+        assert_ne!(arena[n_1_idx].val(), &"n/a");
     }
 
     #[test]
-    fn test_hard_get_1() {
-        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
-        let mut arena = NodeArena::new();
+    fn test_index_1() {
+        let n_1 = SmallNodeDispatch::new(0xD00DFEED_u64, "n/a", small_unsigned_label!(CAPACITY));
+        let mut arena: NodeArena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = NodeArena::new();
         let n_1_idx = arena.add(n_1);
-        let n_1_ref = arena[n_1_idx];
-        assert_eq!(n_1_ref.key(), 0xD00DFEED_u64);
+        let n_1_ref = &arena[n_1_idx];
+        assert_eq!(n_1_ref.key(), &0xD00DFEED_u64);
     }
 
     #[test]
     #[should_panic]
-    fn test_hard_get_2() {
-        let n_1: Node<u64, &str, small_unsigned!(u64::MAX)> = Node::new(0xD00DFEED_u64, "n/a");
-        let mut arena = NodeArena::new();
+    fn test_index_2() {
+        let n_1 = SmallNodeDispatch::new(0xD00DFEED_u64, "n/a", small_unsigned_label!(CAPACITY));
+        let mut arena: NodeArena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = NodeArena::new();
         arena.add(n_1);
-        arena[1]; // OOB
+        let _ = &arena[1]; // OOB
     }
 
     #[test]
     fn test_capacity() {
-        let arena = NodeArena::<i32, &str, small_unsigned!(i32::MAX), 1337>::new();
+        let arena = NodeArena::<i8, u128, small_unsigned!(CAPACITY), CAPACITY>::new();
+        assert_eq!(arena.capacity(), CAPACITY);
+
+        let arena = NodeArena::<i32, &str, small_unsigned!(1337), 1337>::new();
         assert_eq!(arena.capacity(), 1337);
     }
 
     #[test]
     fn test_sort() {
-        let arena = NodeArena::<usize, &str, small_unsigned!(usize::MAX), 1024>::new();
+        let mut arena = NodeArena::<usize, &str, small_unsigned!(CAPACITY), CAPACITY>::new();
 
         // Simple 3-node tree:
         //
@@ -308,9 +316,9 @@ mod tests {
         // |       |
         // 1       3
         //
-        let n_1 = Node::new(1, "n/a");
-        let mut n_2 = Node::new(2, "n/a");
-        let n_3 = Node::new(3, "n/a");
+        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
+        let mut n_2 = SmallNodeDispatch::new(2, "n/a", small_unsigned_label!(CAPACITY) );
+        let n_3 = SmallNodeDispatch::new(3, "n/a", small_unsigned_label!(CAPACITY));
 
         n_2.set_left_idx(Some(2));
         n_2.set_right_idx(Some(0));
@@ -320,34 +328,22 @@ mod tests {
         arena.add(n_1);
 
         // Unsorted (insertion/"physical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key(), 3);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key(), 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key(), 1);
+        assert_eq!(arena.arena[0].as_ref().unwrap().key(), &3);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key(), &2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key(), &1);
 
         // Would be supplied for the above tree
         let sort_metadata = smallvec! {
-            NodeGetHelper {
-                node_idx: Some(2),
-                parent_idx: Some(1),
-                is_right_child: false,
-            },
-            NodeGetHelper {
-                node_idx: Some(1),
-                parent_idx: None,
-                is_right_child: false,
-            },
-            NodeGetHelper {
-                node_idx: Some(0),
-                parent_idx: Some(1),
-                is_right_child: true,
-            },
+            NodeGetHelper::new(Some(2), Some(1), false),
+            NodeGetHelper::new(Some(1), None, false),
+            NodeGetHelper::new(Some(0), Some(1), false),
         };
 
         arena.sort(1, sort_metadata);
 
         // Sorted ("logical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key(), 1);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key(), 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key(), 3);
+        assert_eq!(arena.arena[0].as_ref().unwrap().key(), &1);
+        assert_eq!(arena.arena[1].as_ref().unwrap().key(), &2);
+        assert_eq!(arena.arena[2].as_ref().unwrap().key(), &3);
     }
 }

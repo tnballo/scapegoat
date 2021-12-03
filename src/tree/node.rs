@@ -148,7 +148,7 @@ impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
 
     /// Get parent index as `usize`
     pub fn parent_idx(&self) -> Option<usize> {
-        self.node_idx.map(|i| i.usize())
+        self.parent_idx.map(|i| i.usize())
     }
 
     // Tell if right or left child
@@ -277,6 +277,7 @@ mod tests {
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
+            // TODO: this will have to be based on "alloc" feature to support heap spillover!
             assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 40);
         }
 

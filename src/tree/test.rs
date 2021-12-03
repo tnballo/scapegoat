@@ -3,6 +3,7 @@ use core::iter::FromIterator;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::SGTree;
+use super::node_dispatch::SmallNode;
 
 #[cfg(not(feature = "alt_impl"))]
 use super::SGErr;
@@ -49,27 +50,27 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str, CAPACITY>, Vec<u
 fn assert_logical_invariants<K: Ord + Default, V: Default, const N: usize>(sgt: &SGTree<K, V, N>) {
     if let Some(root_idx) = sgt.root_idx {
         let mut child_idxs = vec![root_idx]; // Count as "child" to make sure there's no other ref to this index
-        let mut subtree_worklist = vec![sgt.arena[root_idx]];
+        let mut subtree_worklist = vec![&sgt.arena[root_idx]];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
-                let left_child_node = sgt.arena[left_idx];
+                let left_child_node = &sgt.arena[left_idx];
                 assert!(
-                    left_child_node.key < node.key,
+                    left_child_node.key() < node.key(),
                     "Internal invariant failed: left child >= parent!"
                 );
                 child_idxs.push(left_idx);
-                subtree_worklist.push(left_child_node);
+                subtree_worklist.push(&left_child_node);
             }
 
             if let Some(right_idx) = node.right_idx() {
-                let right_child_node = sgt.arena[right_idx];
+                let right_child_node = &sgt.arena[right_idx];
                 assert!(
-                    right_child_node.key > node.key,
+                    right_child_node.key() > node.key(),
                     "Internal invariant failed: right child <= parent!"
                 );
                 child_idxs.push(right_idx);
-                subtree_worklist.push(right_child_node);
+                subtree_worklist.push(&right_child_node);
             }
         }
 
@@ -83,9 +84,8 @@ fn assert_logical_invariants<K: Ord + Default, V: Default, const N: usize>(sgt: 
     }
 }
 
-// Inserts random keys, and randomly removes 20%.
-fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
-    let mut sgt = SGTree::new();
+// Inserts random `usize` keys, and randomly removes 20%.
+fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usize, check_invars: bool) {
     let mut shadow_keys = BTreeSet::new();
     let mut fast_rng = SmallRng::from_entropy();
     let mut slow_rng = rand::thread_rng();
@@ -126,7 +126,7 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
         }
     }
 
-    let final_keys = sgt.into_iter().map(|(k, _)| k).collect::<BTreeSet<usize>>();
+    let final_keys = sgt.into_iter().map(|(k, _)| *k).collect::<BTreeSet<usize>>();
 
     if final_keys != shadow_keys {
         let diff_this: Vec<usize> = final_keys.difference(&shadow_keys).cloned().collect();
@@ -136,7 +136,7 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
             "Keys in reference BTree and NOT in SGTree: {:?}",
             diff_other
         );
-        panic!("Keys do not match shadow set!");
+        panic!("Keys ({}) do not match shadow set ({})!", final_keys.len(), shadow_keys.len());
     }
 }
 
@@ -145,8 +145,8 @@ fn logical_fuzz(iter_cnt: usize, check_invars: bool) {
 #[allow(dead_code)]
 fn id_perm_fill<K, V, const N: usize>(sgt: &mut SGTree<K, V, N>)
 where
-    K: From<usize> + Eq + Debug + Ord,
-    V: From<usize> + Eq + Debug,
+    K: From<usize> + Eq + Debug + Ord + Default,
+    V: From<usize> + Eq + Debug + Default,
 {
     sgt.clear();
     for i in 0..sgt.capacity() {
@@ -264,7 +264,7 @@ fn test_from_iter() {
     key_val_tuples.push((2, "2"));
     key_val_tuples.push((3, "3"));
 
-    let sgt = SGTree::from_iter(key_val_tuples.into_iter());
+    let sgt = SGTree::<_, _, CAPACITY>::from_iter(key_val_tuples.into_iter());
 
     assert!(sgt.len() == 3);
     assert_eq!(
@@ -300,7 +300,7 @@ fn test_append() {
         assert!(a.insert(3, "3").is_ok());
     }
 
-    let mut b = SGTree::new();
+    let mut b = SGTree::<_, _, CAPACITY>::new();
 
     #[cfg(not(feature = "high_assurance"))]
     {
@@ -330,7 +330,7 @@ fn test_append() {
 #[test]
 fn test_two_child_removal_case_1() {
     let keys = vec![2, 1, 3];
-    let mut sgt = SGTree::new();
+    let mut sgt = SGTree::<_, _, CAPACITY>::new();
     let to_remove = 2;
 
     for k in &keys {
@@ -353,7 +353,7 @@ fn test_two_child_removal_case_1() {
 #[test]
 fn test_two_child_removal_case_2() {
     let keys = vec![2, 1, 4, 3];
-    let mut sgt = SGTree::new();
+    let mut sgt = SGTree::<_, _, CAPACITY>::new();
     let to_remove = 2;
 
     for k in &keys {
@@ -376,7 +376,7 @@ fn test_two_child_removal_case_2() {
 #[test]
 fn test_two_child_removal_case_3() {
     let keys = vec![2, 1, 5, 4, 3, 6];
-    let mut sgt = SGTree::new();
+    let mut sgt = SGTree::<_, _, CAPACITY>::new();
     let to_remove = 3;
 
     for k in &keys {
@@ -449,7 +449,7 @@ fn test_len() {
 #[test]
 fn test_first_last() {
     let keys = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let mut sgt = SGTree::new();
+    let mut sgt = SGTree::<_, _, CAPACITY>::new();
     for k in &keys {
         #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
@@ -556,20 +556,24 @@ fn test_subtree_rebalance() {
 
 #[test]
 fn test_logical_fuzz_fast() {
-    let sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
-    logical_fuzz(sgt.capacity(), false); // Stack-only
+    let mut sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
+    let capacity = sgt.capacity();
+    logical_fuzz(&mut sgt, capacity, false); // Stack-only
 
+    // TODO: will need to be feature-gated on "alloc" in the future
     #[cfg(not(feature = "high_assurance"))]
-    logical_fuzz(sgt.capacity() + 2_000, false); // Stack + Heap
+    logical_fuzz(&mut sgt, capacity + 2_000, false); // Stack + Heap
 }
 
 #[test]
 fn test_logical_fuzz_slow() {
-    let sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
-    logical_fuzz(sgt.capacity(), true); // Stack-only
+    let mut sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
+    let capacity = sgt.capacity();
+    logical_fuzz(&mut sgt, capacity, true); // Stack-only
 
+    // TODO: will need to be feature-gated on "alloc" in the future
     #[cfg(not(feature = "high_assurance"))]
-    logical_fuzz(sgt.capacity() + 2_000, true); // Stack + Heap
+    logical_fuzz(&mut sgt, capacity + 2_000, true); // Stack + Heap
 }
 
 #[test]
@@ -600,8 +604,8 @@ fn test_retain() {
 
 #[test]
 fn test_extend() {
-    let mut sgt_1 = SGTree::new();
-    let mut sgt_2 = SGTree::new();
+    let mut sgt_1 = SGTree::<_, _, CAPACITY>::new();
+    let mut sgt_2 = SGTree::<_, _, CAPACITY>::new();
 
     for i in 0..5 {
         #[cfg(not(feature = "high_assurance"))]
@@ -655,7 +659,7 @@ fn test_slice_search() {
     assert_eq!(std::mem::size_of_val(&bad_code), 8);
     assert_eq!(std::mem::size_of_val(&bad_food), 8);
 
-    let mut sgt = SGTree::new();
+    let mut sgt = SGTree::<_, _, CAPACITY>::new();
     #[cfg(not(feature = "high_assurance"))]
     {
         sgt.insert(bad_code, "badcode");
@@ -711,7 +715,7 @@ fn test_high_assurance_extend_panic() {
 #[test]
 fn test_from_arr() {
     let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
-    let sgt_2: SGTree<_, _, CAPACITY> = [(1, 2), (3, 4), (5, 6)].into();
+    let sgt_2: SGTree<_, _, 3> = [(1, 2), (3, 4), (5, 6)].into();
     assert_eq!(sgt_1, sgt_2);
 
     let btm_1 = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
@@ -734,7 +738,7 @@ fn test_debug() {
 #[test]
 fn test_hash() {
     let sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
-    let sgt_2: SGTree<_, _> = [(1, 2), (3, 4), (5, 6)].into();
+    let sgt_2: SGTree<_, _, 3> = [(1, 2), (3, 4), (5, 6)].into();
     assert_eq!(sgt_1, sgt_2);
 
     let mut hash_set = HashSet::new();
@@ -753,22 +757,52 @@ fn test_clone() {
 
 #[cfg(not(feature = "alt_impl"))] // This affects rebalance count and is experimental.
 #[test]
-fn test_set_rebal_param() {
-    #[cfg(not(feature = "high_assurance"))]
-    let data: Vec<(usize, usize)> = (0..10_000).map(|x| (x, x)).collect();
-
-    #[cfg(feature = "high_assurance")]
+fn test_set_rebal_param_1() {
+    assert!(CAPACITY >= 100);
     let data: Vec<(usize, usize)> = (0..100).map(|x| (x, x)).collect();
-
-    let sgt_1 = SGTree::from_iter(data.clone().into_iter());
+    let sgt_1 = SGTree::<_, _, CAPACITY>::from_iter(data.clone().into_iter());
 
     // Lax rebalancing
-    let mut sgt_2 = SGTree::new();
+    let mut sgt_2 = SGTree::<_, _, CAPACITY>::new();
     assert!(sgt_2.set_rebal_param(0.9, 1.0).is_ok());
     sgt_2.extend(data.clone().into_iter());
 
     // Strict rebalancing
-    let mut sgt_3 = SGTree::new();
+    let mut sgt_3 = SGTree::<_, _, CAPACITY>::new();
+    assert!(sgt_3.set_rebal_param(1.0, 2.0).is_ok());
+    sgt_3.extend(data.into_iter());
+
+    // Invalid rebalance factor
+    assert_eq!(
+        sgt_3.set_rebal_param(2.0, 1.0),
+        Err(SGErr::RebalanceFactorOutOfRange)
+    );
+
+    // Alpha tuning OK
+    assert!(sgt_3.rebal_cnt() > sgt_2.rebal_cnt());
+    assert!(sgt_1.rebal_cnt() > sgt_2.rebal_cnt());
+    assert!(sgt_3.rebal_cnt() > sgt_1.rebal_cnt());
+
+    // Exact counts, useful to verify that different features being enabled don't change these numbers
+    assert_eq!(sgt_1.rebal_cnt(), 52);
+    assert_eq!(sgt_2.rebal_cnt(), 8);
+    assert_eq!(sgt_3.rebal_cnt(), 93);
+}
+
+// TODO: will need to be feature gated on "alloc" in the future
+#[cfg(not(feature = "alt_impl"))] // This affects rebalance count and is experimental.
+#[test]
+fn test_set_rebal_param_2() {
+    let data: Vec<(usize, usize)> = (0..10_000).map(|x| (x, x)).collect();
+    let sgt_1 = SGTree::<_, _, CAPACITY>::from_iter(data.clone().into_iter());
+
+    // Lax rebalancing
+    let mut sgt_2 = SGTree::<_, _, CAPACITY>::new();
+    assert!(sgt_2.set_rebal_param(0.9, 1.0).is_ok());
+    sgt_2.extend(data.clone().into_iter());
+
+    // Strict rebalancing
+    let mut sgt_3 = SGTree::<_, _, CAPACITY>::new();
     assert!(sgt_3.set_rebal_param(1.0, 2.0).is_ok());
     sgt_3.extend(data.into_iter());
 
