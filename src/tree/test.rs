@@ -86,11 +86,11 @@ fn assert_logical_invariants<K: Ord + Default, V: Default, const N: usize>(sgt: 
 
 // Inserts random `usize` keys, and randomly removes 20%.
 fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usize, check_invars: bool) {
-    let mut shadow_keys = BTreeSet::new();
+    let mut shadow_keys = BTreeSet::<usize>::new();
     let mut fast_rng = SmallRng::from_entropy();
     let mut slow_rng = rand::thread_rng();
 
-    for _ in 0..iter_cnt {
+    for i in 0..iter_cnt {
         let rand_key: usize;
         if check_invars {
             rand_key = slow_rng.gen();
@@ -110,6 +110,7 @@ fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usiz
         // Verify internal state post-insert
         if check_invars {
             assert_logical_invariants(&sgt);
+            assert_eq!(sgt.len(), shadow_keys.len(), "sgt_len ({}) != shadow_key_len ({}), iter: {}", sgt.len(), shadow_keys.len(), i);
         }
 
         // Randomly scheduled removal
@@ -122,6 +123,7 @@ fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usiz
             // Verify internal state post-remove
             if check_invars {
                 assert_logical_invariants(&sgt);
+                assert_eq!(sgt.len(), shadow_keys.len(), "sgt_len ({}) != shadow_key_len ({}), iter: {}", sgt.len(), shadow_keys.len(), i);
             }
         }
     }
@@ -186,7 +188,7 @@ fn test_tree_packing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_528);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_528); // TODO: update
         }
 
         // low_mem_insert only
@@ -195,7 +197,7 @@ fn test_tree_packing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 41_040);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 41_040); // TODO: update
         }
 
         // high_assurance only
@@ -204,7 +206,7 @@ fn test_tree_packing() {
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_496);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_496); // TODO: update
         }
 
         // fast_rebalance only
@@ -213,7 +215,7 @@ fn test_tree_packing() {
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 57_440);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 57_440); // TODO: update
         }
 
         // Optimize for size
@@ -222,7 +224,7 @@ fn test_tree_packing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_432);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_432); // TODO: update
         }
     }
 }
@@ -562,7 +564,10 @@ fn test_logical_fuzz_fast() {
 
     // TODO: will need to be feature-gated on "alloc" in the future
     #[cfg(not(feature = "high_assurance"))]
-    logical_fuzz(&mut sgt, capacity + 2_000, false); // Stack + Heap
+    {
+        sgt.clear();
+        logical_fuzz(&mut sgt, capacity + 2_000, false); // Stack + Heap
+    }
 }
 
 #[test]
@@ -573,7 +578,10 @@ fn test_logical_fuzz_slow() {
 
     // TODO: will need to be feature-gated on "alloc" in the future
     #[cfg(not(feature = "high_assurance"))]
-    logical_fuzz(&mut sgt, capacity + 2_000, true); // Stack + Heap
+    {
+        sgt.clear();
+        logical_fuzz(&mut sgt, capacity + 2_000, true); // Stack + Heap
+    }
 }
 
 #[test]

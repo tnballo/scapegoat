@@ -277,8 +277,7 @@ mod tests {
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            // TODO: this will have to be based on "alloc" feature to support heap spillover!
-            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 40);
+            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
         }
 
         // All features
@@ -288,7 +287,7 @@ mod tests {
         {
             // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20);
+                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20); // TODO: update
             }
         }
 
@@ -297,7 +296,7 @@ mod tests {
         #[cfg(not(feature = "high_assurance"))]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 48);
+            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 48); // TODO: update
         }
 
         // high_assurance only
@@ -307,7 +306,7 @@ mod tests {
         {
             // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
+                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16); // TODO: update
             }
         }
     }

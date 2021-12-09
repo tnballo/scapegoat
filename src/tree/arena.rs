@@ -197,7 +197,8 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
     }
 }
 
-/// Immutable indexing
+/// Immutable indexing.
+/// Indexed location MUST be occupied.
 impl<K: Default, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V, U, N> {
     type Output = SmallNodeDispatch<K, V>;
 
@@ -210,6 +211,7 @@ impl<K: Default, V: Default, U, const N: usize> Index<usize> for NodeArena<K, V,
 }
 
 /// Mutable indexing
+/// Indexed location MUST be occupied.
 impl<K: Default, V: Default, U, const N: usize> IndexMut<usize> for NodeArena<K, V, U, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self.arena.index_mut(index) {

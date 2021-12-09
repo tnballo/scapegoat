@@ -401,8 +401,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        let node = &self.arena[self.min_idx];
-        Some((node.key(), node.val()))
+        if self.len() > 0 {
+            let node = &self.arena[self.min_idx];
+            Some((node.key(), node.val()))
+        } else {
+            None
+        }
     }
 
     /// Returns a reference to the first/minium key in the tree, if any.
@@ -428,8 +432,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        let node = &self.arena[self.max_idx];
-        Some((node.key(), node.val()))
+        if self.len() > 0 {
+            let node = &self.arena[self.max_idx];
+            Some((node.key(), node.val()))
+        } else {
+            None
+        }
     }
 
     /// Returns a reference to the last/maximum key in the tree, if any.
@@ -451,7 +459,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Returns the number of elements in the tree.
     pub fn len(&self) -> usize {
-        self.curr_size as usize
+        self.curr_size
     }
 
     /// Get the number of times this tree rebalanced itself (for testing and/or performance engineering).
