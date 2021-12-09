@@ -6,11 +6,12 @@ use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, Sub};
 
-use super::arena::NodeArena;
+use super::arena::Arena;
 use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
+use super::arena_dispatch::{SmallArena, SmallArenaDispatch};
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
@@ -24,15 +25,8 @@ use smallvec::{smallvec, SmallVec};
 #[derive(Clone)]
 pub struct SGTree<K: Default, V: Default, const N: usize> {
     // Storage
-    // CRITICAL TODO: this need to be dispatched! Make sig NodeArena<SmallNodeDispatch<K,V>> or add new arena dispatcher???
-    pub(crate) arena: NodeArena<K, V, u64, N>,
-    // TODO: enum dispatch here to not mess up high_assurance packing for default?
-    //pub(crate) arena: NodeArena<K, V, small_unsigned!(MAX_ELEMS), MAX_ELEMS>,
+    pub(crate) arena: SmallArenaDispatch<K, V, N>,
     pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
-
-    // CRITICAL TODO:
-    // TODO: tree needs to cast usize to arena's "U" when talking down!
-    // TODO: try debug_assert!() in smallnum to see if impacts benchmark later!
 
     // Query cache
     max_idx: usize,
@@ -52,7 +46,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
-            arena: NodeArena::<K, V, u64, N>::new(), // TODO: enum dispatch for computed unsigned type
+            arena: SmallArenaDispatch::<K, V, N>::new(small_unsigned_label!(N)),
             root_idx: None,
             max_idx: 0,
             min_idx: 0,
@@ -193,7 +187,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        // CRITICAL TODO: this results in Node<K, V, usize>! Not what we want, need to work around! Or this that not true b/c line 626, the dispatch constructor?
         self.priv_balancing_insert::<usize>(key, val)
     }
 
@@ -493,7 +486,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         if (0..self.arena.len()).contains(&idx) {
             let node = &self.arena[idx];
-            let mut path = NodeArena::new_idx_vec();
+            let mut path = Arena::new_idx_vec();
             let ngh = self.priv_get(Some(&mut path), node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
@@ -631,7 +624,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
     fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
-        let mut path: SmallVec<[U; N]> = NodeArena::<K, V, U, N>::new_idx_vec();
+        let mut path: SmallVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
         let opt_val = self.priv_insert(&mut path, key, val);
 
         #[cfg(feature = "fast_rebalance")]
@@ -800,7 +793,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let mut path = NodeArena::new_idx_vec();
+        let mut path = Arena::new_idx_vec();
         let ngh = self.priv_get(Some(&mut path), key);
         self.priv_remove(Some(&path), ngh)
     }
@@ -961,8 +954,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         // Note: this uses `usize` as a `U` stand-in to encapsulate `U` away for public APIs
 
-        let mut key_idxs = NodeArena::<K, V, usize, N>::new_idx_vec();
-        let mut remove_idxs = NodeArena::<K, V, usize, N>::new_idx_vec();
+        let mut key_idxs = Arena::<K, V, usize, N>::new_idx_vec();
+        let mut remove_idxs = Arena::<K, V, usize, N>::new_idx_vec();
 
         // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
         self.sort_arena();

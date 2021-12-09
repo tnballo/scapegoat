@@ -2,6 +2,7 @@ use smallvec::SmallVec;
 
 use super::tree::SGTree;
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
+use super::arena_dispatch::SmallArena;
 
 // Immutable Reference iterator ----------------------------------------------------------------------------------------
 

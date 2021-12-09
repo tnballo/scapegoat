@@ -10,7 +10,7 @@ Note:
 
 Structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
 All members in subset are <= host pointer width in size.
-If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::NodeArena`'s
+If caller obeys contract, `U` will be smallest unsigned capable of representing `arena::Arena`'s
 const `N` (e.g. static capacity).
 */
 
@@ -46,47 +46,38 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
 }
 
 impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K, V, U> {
-    /// Get key.
     fn key(&self) -> &K {
         &self.key
     }
 
-    /// Set key.
     fn set_key(&mut self, key: K) {
         self.key = key;
     }
 
-    // Take key, replacing current with `K::Default()`.
     fn take_key(&mut self) -> K {
         core::mem::replace(&mut self.key, K::default())
     }
 
-    /// Get value.
     fn val(&self) -> &V {
         &self.val
     }
 
-    /// Get key and mutable value.
     fn get_mut(&mut self) -> (&K, &mut V) {
         (&self.key, &mut self.val)
     }
 
-    // Take value, replacing current with `V::Default()`.
     fn take_val(&mut self) -> V {
         core::mem::replace(&mut self.val, V::default())
     }
 
-    /// Set value.
     fn set_val(&mut self, val: V) {
         self.val = val;
     }
 
-    /// Get left index as `usize`
     fn left_idx(&self) -> Option<usize> {
         self.left_idx.map(|i| i.usize())
     }
 
-    /// Set left index
     fn set_left_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.left_idx = Some(U::checked_from(idx)),
@@ -94,12 +85,10 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
         }
     }
 
-    /// Get right index as `usize`
     fn right_idx(&self) -> Option<usize> {
         self.right_idx.map(|i| i.usize())
     }
 
-    /// Set right index
     fn set_right_idx(&mut self, opt_idx: Option<usize>) {
         match opt_idx {
             Some(idx) => self.right_idx = Some(U::checked_from(idx)),
@@ -107,13 +96,11 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
         }
     }
 
-    /// Get subtree size.
     #[cfg(feature = "fast_rebalance")]
     fn subtree_size(&self) -> usize {
         self.subtree_size.usize()
     }
 
-    /// Set subtree size.
     #[cfg(feature = "fast_rebalance")]
     fn set_subtree_size(&mut self, size: usize) {
         self.subtree_size = U::checked_from(size);
@@ -258,6 +245,8 @@ impl<U: Ord + Copy + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
         }
     }
 }
+
+// Test ----------------------------------------------------------------------------------------------------------------
 
 // Note: low_mem_insert feature doesn't affect node size, only arena size.
 #[cfg(not(feature = "low_mem_insert"))]

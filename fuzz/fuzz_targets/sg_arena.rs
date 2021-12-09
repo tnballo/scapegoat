@@ -7,7 +7,7 @@ use std::fmt;
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
-use scapegoat::{Node, NodeArena};
+use scapegoat::{Node, Arena};
 
 // Note: the hard_*() methods call their Option-returning equivalents
 // E.g. hard_get() calls get()
@@ -27,13 +27,13 @@ enum ArenaMethod<K: Ord + fmt::Debug, V: fmt::Debug> {
 }
 
 fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
-    let mut arena = NodeArena::new();   // Arena under test
+    let mut arena = Arena::new();   // Arena under test
     let mut idx_set = BTreeSet::new();  // Currently used arena indexs
 
     for m in methods {
         match m {
             ArenaMethod::New => {
-                arena = NodeArena::new();
+                arena = Arena::new();
                 idx_set.clear();
             },
             ArenaMethod::Add { key, val } => {

@@ -3,7 +3,7 @@ use smallnum::SmallUnsignedLabel;
 
 // Size-optimized Node Trait -------------------------------------------------------------------------------------------
 
-/// Interfaces encapsulates `U`.
+/// Interface encapsulates `U`.
 pub trait SmallNode<K, V: Default> {
     /// Get key.
     fn key(&self) -> &K;
@@ -108,11 +108,11 @@ impl<K: Default, V: Default> SmallNodeDispatch<K, V> {
     }
 }
 
-macro_rules! dispatch_args {
-    ( $self:ident, $func:ident, $args:expr $(,)? ) => {
+macro_rules! dispatch {
+    ( $self:ident, $func:ident $(, $args:expr)* $(,)? ) => {
         match $self {
-            SmallNodeDispatch::NodeUSIZE(node) => node.$func($args),
-            SmallNodeDispatch::NodeU8(node) => node.$func($args),
+            SmallNodeDispatch::NodeUSIZE(node) => node.$func($($args,)*),
+            SmallNodeDispatch::NodeU8(node) => node.$func($($args,)*),
 
             #[cfg(any(
                 target_pointer_width = "16",
@@ -120,106 +120,76 @@ macro_rules! dispatch_args {
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::NodeU16(node) => node.$func($args),
+            SmallNodeDispatch::NodeU16(node) => node.$func($($args,)*),
 
             #[cfg(any(
                 target_pointer_width = "32",
                 target_pointer_width = "64",
                 target_pointer_width = "128",
             ))]
-            SmallNodeDispatch::NodeU32(node) => node.$func($args),
+            SmallNodeDispatch::NodeU32(node) => node.$func($($args,)*),
 
             #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            SmallNodeDispatch::NodeU64(node) => node.$func($args),
+            SmallNodeDispatch::NodeU64(node) => node.$func($($args,)*),
 
             #[cfg(target_pointer_width = "128")]
-            SmallNodeDispatch::NodeU128(node) => node.$func($args),
-        }
-    };
-}
-
-macro_rules! dispatch_no_args {
-    ( $self:ident, $func:ident $(,)? ) => {
-        match $self {
-            SmallNodeDispatch::NodeUSIZE(node) => node.$func(),
-            SmallNodeDispatch::NodeU8(node) => node.$func(),
-
-            #[cfg(any(
-                target_pointer_width = "16",
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            SmallNodeDispatch::NodeU16(node) => node.$func(),
-
-            #[cfg(any(
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-                target_pointer_width = "128",
-            ))]
-            SmallNodeDispatch::NodeU32(node) => node.$func(),
-
-            #[cfg(any(target_pointer_width = "64", target_pointer_width = "128",))]
-            SmallNodeDispatch::NodeU64(node) => node.$func(),
-
-            #[cfg(target_pointer_width = "128")]
-            SmallNodeDispatch::NodeU128(node) => node.$func(),
+            SmallNodeDispatch::NodeU128(node) => node.$func($($args,)*),
         }
     };
 }
 
 impl<K: Default, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
     fn key(&self) -> &K {
-        dispatch_no_args!(self, key)
+        dispatch!(self, key)
     }
 
     fn set_key(&mut self, key: K) {
-        dispatch_args!(self, set_key, key);
+        dispatch!(self, set_key, key);
     }
 
     fn take_key(&mut self) -> K {
-        dispatch_no_args!(self, take_key)
+        dispatch!(self, take_key)
     }
 
     fn val(&self) -> &V {
-        dispatch_no_args!(self, val)
+        dispatch!(self, val)
     }
 
     fn get_mut(&mut self) -> (&K, &mut V) {
-        dispatch_no_args!(self, get_mut)
+        dispatch!(self, get_mut)
     }
 
     fn set_val(&mut self, val: V) {
-        dispatch_args!(self, set_val, val);
+        dispatch!(self, set_val, val);
     }
 
     fn take_val(&mut self) -> V {
-        dispatch_no_args!(self, take_val)
+        dispatch!(self, take_val)
     }
 
     fn left_idx(&self) -> Option<usize> {
-        dispatch_no_args!(self, left_idx)
+        dispatch!(self, left_idx)
     }
 
     fn set_left_idx(&mut self, opt_idx: Option<usize>) {
-        dispatch_args!(self, set_left_idx, opt_idx);
+        dispatch!(self, set_left_idx, opt_idx);
     }
 
     fn right_idx(&self) -> Option<usize> {
-        dispatch_no_args!(self, right_idx)
+        dispatch!(self, right_idx)
     }
 
     fn set_right_idx(&mut self, opt_idx: Option<usize>) {
-        dispatch_args!(self, set_right_idx, opt_idx);
+        dispatch!(self, set_right_idx, opt_idx);
     }
 
     #[cfg(feature = "fast_rebalance")]
     fn subtree_size(&self) -> usize {
-        dispatch_no_args!(self, subtree_size)
+        dispatch!(self, subtree_size)
     }
 
     #[cfg(feature = "fast_rebalance")]
     fn set_subtree_size(&mut self, size: usize) {
-        dispatch_args!(self, set_subtree_size, size);
+        dispatch!(self, set_subtree_size, size);
     }
 }
