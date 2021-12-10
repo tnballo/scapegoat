@@ -171,6 +171,37 @@ where
 
 #[test]
 fn test_tree_packing() {
+    const SMALL_CAPACITY: usize = 100;
+    const MED_CAPACITY: usize = 1_000;
+    //const LARGE_CAPACITY: usize = 100_000;
+
+    let small_tree = SGTree::<u32, u32, SMALL_CAPACITY>::new();
+    let med_tree = SGTree::<u32, u32, MED_CAPACITY>::new();
+    //let large_tree = SGTree::<u32, u32, LARGE_CAPACITY>::new();
+
+    let small_tree_size = core::mem::size_of_val(&small_tree);
+    let med_tree_size = core::mem::size_of_val(&med_tree);
+    //let large_tree_size = core::mem::size_of_val(&large_tree);
+
+    assert!(small_tree_size < med_tree_size);
+    //assert!(med_tree_size < large_tree_size);
+
+    println!("Tree sizes:\n");
+    println!("SGTree<u32, u32, {}> -> {} bytes", SMALL_CAPACITY, small_tree_size);
+    println!("SGTree<u32, u32, {}> -> {} bytes", MED_CAPACITY, med_tree_size);
+    //println!("SGTree<u32, u32, {}> -> {} bytes", LARGE_CAPACITY, large_tree_size);
+
+    println!("\nNode sizes:\n");
+    println!("SGTree<u32, u32, {}> -> {} bytes", SMALL_CAPACITY, small_tree.node_size());
+    println!("SGTree<u32, u32, {}> -> {} bytes", MED_CAPACITY, med_tree.node_size());
+    //println!("SGTree<u32, u32, {}> -> {} bytes", LARGE_CAPACITY, large_tree.node_size());
+
+    assert!(small_tree.node_size() < med_tree.node_size());
+    //assert!(med_tree.node_size() < large_tree.node_size());
+}
+
+#[test]
+fn test_tree_sizing() {
     // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
     if CAPACITY == 1024 {
         // No features

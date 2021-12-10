@@ -193,3 +193,33 @@ impl<K: Default, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
         dispatch!(self, set_subtree_size, size);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SmallNodeDispatch;
+    use smallnum::{small_unsigned_label, SmallUnsignedLabel};
+    use core::mem::size_of_val;
+
+    // TODO: make enum store node refs? And and have arena store the actual nodes of a given size, since it has access to U?
+    // Then can remove this test but get same effect for arena?
+    #[test]
+    fn test_node_dispatch_packing() {
+        let label_100 = small_unsigned_label!(100);
+        let label_1_000 = small_unsigned_label!(1_000);
+
+        assert_eq!(label_100, SmallUnsignedLabel::U8);
+        assert_eq!(label_1_000, SmallUnsignedLabel::U16);
+
+        let small_node = SmallNodeDispatch::new(0, 0, label_100);
+        let big_node = SmallNodeDispatch::new(0, 0, label_1_000);
+
+        let small_node_size = size_of_val(&small_node);
+        let big_node_size = size_of_val(&big_node);
+
+        println!("\nSmallNodeDispatch sizes:\n");
+        println!("Small: {} bytes", small_node_size);
+        println!("Big: {} bytes", big_node_size);
+
+        assert!(small_node_size < big_node_size);
+    }
+}

@@ -5,7 +5,7 @@ use super::node::{NodeGetHelper, NodeSwapHistHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 use super::arena_dispatch::SmallArena;
 
-use smallnum::SmallUnsigned;
+use smallnum::{small_unsigned_label, SmallUnsigned, SmallUnsignedLabel};
 use smallvec::SmallVec;
 
 // CRITICAL TODO: very that all use of "arena.capacity()" is correct and should not be "arena.len()"
@@ -180,6 +180,11 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
 
     fn len(&self) -> usize {
         self.arena.len()
+    }
+
+    fn node_size(&self) -> usize {
+        let node = SmallNodeDispatch::new(K::default(), V::default(), small_unsigned_label!(N));
+        core::mem::size_of_val(&node)
     }
 }
 

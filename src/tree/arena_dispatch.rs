@@ -45,6 +45,9 @@ pub trait SmallArena<K: Default, V: Default, const N: usize> {
 
     /// Returns the number of entries in the arena, some of which may be `None`.
     fn len(&self) -> usize;
+
+    /// Get the size of an individual arena node, in bytes.
+    fn node_size(&self) -> usize;
 }
 
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
@@ -173,6 +176,10 @@ impl<K: Default, V: Default, const N: usize> SmallArena<K, V, N> for SmallArenaD
 
     fn len(&self) -> usize {
         dispatch!(self, len)
+    }
+
+    fn node_size(&self) -> usize {
+        dispatch!(self, node_size)
     }
 }
 

@@ -121,6 +121,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         self.arena.capacity()
     }
 
+    /// Get the size of an individual node in this tree, in bytes.
+    pub fn node_size(&self) -> usize {
+        self.arena.node_size()
+    }
+
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGTree<K, V, N>)

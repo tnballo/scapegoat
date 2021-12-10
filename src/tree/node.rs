@@ -260,7 +260,7 @@ mod tests {
     use crate::MAX_ELEMS;
 
     #[test]
-    fn test_node_packing() {
+    fn test_node_sizing() {
         // No features
         #[cfg(target_pointer_width = "64")]
         #[cfg(not(feature = "high_assurance"))]
