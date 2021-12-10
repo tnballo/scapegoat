@@ -8,6 +8,8 @@ use super::node_dispatch::SmallNodeDispatch;
 use smallvec::SmallVec;
 use smallnum::SmallUnsignedLabel;
 
+// TODO: move to arena.rs
+
 // Size-optimized Arena Trait -------------------------------------------------------------------------------------------
 
 /// Interface encapsulates `U`.
@@ -26,7 +28,7 @@ pub trait SmallArena<K: Default, V: Default, const N: usize> {
     fn iter_mut(&mut self) -> IterMut<'_, Option<SmallNodeDispatch<K, V>>>;
 
     /// Add node to area, growing if necessary, and return addition index.
-    fn add(&mut self, node: SmallNodeDispatch<K, V>) -> usize;
+    fn add(&mut self, key: K, val: V) -> usize;
 
     /// Remove node at a given index from area, return it.
     fn remove(&mut self, idx: usize) -> Option<SmallNodeDispatch<K, V>>;
@@ -50,6 +52,8 @@ pub trait SmallArena<K: Default, V: Default, const N: usize> {
     fn node_size(&self) -> usize;
 }
 
+// TODO: remove everything below this line? With "stack_pack" feature.
+/*
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
@@ -252,3 +256,4 @@ impl<K: Default, V: Default, const N: usize> IndexMut<usize> for SmallArenaDispa
         }
     }
 }
+*/

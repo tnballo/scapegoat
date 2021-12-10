@@ -4,7 +4,7 @@ use super::tree::SGTree;
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 use super::arena_dispatch::SmallArena;
 
-// Immutable Reference iterator ----------------------------------------------------------------------------------------
+// Immutable Reference Iterator ----------------------------------------------------------------------------------------
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
@@ -73,7 +73,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
     }
 }
 
-// Mutable Reference iterator ------------------------------------------------------------------------------------------
+// Mutable Reference Iterator ------------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K: Default, V: Default, const N: usize> {
     arena_iter_mut: core::slice::IterMut<'a, Option<SmallNodeDispatch<K, V>>>,
@@ -93,13 +93,13 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.arena_iter_mut.next() {
-            Some(Some(node)) => Some(node.get_mut()), // Change `mut` method to return `(&K, &mut V)`?
+            Some(Some(node)) => Some(node.get_mut()),
             _ => None,
         }
     }
 }
 
-// Consuming iterator --------------------------------------------------------------------------------------------------
+// Consuming Iterator --------------------------------------------------------------------------------------------------
 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.

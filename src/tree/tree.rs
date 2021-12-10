@@ -11,7 +11,7 @@ use super::error::SGErr;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
-use super::arena_dispatch::{SmallArena, SmallArenaDispatch};
+use super::arena_dispatch::SmallArena;
 
 use crate::{ALPHA_DENOM, ALPHA_NUM};
 
@@ -25,7 +25,7 @@ use smallvec::{smallvec, SmallVec};
 #[derive(Clone)]
 pub struct SGTree<K: Default, V: Default, const N: usize> {
     // Storage
-    pub(crate) arena: SmallArenaDispatch<K, V, N>,
+    pub(crate) arena: Arena<K, V, usize, N>, // TODO: add "stack_pack" feature to allow other integer types
     pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
 
     // Query cache
@@ -46,7 +46,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         SGTree {
-            arena: SmallArenaDispatch::<K, V, N>::new(small_unsigned_label!(N)),
+            arena: Arena::<K, V, usize, N>::new(),
             root_idx: None,
             max_idx: 0,
             min_idx: 0,
@@ -662,7 +662,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     ) -> Option<V> {
 
         // Node storage size decided here! `SmallUnsignedLabel` argument simulates passing a type
-        let mut new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
+        //let mut new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
 
         match self.root_idx {
             // Sorted insert
@@ -675,7 +675,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                     let curr_node = &mut self.arena[curr_idx];
                     path.push(U::checked_from(curr_idx));
 
-                    match new_node.key().cmp(&curr_node.key()) {
+                    match key.cmp(&curr_node.key()) {
                         Ordering::Less => {
                             match curr_node.left_idx() {
                                 Some(left_idx) => curr_idx = left_idx,
@@ -683,12 +683,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                     // New min check
                                     let mut new_min_found = false;
                                     let min_node = &self.arena[self.min_idx];
-                                    if new_node.key() < min_node.key() {
+                                    if &key < min_node.key() {
                                         new_min_found = true;
                                     }
 
                                     // Left insert
-                                    let new_node_idx = self.arena.add(new_node);
+                                    let new_node_idx = self.arena.add(key, val);
 
                                     // New min update
                                     if new_min_found {
@@ -706,11 +706,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         }
                         Ordering::Equal => {
                             // Replacing key necessary b/c custom Eq impl may not consider all K's fields
-                            curr_node.set_key(new_node.take_key());
+                            curr_node.set_key(key);
 
                             // Replacing val necessary b/c it may be different
                             opt_val = Some(curr_node.take_val());
-                            curr_node.set_val(new_node.take_val());
+                            curr_node.set_val(val);
 
                             // Key/val updated "in-place": no need to update `curr_node`'s parent or children
                             ngh = NodeGetHelper::new(None, None, false);
@@ -723,12 +723,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                                     // New max check
                                     let mut new_max_found = false;
                                     let max_node = &self.arena[self.max_idx];
-                                    if new_node.key() > max_node.key() {
+                                    if &key > max_node.key() {
                                         new_max_found = true;
                                     }
 
                                     // Right insert
-                                    let new_node_idx = self.arena.add(new_node);
+                                    let new_node_idx = self.arena.add(key, val);
 
                                     // New max update
                                     if new_max_found {
@@ -770,7 +770,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 self.curr_size += 1;
                 self.max_size += 1;
 
-                let root_idx = self.arena.add(new_node);
+                let root_idx = self.arena.add(key, val);
                 self.root_idx = Some(root_idx);
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;

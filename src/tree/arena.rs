@@ -1,7 +1,7 @@
 use core::slice::{Iter, IterMut};
 use core::ops::{Index, IndexMut};
 
-use super::node::{NodeGetHelper, NodeSwapHistHelper};
+use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 use super::arena_dispatch::SmallArena;
 
@@ -24,7 +24,7 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 /// Sole associated function, `gen_idx_vec`, has return type that uses `U` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
 pub struct Arena<K: Default, V: Default, U, const N: usize> {
-    arena: SmallVec<[Option<SmallNodeDispatch<K, V>>; N]>,
+    arena: SmallVec<[Option<Node<K, V, U>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
     free_list: SmallVec<[U; N]>,
@@ -42,7 +42,7 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
     /// Constructor.
     pub fn new() -> Self {
         let na = Arena {
-            arena: SmallVec::<[Option<SmallNodeDispatch<K, V>>; N]>::new(),
+            arena: SmallVec::<[Option<Node<K, V, U>>; N]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
             free_list: SmallVec::<[U; N]>::new(),
@@ -64,14 +64,15 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
     }
 
     fn iter(&self) -> Iter<'_, Option<SmallNodeDispatch<K, V>>> {
-        self.arena.iter()
+        self.arena.iter() // TODO: add iterator converter
     }
 
     fn iter_mut(&mut self) -> IterMut<'_, Option<SmallNodeDispatch<K, V>>> {
-        self.arena.iter_mut()
+        self.arena.iter_mut() // TODO: add iterator converter
     }
 
-    fn add(&mut self, node: SmallNodeDispatch<K, V>) -> usize {
+    // TODO: change API to take key and val
+    fn add(&mut self, key: K, val: V) -> usize {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
@@ -80,6 +81,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
         #[cfg(feature = "low_mem_insert")]
         let opt_free_idx = self.arena.iter().position(|x| x.is_none()).map(|i| i as U);
 
+        let node = Node::new(key, val);
         match opt_free_idx {
             Some(free_idx) => {
                 debug_assert!(
@@ -114,7 +116,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
             // Retrieve node
             return match self.arena.pop() {
                 Some(opt_node) => match opt_node {
-                    Some(node) => Some(node),
+                    Some(node) => Some(SmallNodeDispatch::<K,V>::new(node.take_key(), node.take_val(), small_unsigned_label!(N))),
                     None => {
                         debug_assert!(
                             false,
@@ -193,7 +195,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
 /// Immutable indexing.
 /// Indexed location MUST be occupied.
 impl<K: Default, V: Default, U, const N: usize> Index<usize> for Arena<K, V, U, N> {
-    type Output = SmallNodeDispatch<K, V>;
+    type Output = Node<K, V, U>;
 
     fn index(&self, index: usize) -> &Self::Output {
         match &self.arena[index] {
@@ -224,8 +226,11 @@ impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + Par
 
 // Test ----------------------------------------------------------------------------------------------------------------
 
+/* CRITCAL TODO: re-write and re-enable
+
 #[cfg(test)]
 mod tests {
+    use core::mem::size_of_val;
     use super::Arena;
     use crate::tree::node::NodeGetHelper;
     use crate::tree::node_dispatch::{SmallNode, SmallNodeDispatch};
@@ -344,4 +349,33 @@ mod tests {
         assert_eq!(arena.arena[1].as_ref().unwrap().key(), &2);
         assert_eq!(arena.arena[2].as_ref().unwrap().key(), &3);
     }
+
+    #[test]
+    fn test_node_packing() {
+        const SMALL_CAPACITY: usize = 100;
+        const LARGE_CAPACITY: usize = 1_000;
+
+        let small_arena = Arena::<u64, u64, small_unsigned!(SMALL_CAPACITY), SMALL_CAPACITY>::new();
+        let large_arena = Arena::<u64, u64, small_unsigned!(LARGE_CAPACITY), LARGE_CAPACITY>::new();
+
+        let small_arena_size = size_of_val(&small_arena);
+        let large_arena_size = size_of_val(&large_arena);
+
+        println!("\nArena sizes:");
+        println!("\tSmall: {} bytes", small_arena_size);
+        println!("\tBig: {} bytes", large_arena_size);
+
+        assert!(small_arena_size < large_arena_size);
+
+        let small_node_size = small_arena.node_size();
+        let large_node_size = large_arena.node_size();
+
+        println!("\nNode sizes:");
+        println!("\tSmall: {} bytes", small_node_size);
+        println!("\tBig: {} bytes", large_node_size);
+
+        assert!(small_node_size < large_node_size);
+    }
 }
+
+*/
