@@ -1,12 +1,7 @@
-use core::slice::{Iter, IterMut};
-use core::ops::{Index, IndexMut};
-
-use super::arena::Arena;
 use super::node::NodeGetHelper;
 use super::node_dispatch::SmallNodeDispatch;
 
 use smallvec::SmallVec;
-use smallnum::SmallUnsignedLabel;
 
 // TODO: move to arena.rs
 
@@ -20,12 +15,6 @@ pub trait SmallArena<K: Default, V: Default, const N: usize> {
     /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
     /// Items inserted beyond capacity will be stored on the heap.
     fn capacity(&self) -> usize;
-
-    /// Returns an iterator over immutable arena elements.
-    fn iter(&self) -> Iter<'_, Option<SmallNodeDispatch<K, V>>>;
-
-    /// Returns an iterator over arena elements that allows modifying each value.
-    fn iter_mut(&mut self) -> IterMut<'_, Option<SmallNodeDispatch<K, V>>>;
 
     /// Add node to area, growing if necessary, and return addition index.
     fn add(&mut self, key: K, val: V) -> usize;

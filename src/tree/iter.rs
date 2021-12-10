@@ -76,14 +76,16 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
 // Mutable Reference Iterator ------------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K: Default, V: Default, const N: usize> {
-    arena_iter_mut: core::slice::IterMut<'a, Option<SmallNodeDispatch<K, V>>>,
+    bst: &'a SGTree<K, V, N>,
+    cnt: usize,
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> IterMut<'a, K, V, N> {
     pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
-            arena_iter_mut: bst.arena.iter_mut(),
+            bst: bst,
+            cnt: 0
         }
     }
 }
@@ -92,10 +94,15 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.arena_iter_mut.next() {
-            Some(Some(node)) => Some(node.get_mut()),
-            _ => None,
+
+        // Terrible hack, but hide's arena's `U` from our signature!
+        let arena_iter_mut =  self.bst.arena.iter_mut();
+        for _ in 0..self.cnt {
+            arena_iter_mut.next();
         }
+        self.cnt += 1;
+
+        arena_iter_mut.next()
     }
 }
 

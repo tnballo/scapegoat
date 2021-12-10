@@ -5,7 +5,7 @@ use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use super::node_dispatch::{SmallNode, SmallNodeDispatch};
 use super::arena_dispatch::SmallArena;
 
-use smallnum::{small_unsigned_label, SmallUnsigned, SmallUnsignedLabel};
+use smallnum::{small_unsigned, small_unsigned_label, SmallUnsigned, SmallUnsignedLabel};
 use smallvec::SmallVec;
 
 // CRITICAL TODO: very that all use of "arena.capacity()" is correct and should not be "arena.len()"
@@ -35,7 +35,7 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
 {
     // TODO: is this function necessary?
     /// Const associated constructor for index scratch vector.
-    pub fn new_idx_vec() -> SmallVec<[U; N]> {
+    pub const fn new_idx_vec() -> SmallVec<[U; N]> {
         SmallVec::<[U; N]>::default()
     }
 
@@ -56,19 +56,21 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
 
         na
     }
+
+    /// Returns an iterator over immutable arena elements.
+    pub fn iter(&self) -> impl Iterator<Item=(&K, &V)> {
+        ArenaIter::new(self)
+    }
+
+    /// Returns an iterator over arena elements that allows modifying each value.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item=(&K, &mut V)> {
+        ArenaIterMut::new(self)
+    }
 }
 
 impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> SmallArena<K, V, N> for Arena<K, V, U, N> {
     fn capacity(&self) -> usize {
         N
-    }
-
-    fn iter(&self) -> Iter<'_, Option<SmallNodeDispatch<K, V>>> {
-        self.arena.iter() // TODO: add iterator converter
-    }
-
-    fn iter_mut(&mut self) -> IterMut<'_, Option<SmallNodeDispatch<K, V>>> {
-        self.arena.iter_mut() // TODO: add iterator converter
     }
 
     // TODO: change API to take key and val
@@ -144,7 +146,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
     fn sort(
         &mut self,
         root_idx: usize,
-        sort_metadata: SmallVec<[NodeGetHelper<usize>; N]>, // `usize` instead of `U` avoids `U` in tree iter sigs
+        sort_metadata: SmallVec<[NodeGetHelper<usize>; N]>, // `usize` here avoids `U` in tree iter signatures
     ) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
@@ -185,8 +187,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
     }
 
     fn node_size(&self) -> usize {
-        let node = SmallNodeDispatch::new(K::default(), V::default(), small_unsigned_label!(N));
-        core::mem::size_of_val(&node)
+        core::mem::size_of::<Node::<K, V, U>>()
     }
 }
 
@@ -221,6 +222,54 @@ impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + Par
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Wrapper Iterators ---------------------------------------------------------------------------------------------------
+
+pub struct ArenaIter<'a, K: Default, V: Default, U, const N: usize> {
+    arena_iter: core::slice::Iter<'a, Option<Node<K, V, U>>>,
+}
+
+impl<'a, K: Default, V: Default, U, const N: usize> ArenaIter<'a, K, V, U, N> {
+    pub fn new(arena: &'a Arena<K, V, U, N>) -> Self {
+        ArenaIter {
+            arena_iter: arena.arena.iter(),
+        }
+    }
+}
+
+impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterator for ArenaIter<'a, K, V, U, N> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.arena_iter.next() {
+            Some(Some(node)) => Some((node.key(), node.val())),
+            _ => None,
+        }
+    }
+}
+
+pub struct ArenaIterMut<'a, K: Default, V: Default, U, const N: usize> {
+    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V, U>>>,
+}
+
+impl<'a, K: Default, V: Default, U, const N: usize> ArenaIterMut<'a, K, V, U, N> {
+    pub fn new(arena: &'a mut Arena<K, V, U, N>) -> Self {
+        ArenaIterMut {
+            arena_iter_mut: arena.arena.iter_mut(),
+        }
+    }
+}
+
+impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterator for ArenaIterMut<'a, K, V, U, N> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.arena_iter_mut.next() {
+            Some(Some(node)) => Some(node.get_mut()),
+            _ => None,
+        }
     }
 }
 

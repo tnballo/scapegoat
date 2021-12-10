@@ -503,7 +503,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         }
     }
 
-    // Flatten subtree into array of node indexs sorted by node key
+    // Flatten subtree into array of node indexes sorted by node key
     pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned + Copy>(
         &self,
         idx: usize,
@@ -540,9 +540,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             let mut sort_metadata = self
                 .arena
                 .iter()
-                .filter(|n| n.is_some())
-                .map(|n| n.as_ref().unwrap())
-                .map(|n| self.priv_get(None, &n.key()))
+                .map(|(key, val)| self.priv_get(None, key))
                 .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
 
             sort_metadata.sort_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
@@ -660,10 +658,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         key: K,
         val: V,
     ) -> Option<V> {
-
-        // Node storage size decided here! `SmallUnsignedLabel` argument simulates passing a type
-        //let mut new_node = SmallNodeDispatch::new(key, val, small_unsigned_label!(N));
-
         match self.root_idx {
             // Sorted insert
             Some(idx) => {
@@ -1099,8 +1093,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
     fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
-        let mut subtree_worklist: SmallVec<[&SmallNodeDispatch<K, V>; N]> =
-            smallvec![&self.arena[idx]];
+        let mut subtree_worklist: SmallVec<[&SmallNodeDispatch<K, V>; N]> = smallvec![&self.arena[idx]];
         let mut subtree_size = 0;
 
         while let Some(node) = subtree_worklist.pop() {
