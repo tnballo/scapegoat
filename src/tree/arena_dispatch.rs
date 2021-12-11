@@ -1,9 +1,11 @@
+/*
+
+NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
 use super::node::NodeGetHelper;
 use super::node_dispatch::SmallNodeDispatch;
 
 use smallvec::SmallVec;
-
-// TODO: move to arena.rs
 
 // Size-optimized Arena Trait -------------------------------------------------------------------------------------------
 
@@ -41,8 +43,6 @@ pub trait SmallArena<K: Default, V: Default, const N: usize> {
     fn node_size(&self) -> usize;
 }
 
-// TODO: remove everything below this line? With "stack_pack" feature.
-/*
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]

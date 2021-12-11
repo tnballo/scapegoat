@@ -2,8 +2,7 @@ use core::slice::{Iter, IterMut};
 use core::ops::{Index, IndexMut};
 
 use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
-use super::node_dispatch::{SmallNode, SmallNodeDispatch};
-use super::arena_dispatch::SmallArena;
+use super::node_dispatch::{SmallNode};
 
 use smallnum::{small_unsigned, small_unsigned_label, SmallUnsigned, SmallUnsignedLabel};
 use smallvec::SmallVec;
@@ -19,9 +18,6 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 */
 
 /// An arena allocator, meta programmable for low memory footprint.
-/// Users of it's APIs only need to declare `U` type or trait bounds at construction.
-/// Method APIs take/return `usize` and normalize to `U` internally.
-/// Sole associated function, `gen_idx_vec`, has return type that uses `U` - to a void duplicating `Vec` API here.
 #[derive(Clone)]
 pub struct Arena<K: Default, V: Default, U, const N: usize> {
     arena: SmallVec<[Option<Node<K, V, U>>; N]>,
@@ -35,7 +31,7 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
 {
     // TODO: is this function necessary?
     /// Const associated constructor for index scratch vector.
-    pub const fn new_idx_vec() -> SmallVec<[U; N]> {
+    pub fn new_idx_vec() -> SmallVec<[U; N]> {
         SmallVec::<[U; N]>::default()
     }
 
@@ -56,25 +52,28 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
 
         na
     }
-
     /// Returns an iterator over immutable arena elements.
-    pub fn iter(&self) -> impl Iterator<Item=(&K, &V)> {
-        ArenaIter::new(self)
+    pub fn iter(&self) -> Iter<'_, Option<Node<K, V, U>>> {
+        self.arena.iter()
     }
 
     /// Returns an iterator over arena elements that allows modifying each value.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item=(&K, &mut V)> {
-        ArenaIterMut::new(self)
+    pub fn iter_mut(&mut self) -> IterMut<'_, Option<Node<K, V, U>>> {
+        self.arena.iter_mut()
     }
-}
 
-impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> SmallArena<K, V, N> for Arena<K, V, U, N> {
-    fn capacity(&self) -> usize {
+    /// `#![no_std]`: total capacity, e.g. maximum number of items.
+    /// Attempting to insert items beyond capacity will panic.
+    ///
+    /// TODO: update the below for v2.0
+    /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
+    /// Items inserted beyond capacity will be stored on the heap.
+    pub fn capacity(&self) -> usize {
         N
     }
 
-    // TODO: change API to take key and val
-    fn add(&mut self, key: K, val: V) -> usize {
+    /// Add node to area, growing if necessary, and return addition index.
+    pub fn add(&mut self, key: K, val: V) -> usize {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
@@ -100,7 +99,8 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
         }
     }
 
-    fn remove(&mut self, idx: usize) -> Option<SmallNodeDispatch<K, V>> {
+    /// Remove node at a given index from area, return it.
+    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V, U>> {
         debug_assert!(
             idx < self.arena.len(),
             "API misuse: requested removal past last index!"
@@ -118,7 +118,7 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
             // Retrieve node
             return match self.arena.pop() {
                 Some(opt_node) => match opt_node {
-                    Some(node) => Some(SmallNodeDispatch::<K,V>::new(node.take_key(), node.take_val(), small_unsigned_label!(N))),
+                    Some(node) => Some(node),
                     None => {
                         debug_assert!(
                             false,
@@ -134,7 +134,9 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
         None
     }
 
-    fn hard_remove(&mut self, idx: usize) -> SmallNodeDispatch<K, V> {
+    /// Remove node at a known-good index (simpler callsite and error handling) from area.
+    /// This function can panic. If the index might be invalid, use `remove` instead.
+    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V, U> {
         match self.remove(idx) {
             Some(node) => node,
             None => {
@@ -143,7 +145,9 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
         }
     }
 
-    fn sort(
+    /// Sort the arena in caller-requested order and update all tree metadata accordingly
+    /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
+    pub fn sort(
         &mut self,
         root_idx: usize,
         sort_metadata: SmallVec<[NodeGetHelper<usize>; N]>, // `usize` here avoids `U` in tree iter signatures
@@ -182,11 +186,13 @@ impl <K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialE
         swap_history.curr_idx(root_idx)
     }
 
-    fn len(&self) -> usize {
+    /// Returns the number of entries in the arena, some of which may be `None`.
+    pub fn len(&self) -> usize {
         self.arena.len()
     }
 
-    fn node_size(&self) -> usize {
+    /// Get the size of an individual arena node, in bytes.
+    pub fn node_size(&self) -> usize {
         core::mem::size_of::<Node::<K, V, U>>()
     }
 }
@@ -224,6 +230,9 @@ impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + Par
         Self::new()
     }
 }
+
+/*
+NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
 
 // Wrapper Iterators ---------------------------------------------------------------------------------------------------
 
@@ -272,34 +281,28 @@ impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterat
         }
     }
 }
+*/
 
 // Test ----------------------------------------------------------------------------------------------------------------
-
-/* CRITCAL TODO: re-write and re-enable
 
 #[cfg(test)]
 mod tests {
     use core::mem::size_of_val;
     use super::Arena;
-    use crate::tree::node::NodeGetHelper;
-    use crate::tree::node_dispatch::{SmallNode, SmallNodeDispatch};
-    use crate::tree::arena_dispatch::SmallArena;
-    use smallnum::{small_unsigned, small_unsigned_label, SmallUnsignedLabel};
+    use crate::tree::node::{Node, NodeGetHelper};
+    use crate::tree::node_dispatch::SmallNode;
+    use smallnum::small_unsigned;
     use smallvec::smallvec;
 
     const CAPACITY: usize = 1024;
 
     #[test]
     fn test_add_and_remove() {
-        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
-        let n_2 = SmallNodeDispatch::new(2, "n/a", small_unsigned_label!(CAPACITY) );
-        let n_3 = SmallNodeDispatch::new(3, "n/a", small_unsigned_label!(CAPACITY));
-
         let mut arena: Arena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
 
-        let n_1_idx = arena.add(n_1);
-        let n_2_idx = arena.add(n_2);
-        let n_3_idx = arena.add(n_3);
+        let n_1_idx = arena.add(1, "n/a");
+        let n_2_idx = arena.add(2, "n/a");
+        let n_3_idx = arena.add(3, "n/a");
 
         assert_eq!(n_1_idx, 0);
         assert_eq!(n_2_idx, 1);
@@ -309,20 +312,17 @@ mod tests {
         assert_eq!(n_2_removed.key(), &2);
         assert!(arena.arena[1].is_none());
 
-        let n_4 = SmallNodeDispatch::new(4, "n/a", small_unsigned_label!(CAPACITY));
-        let n_4_idx = arena.add(n_4);
+        let n_4_idx = arena.add(4, "n/a");
         assert_eq!(n_4_idx, 1);
 
-        let n_5 = SmallNodeDispatch::new(5, "n/a", small_unsigned_label!(CAPACITY));
-        let n_5_idx = arena.add(n_5);
+        let n_5_idx = arena.add(5, "n/a");
         assert_eq!(n_5_idx, 3);
     }
 
     #[test]
     fn test_index_mut() {
-        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
         let mut arena: Arena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
-        let n_1_idx = arena.add(n_1);
+        let n_1_idx = arena.add(1, "n/a");
         assert_eq!(arena[n_1_idx].val(), &"n/a");
         let n_1_mut_ref = &mut arena[n_1_idx];
         n_1_mut_ref.set_val("This is a value. There are many like it but this one is mine.");
@@ -331,9 +331,8 @@ mod tests {
 
     #[test]
     fn test_index_1() {
-        let n_1 = SmallNodeDispatch::new(0xD00DFEED_u64, "n/a", small_unsigned_label!(CAPACITY));
         let mut arena: Arena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
-        let n_1_idx = arena.add(n_1);
+        let n_1_idx = arena.add(0xD00DFEED_u64, "n/a");
         let n_1_ref = &arena[n_1_idx];
         assert_eq!(n_1_ref.key(), &0xD00DFEED_u64);
     }
@@ -341,9 +340,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_index_2() {
-        let n_1 = SmallNodeDispatch::new(0xD00DFEED_u64, "n/a", small_unsigned_label!(CAPACITY));
         let mut arena: Arena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
-        arena.add(n_1);
+        arena.add(0xD00DFEED_u64, "n/a");
         let _ = &arena[1]; // OOB
     }
 
@@ -368,16 +366,14 @@ mod tests {
         // |       |
         // 1       3
         //
-        let n_1 = SmallNodeDispatch::new(1, "n/a", small_unsigned_label!(CAPACITY));
-        let mut n_2 = SmallNodeDispatch::new(2, "n/a", small_unsigned_label!(CAPACITY) );
-        let n_3 = SmallNodeDispatch::new(3, "n/a", small_unsigned_label!(CAPACITY));
 
+        arena.add(3, "n/a");
+        let n_2_idx = arena.add(2, "n/a");
+        arena.add(1, "n/a");
+
+        let n_2 = &mut arena[n_2_idx];
         n_2.set_left_idx(Some(2));
         n_2.set_right_idx(Some(0));
-
-        arena.add(n_3);
-        arena.add(n_2);
-        arena.add(n_1);
 
         // Unsorted (insertion/"physical" order)
         assert_eq!(arena.arena[0].as_ref().unwrap().key(), &3);
@@ -416,6 +412,9 @@ mod tests {
 
         assert!(small_arena_size < large_arena_size);
 
+        /*
+        NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
         let small_node_size = small_arena.node_size();
         let large_node_size = large_arena.node_size();
 
@@ -424,7 +423,6 @@ mod tests {
         println!("\tBig: {} bytes", large_node_size);
 
         assert!(small_node_size < large_node_size);
+        */
     }
 }
-
-*/

@@ -191,6 +191,9 @@ fn test_tree_packing() {
     println!("SGTree<u32, u32, {}> -> {} bytes", MED_CAPACITY, med_tree_size);
     //println!("SGTree<u32, u32, {}> -> {} bytes", LARGE_CAPACITY, large_tree_size);
 
+    /*
+    NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
     println!("\nNode sizes:\n");
     println!("SGTree<u32, u32, {}> -> {} bytes", SMALL_CAPACITY, small_tree.node_size());
     println!("SGTree<u32, u32, {}> -> {} bytes", MED_CAPACITY, med_tree.node_size());
@@ -198,6 +201,7 @@ fn test_tree_packing() {
 
     assert!(small_tree.node_size() < med_tree.node_size());
     //assert!(med_tree.node_size() < large_tree.node_size());
+    */
 }
 
 #[test]
@@ -210,7 +214,7 @@ fn test_tree_sizing() {
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 49_248);
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_528);
         }
 
         // All features

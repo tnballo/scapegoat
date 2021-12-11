@@ -1,8 +1,8 @@
 use smallvec::SmallVec;
 
-use super::tree::SGTree;
-use super::node_dispatch::{SmallNode, SmallNodeDispatch};
-use super::arena_dispatch::SmallArena;
+use super::tree::{SGTree, Idx};
+use super::node::Node;
+use super::node_dispatch::SmallNode;
 
 // Immutable Reference Iterator ----------------------------------------------------------------------------------------
 
@@ -76,16 +76,14 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
 // Mutable Reference Iterator ------------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K: Default, V: Default, const N: usize> {
-    bst: &'a SGTree<K, V, N>,
-    cnt: usize,
+    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V, Idx>>>,
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> IterMut<'a, K, V, N> {
     pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
-            bst: bst,
-            cnt: 0
+            arena_iter_mut: bst.arena.iter_mut(),
         }
     }
 }
@@ -94,15 +92,10 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
-
-        // Terrible hack, but hide's arena's `U` from our signature!
-        let arena_iter_mut =  self.bst.arena.iter_mut();
-        for _ in 0..self.cnt {
-            arena_iter_mut.next();
+        match self.arena_iter_mut.next() {
+            Some(Some(node)) => Some(node.get_mut()),
+            _ => None,
         }
-        self.cnt += 1;
-
-        arena_iter_mut.next()
     }
 }
 

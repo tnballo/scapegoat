@@ -47,6 +47,9 @@ pub trait SmallNode<K, V: Default> {
     fn set_subtree_size(&mut self, size: usize);
 }
 
+/*
+NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 
 #[derive(Clone)]
@@ -193,3 +196,4 @@ impl<K: Default, V: Default> SmallNode<K, V> for SmallNodeDispatch<K, V> {
         dispatch!(self, set_subtree_size, size);
     }
 }
+*/
