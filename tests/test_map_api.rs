@@ -1,11 +1,11 @@
-/* TODO: re-write/re-enable these tests
-
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
 use scapegoat::SGMap;
 
 use rand::Rng;
+
+const DEFAULT_CAPACITY: usize = 10;
 
 #[test]
 fn test_debug() {
@@ -29,7 +29,7 @@ fn test_clone() {
 
 #[test]
 fn test_basic_map_functionality() {
-    let mut sgm = SGMap::new();
+    let mut sgm = SGMap::<_,_, DEFAULT_CAPACITY>::new();
 
     assert!(sgm.is_empty());
 
@@ -130,7 +130,7 @@ fn test_basic_map_functionality() {
 #[test]
 fn test_map_from_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let sgm = SGMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
 
     assert!(sgm.len() == 3);
     assert_eq!(
@@ -151,7 +151,7 @@ fn test_map_from_iter_panic() {
 #[test]
 fn test_map_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let sgm = SGMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
     let mut sgm_iter = sgm.iter();
 
     assert_eq!(sgm_iter.next(), Some((&1, &"1")));
@@ -173,7 +173,7 @@ fn test_map_iter_mut() {
         ("c", 3),
     ];
 
-    let mut sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let mut sgm = SGMap::<_, _, 8>::from_iter(key_val_tuples.into_iter());
     assert_eq!(sgm.len(), 8);
     assert_eq!(sgm.first_key_value(), Some((&"a", &1)));
     assert_eq!(sgm.last_key_value(), Some((&"h", &8)));
@@ -205,10 +205,11 @@ fn test_map_iter_mut() {
 
 #[test]
 fn test_map_iter_mut_rand() {
-    let mut sgm = SGMap::<isize, isize>::new();
+    const CAPACITY: usize = 500;
+    let mut sgm = SGMap::<isize, isize, CAPACITY>::new();
     let mut rng = rand::thread_rng();
 
-    for _ in 0..500 {
+    for _ in 0..CAPACITY {
         #[cfg(not(feature = "high_assurance"))]
         sgm.insert(rng.gen(), 0);
 
@@ -256,7 +257,7 @@ fn test_map_append() {
         assert!(a.insert(3, "3").is_ok());
     }
 
-    let mut b = SGMap::new();
+    let mut b = SGMap::<_, _, DEFAULT_CAPACITY>::new();
 
     #[cfg(not(feature = "high_assurance"))]
     {
@@ -282,4 +283,3 @@ fn test_map_append() {
         vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
     );
 }
-*/

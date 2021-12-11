@@ -75,7 +75,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
 
 // Mutable Reference Iterator ------------------------------------------------------------------------------------------
 
-pub struct IterMut<'a, K: Default, V: Default, const N: usize> {
+pub struct IterMut<'a, K, V, const N: usize> {
     arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V, Idx>>>,
 }
 

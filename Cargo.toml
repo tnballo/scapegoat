@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "1.7.0"
+version = "2.0.0"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -8,9 +8,9 @@ readme = "README.md"
 homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
-keywords = ["scapegoat", "tree", "set", "map", "no_std"]
+keywords = ["scapegoat", "btree", "set", "map", "no_std"]
 categories = ["algorithms", "data-structures", "no-std", "embedded"]
-description = "Safe, embedded-friendly ordered set/map via a scapegoat tree."
+description = "Safe, embedded-friendly ordered set/map via a scapegoat tree. Validated against BTreeSet/BTreeMap."
 include = [
     "src/**/*.rs",
     "benches/**/*.rs",
@@ -21,10 +21,9 @@ include = [
 ]
 
 [dependencies]
-smallvec = { version = "1.7", features = ["const_generics"] } # Has no dependencies of it's own
-micromath = "2.0" # Has no dependenceis of it's own
-#smallnum = "0.X"  # Has no dependencies of it's own
-smallnum = { path = "../smallnum"}
+smallvec = { version = "^1.7", features = ["const_generics"] } # Has no dependencies of it's own
+micromath = "^2.0" # Has no dependenceis of it's own
+smallnum = "^0.4"  # Has no dependencies of it's own
 
 [dev-dependencies]
 criterion = "0.3"

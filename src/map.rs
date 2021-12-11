@@ -1,4 +1,3 @@
-/*
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::iter::FromIterator;
@@ -11,11 +10,11 @@ use crate::tree::{IntoIter, Iter, IterMut, SGErr, SGTree};
 /// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct SGMap<K: Ord, V> {
-    bst: SGTree<K, V>,
+pub struct SGMap<K: Ord + Default, V: Default, const N: usize> {
+    bst: SGTree<K, V, N>,
 }
 
-impl<K: Ord, V> SGMap<K, V> {
+impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// Makes a new, empty `SGMap`.
     ///
     /// # Examples
@@ -23,7 +22,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     ///
     /// map.insert(1, "a");
     /// ```
@@ -48,7 +47,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map: SGMap<isize, isize> = SGMap::new();
+    /// let mut map: SGMap<isize, isize, 10> = SGMap::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(map.set_rebal_param(2.0, 3.0).is_ok());
@@ -65,7 +64,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map: SGMap<isize, isize> = SGMap::new();
+    /// let mut map: SGMap<isize, isize, 10> = SGMap::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(map.set_rebal_param(2.0, 3.0).is_ok());
@@ -77,20 +76,16 @@ impl<K: Ord, V> SGMap<K, V> {
         self.bst.rebal_param()
     }
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of map pairs.
-    /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
-    ///
-    /// If using `std`: fast capacity, e.g. number of map pairs stored on the stack.
-    /// Pairs inserted beyond capacity will be stored on the heap.
+    /// Total capacity, e.g. maximum number of map pairs.
     ///
     /// # Examples
     ///
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::<usize, &str>::new();
+    /// let mut map = SGMap::<usize, &str, 10>::new();
     ///
-    /// assert!(map.capacity() > 0)
+    /// assert!(map.capacity() == 10);
     /// ```
     pub fn capacity(&self) -> usize {
         self.bst.capacity()
@@ -105,14 +100,14 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(2, "b");
     /// a.insert(1, "a");
     ///
     /// let keys: Vec<_> = a.keys().cloned().collect();
     /// assert_eq!(keys, [1, 2]);
     /// ```
-    pub fn keys(&self) -> Keys<'_, K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V, N> {
         Keys { inner: self.iter() }
     }
 
@@ -125,14 +120,14 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(2, "b");
     /// a.insert(1, "a");
     ///
     /// let keys: Vec<i32> = a.into_keys().collect();
     /// assert_eq!(keys, [1, 2]);
     /// ```
-    pub fn into_keys(self) -> IntoKeys<K, V> {
+    pub fn into_keys(self) -> IntoKeys<K, V, N> {
         IntoKeys {
             inner: self.into_iter(),
         }
@@ -147,14 +142,14 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "hello");
     /// a.insert(2, "goodbye");
     ///
     /// let values: Vec<&str> = a.values().cloned().collect();
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
-    pub fn values(&self) -> Values<'_, K, V> {
+    pub fn values(&self) -> Values<'_, K, V, N> {
         Values { inner: self.iter() }
     }
 
@@ -167,14 +162,14 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "hello");
     /// a.insert(2, "goodbye");
     ///
     /// let values: Vec<&str> = a.into_values().collect();
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
-    pub fn into_values(self) -> IntoValues<K, V> {
+    pub fn into_values(self) -> IntoValues<K, V, N> {
         IntoValues {
             inner: self.into_iter(),
         }
@@ -189,7 +184,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, String::from("hello"));
     /// a.insert(2, String::from("goodbye"));
     ///
@@ -201,7 +196,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(values, [String::from("hello!"),
     ///                     String::from("goodbye!")]);
     /// ```
-    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V, N> {
         ValuesMut {
             inner: self.iter_mut(),
         }
@@ -214,12 +209,12 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     ///
-    /// let mut b = SGMap::new();
+    /// let mut b = SGMap::<_, _, 10>::new();
     /// b.insert(3, "d");
     /// b.insert(4, "e");
     /// b.insert(5, "f");
@@ -236,7 +231,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(a[&5], "f");
     /// ```
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGMap<K, V>) {
+    pub fn append(&mut self, other: &mut SGMap<K, V, N>) {
         self.bst.append(&mut other.bst);
     }
 
@@ -247,12 +242,12 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     ///
-    /// let mut b = SGMap::new();
+    /// let mut b = SGMap::<_, _, 10>::new();
     /// b.insert(3, "d");
     /// b.insert(4, "e");
     /// b.insert(5, "f");
@@ -269,7 +264,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(a[&5], "f");
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGMap<K, V>) -> Result<(), SGErr> {
+    pub fn append(&mut self, other: &mut SGMap<K, V, N>) -> Result<(), SGErr> {
         self.bst.append(&mut other.bst)
     }
 
@@ -283,7 +278,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
@@ -310,7 +305,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::{SGMap, SGErr};
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// assert_eq!(map.insert(37, "a"), Ok(None));
     /// assert_eq!(map.is_empty(), false);
     ///
@@ -347,7 +342,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(3, "c");
     /// map.insert(2, "b");
     /// map.insert(1, "a");
@@ -359,7 +354,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// let (first_key, first_value) = map.iter().next().unwrap();
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
-    pub fn iter(&self) -> Iter<'_, K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V, N> {
         Iter::new(&self.bst)
     }
 
@@ -372,7 +367,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert("a", 1);
     /// map.insert("b", 2);
     /// map.insert("c", 3);
@@ -387,7 +382,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// let (second_key, second_value) = map.iter().skip(1).next().unwrap();
     /// assert_eq!((*second_key, *second_value), ("b", 12));
     /// ```
-    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V, N> {
         IterMut::new(&mut self.bst)
     }
 
@@ -402,7 +397,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove_entry(&1), None);
@@ -425,7 +420,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map: SGMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// let mut map: SGMap<i32, i32, 10> = (0..8).map(|x| (x, x*10)).collect();
     /// // Keep only the elements with even-numbered keys.
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert!(map.into_iter().eq(vec![(0, 0), (2, 20), (4, 40), (6, 60)]));
@@ -448,7 +443,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
     /// a.insert(3, "c");
@@ -467,7 +462,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// assert_eq!(b[&17], "d");
     /// assert_eq!(b[&41], "e");
     /// ```
-    pub fn split_off<Q>(&mut self, key: &Q) -> SGMap<K, V>
+    pub fn split_off<Q>(&mut self, key: &Q) -> SGMap<K, V, N>
     where
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
@@ -488,7 +483,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
@@ -511,7 +506,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
     /// assert_eq!(map.get_key_value(&2), None);
@@ -534,7 +529,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
@@ -557,7 +552,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// if let Some(x) = map.get_mut(&1) {
     ///     *x = "b";
@@ -579,7 +574,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// a.insert(1, "a");
     /// a.clear();
     /// assert!(a.is_empty());
@@ -597,7 +592,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
@@ -617,7 +612,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// assert!(a.is_empty());
     /// a.insert(1, "a");
     /// assert!(!a.is_empty());
@@ -634,7 +629,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// assert_eq!(map.first_key_value(), None);
     /// map.insert(1, "b");
     /// map.insert(2, "a");
@@ -654,7 +649,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// assert_eq!(map.first_key_value(), None);
     /// map.insert(1, "b");
     /// map.insert(2, "a");
@@ -677,7 +672,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
     /// while let Some((key, _val)) = map.pop_first() {
@@ -700,7 +695,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "b");
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
@@ -719,7 +714,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "b");
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key(), Some(&2));
@@ -741,7 +736,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut map = SGMap::new();
+    /// let mut map = SGMap::<_, _, 10>::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
     /// while let Some((key, _val)) = map.pop_last() {
@@ -763,7 +758,7 @@ impl<K: Ord, V> SGMap<K, V> {
     /// ```
     /// use scapegoat::SGMap;
     ///
-    /// let mut a = SGMap::new();
+    /// let mut a = SGMap::<_, _, 10>::new();
     /// assert_eq!(a.len(), 0);
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
@@ -776,7 +771,7 @@ impl<K: Ord, V> SGMap<K, V> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<K, V> Debug for SGMap<K, V>
+impl<K: Default, V: Default, const N: usize> Debug for SGMap<K, V, N>
 where
     K: Ord + Debug,
     V: Debug,
@@ -787,7 +782,7 @@ where
 }
 
 // From array.
-impl<K, V, const N: usize> From<[(K, V); N]> for SGMap<K, V>
+impl<K: Default, V: Default, const N: usize> From<[(K, V); N]> for SGMap<K, V, N>
 where
     K: Ord,
 {
@@ -795,7 +790,7 @@ where
     /// use scapegoat::SGMap;
     ///
     /// let map1 = SGMap::from([(1, 2), (3, 4)]);
-    /// let map2: SGMap<_, _> = [(1, 2), (3, 4)].into();
+    /// let map2: SGMap<_, _, 2> = [(1, 2), (3, 4)].into();
     /// assert_eq!(map1, map2);
     /// ```
     fn from(arr: [(K, V); N]) -> Self {
@@ -804,7 +799,7 @@ where
 }
 
 // Indexing
-impl<K, V, Q> Index<&Q> for SGMap<K, V>
+impl<K: Default, V: Default, Q, const N: usize> Index<&Q> for SGMap<K, V, N>
 where
     K: Borrow<Q> + Ord,
     Q: Ord + ?Sized,
@@ -822,7 +817,7 @@ where
 }
 
 // Construct from iterator.
-impl<K, V> FromIterator<(K, V)> for SGMap<K, V>
+impl<K: Default, V: Default, const N: usize> FromIterator<(K, V)> for SGMap<K, V, N>
 where
     K: Ord,
 {
@@ -834,7 +829,7 @@ where
 }
 
 // Extension from iterator.
-impl<K, V> Extend<(K, V)> for SGMap<K, V>
+impl<K: Default, V: Default, const N: usize> Extend<(K, V)> for SGMap<K, V, N>
 where
     K: Ord,
 {
@@ -844,7 +839,7 @@ where
 }
 
 // Extension from reference iterator.
-impl<'a, K, V> Extend<(&'a K, &'a V)> for SGMap<K, V>
+impl<'a, K: Default, V: Default, const N: usize> Extend<(&'a K, &'a V)> for SGMap<K, V, N>
 where
     K: Ord + Copy,
     V: Copy,
@@ -857,9 +852,9 @@ where
 // General Iterators ---------------------------------------------------------------------------------------------------
 
 // Reference iterator
-impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> IntoIterator for &'a SGMap<K, V, N> {
     type Item = (&'a K, &'a V);
-    type IntoIter = Iter<'a, K, V>;
+    type IntoIter = Iter<'a, K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -867,9 +862,9 @@ impl<'a, K: Ord, V> IntoIterator for &'a SGMap<K, V> {
 }
 
 // Consuming iterator
-impl<K: Ord, V> IntoIterator for SGMap<K, V> {
+impl<K: Ord + Default, V: Default, const N: usize> IntoIterator for SGMap<K, V, N> {
     type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter::new(self.bst)
@@ -884,11 +879,11 @@ impl<K: Ord, V> IntoIterator for SGMap<K, V> {
 ///
 /// This `struct` is created by the [`keys`][SGMap::keys] method on [`SGMap`][SGMap].
 /// See its documentation for more.
-pub struct Keys<'a, K: Ord + 'a, V: 'a> {
-    inner: Iter<'a, K, V>,
+pub struct Keys<'a, K: Ord + Default + 'a, V: Default + 'a, const N: usize> {
+    inner: Iter<'a, K, V, N>,
 }
 
-impl<'a, K: Ord, V> Iterator for Keys<'a, K, V> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Keys<'a, K, V, N> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<&'a K> {
@@ -900,11 +895,11 @@ impl<'a, K: Ord, V> Iterator for Keys<'a, K, V> {
 ///
 /// This `struct` is created by the [`into_keys`][SGMap::into_keys] method on [`SGMap`][SGMap].
 /// See its documentation for more.
-pub struct IntoKeys<K: Ord, V> {
-    inner: IntoIter<K, V>,
+pub struct IntoKeys<K: Ord + Default, V: Default, const N: usize> {
+    inner: IntoIter<K, V, N>,
 }
 
-impl<K: Ord, V> Iterator for IntoKeys<K, V> {
+impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoKeys<K, V, N> {
     type Item = K;
 
     fn next(&mut self) -> Option<K> {
@@ -920,11 +915,11 @@ impl<K: Ord, V> Iterator for IntoKeys<K, V> {
 ///
 /// This `struct` is created by the [`values`][SGMap::values] method on [`SGMap`][SGMap].
 /// See its documentation for more.
-pub struct Values<'a, K: Ord + 'a, V: 'a> {
-    inner: Iter<'a, K, V>,
+pub struct Values<'a, K: Ord + Default + 'a, V: Default + 'a, const N: usize> {
+    inner: Iter<'a, K, V, N>,
 }
 
-impl<'a, K: Ord, V> Iterator for Values<'a, K, V> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Values<'a, K, V, N> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<&'a V> {
@@ -936,11 +931,11 @@ impl<'a, K: Ord, V> Iterator for Values<'a, K, V> {
 ///
 /// This `struct` is created by the [`into_values`][SGMap::into_values] method on [`SGMap`][SGMap].
 /// See its documentation for more.
-pub struct IntoValues<K: Ord, V> {
-    inner: IntoIter<K, V>,
+pub struct IntoValues<K: Ord + Default, V: Default, const N: usize> {
+    inner: IntoIter<K, V, N>,
 }
 
-impl<K: Ord, V> Iterator for IntoValues<K, V> {
+impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoValues<K, V, N> {
     type Item = V;
 
     fn next(&mut self) -> Option<V> {
@@ -952,15 +947,14 @@ impl<K: Ord, V> Iterator for IntoValues<K, V> {
 ///
 /// This `struct` is created by the [`values_mut`][SGMap::values_mut] method on [`SGMap`][SGMap].
 /// See its documentation for more.
-pub struct ValuesMut<'a, K: Ord + 'a, V: 'a> {
-    inner: IterMut<'a, K, V>,
+pub struct ValuesMut<'a, K: Ord + 'a, V: 'a, const N: usize> {
+    inner: IterMut<'a, K, V, N>,
 }
 
-impl<'a, K: Ord, V> Iterator for ValuesMut<'a, K, V> {
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for ValuesMut<'a, K, V, N> {
     type Item = &'a mut V;
 
     fn next(&mut self) -> Option<&'a mut V> {
         self.inner.next().map(|(_, v)| v)
     }
 }
-*/

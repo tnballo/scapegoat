@@ -47,6 +47,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
+        if N > (Idx::MAX as usize) {
+            panic!("Max stack item capacity (0xffff) exceeded!");
+        }
+
         SGTree {
             arena: Arena::<K, V, Idx, N>::new(),
             root_idx: None,
