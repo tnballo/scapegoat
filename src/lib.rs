@@ -230,7 +230,7 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 
 // Only expose arena internals for fuzzing harness
 #[cfg(fuzzing)]
-pub use crate::tree::{Node, Arena, NodeGetHelper, NodeRebuildHelper};
+pub use crate::tree::{Arena, Node, NodeGetHelper, NodeRebuildHelper};
 
 mod tree;
 pub use crate::tree::{SGErr, SGTree};

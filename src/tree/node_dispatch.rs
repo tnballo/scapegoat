@@ -1,6 +1,3 @@
-use super::node::Node;
-use smallnum::SmallUnsignedLabel;
-
 // Size-optimized Node Trait -------------------------------------------------------------------------------------------
 
 /// Interface encapsulates `U`.
@@ -49,6 +46,9 @@ pub trait SmallNode<K, V: Default> {
 
 /*
 NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
+use super::node::Node;
+use smallnum::SmallUnsignedLabel;
 
 // Enum Dispatch -------------------------------------------------------------------------------------------------------
 

@@ -1,10 +1,10 @@
-use core::slice::{Iter, IterMut};
 use core::ops::{Index, IndexMut};
+use core::slice::{Iter, IterMut};
 
 use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
-use super::node_dispatch::{SmallNode};
+use super::node_dispatch::SmallNode;
 
-use smallnum::{small_unsigned, small_unsigned_label, SmallUnsigned, SmallUnsignedLabel};
+use smallnum::SmallUnsigned;
 use smallvec::SmallVec;
 
 // CRITICAL TODO: very that all use of "arena.capacity()" is correct and should not be "arena.len()"
@@ -26,8 +26,12 @@ pub struct Arena<K: Default, V: Default, U, const N: usize> {
     free_list: SmallVec<[U; N]>,
 }
 
-impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize>
-    Arena<K, V, U, N>
+impl<
+        K: Default,
+        V: Default,
+        U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd,
+        const N: usize,
+    > Arena<K, V, U, N>
 {
     // TODO: is this function necessary?
     /// Const associated constructor for index scratch vector.
@@ -193,7 +197,7 @@ impl<K: Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq
 
     /// Get the size of an individual arena node, in bytes.
     pub fn node_size(&self) -> usize {
-        core::mem::size_of::<Node::<K, V, U>>()
+        core::mem::size_of::<Node<K, V, U>>()
     }
 }
 
@@ -207,7 +211,7 @@ impl<K: Default, V: Default, U, const N: usize> Index<usize> for Arena<K, V, U, 
     fn index(&self, index: usize) -> &Self::Output {
         match &self.arena[index] {
             Some(node) => &node,
-            None => unreachable!()
+            None => unreachable!(),
         }
     }
 }
@@ -218,13 +222,17 @@ impl<K: Default, V: Default, U, const N: usize> IndexMut<usize> for Arena<K, V, 
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self.arena.index_mut(index) {
             Some(node) => node,
-            None => unreachable!()
+            None => unreachable!(),
         }
     }
 }
 
-impl<K: Ord + Default, V: Default, U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd, const N: usize> Default
-    for Arena<K, V, U, N>
+impl<
+        K: Ord + Default,
+        V: Default,
+        U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd,
+        const N: usize,
+    > Default for Arena<K, V, U, N>
 {
     fn default() -> Self {
         Self::new()
@@ -287,10 +295,10 @@ impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterat
 
 #[cfg(test)]
 mod tests {
-    use core::mem::size_of_val;
     use super::Arena;
-    use crate::tree::node::{Node, NodeGetHelper};
+    use crate::tree::node::NodeGetHelper;
     use crate::tree::node_dispatch::SmallNode;
+    use core::mem::size_of_val;
     use smallnum::small_unsigned;
     use smallvec::smallvec;
 
@@ -366,7 +374,6 @@ mod tests {
         // |       |
         // 1       3
         //
-
         arena.add(3, "n/a");
         let n_2_idx = arena.add(2, "n/a");
         arena.add(1, "n/a");

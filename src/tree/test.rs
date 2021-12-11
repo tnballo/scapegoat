@@ -2,8 +2,8 @@ use core::fmt::Debug;
 use core::iter::FromIterator;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use super::SGTree;
 use super::node_dispatch::SmallNode;
+use super::SGTree;
 
 #[cfg(not(feature = "alt_impl"))]
 use super::SGErr;
@@ -85,7 +85,11 @@ fn assert_logical_invariants<K: Ord + Default, V: Default, const N: usize>(sgt: 
 }
 
 // Inserts random `usize` keys, and randomly removes 20%.
-fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usize, check_invars: bool) {
+fn logical_fuzz<const N: usize>(
+    sgt: &mut SGTree<usize, &str, N>,
+    iter_cnt: usize,
+    check_invars: bool,
+) {
     let mut shadow_keys = BTreeSet::<usize>::new();
     let mut fast_rng = SmallRng::from_entropy();
     let mut slow_rng = rand::thread_rng();
@@ -110,7 +114,14 @@ fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usiz
         // Verify internal state post-insert
         if check_invars {
             assert_logical_invariants(&sgt);
-            assert_eq!(sgt.len(), shadow_keys.len(), "sgt_len ({}) != shadow_key_len ({}), iter: {}", sgt.len(), shadow_keys.len(), i);
+            assert_eq!(
+                sgt.len(),
+                shadow_keys.len(),
+                "sgt_len ({}) != shadow_key_len ({}), iter: {}",
+                sgt.len(),
+                shadow_keys.len(),
+                i
+            );
         }
 
         // Randomly scheduled removal
@@ -123,12 +134,22 @@ fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usiz
             // Verify internal state post-remove
             if check_invars {
                 assert_logical_invariants(&sgt);
-                assert_eq!(sgt.len(), shadow_keys.len(), "sgt_len ({}) != shadow_key_len ({}), iter: {}", sgt.len(), shadow_keys.len(), i);
+                assert_eq!(
+                    sgt.len(),
+                    shadow_keys.len(),
+                    "sgt_len ({}) != shadow_key_len ({}), iter: {}",
+                    sgt.len(),
+                    shadow_keys.len(),
+                    i
+                );
             }
         }
     }
 
-    let final_keys = sgt.into_iter().map(|(k, _)| *k).collect::<BTreeSet<usize>>();
+    let final_keys = sgt
+        .into_iter()
+        .map(|(k, _)| *k)
+        .collect::<BTreeSet<usize>>();
 
     if final_keys != shadow_keys {
         let diff_this: Vec<usize> = final_keys.difference(&shadow_keys).cloned().collect();
@@ -138,7 +159,11 @@ fn logical_fuzz<const N: usize>(sgt: &mut SGTree<usize, &str, N>, iter_cnt: usiz
             "Keys in reference BTree and NOT in SGTree: {:?}",
             diff_other
         );
-        panic!("Keys ({}) do not match shadow set ({})!", final_keys.len(), shadow_keys.len());
+        panic!(
+            "Keys ({}) do not match shadow set ({})!",
+            final_keys.len(),
+            shadow_keys.len()
+        );
     }
 }
 
@@ -187,8 +212,14 @@ fn test_tree_packing() {
     //assert!(med_tree_size < large_tree_size);
 
     println!("Tree sizes:\n");
-    println!("SGTree<u32, u32, {}> -> {} bytes", SMALL_CAPACITY, small_tree_size);
-    println!("SGTree<u32, u32, {}> -> {} bytes", MED_CAPACITY, med_tree_size);
+    println!(
+        "SGTree<u32, u32, {}> -> {} bytes",
+        SMALL_CAPACITY, small_tree_size
+    );
+    println!(
+        "SGTree<u32, u32, {}> -> {} bytes",
+        MED_CAPACITY, med_tree_size
+    );
     //println!("SGTree<u32, u32, {}> -> {} bytes", LARGE_CAPACITY, large_tree_size);
 
     /*
@@ -223,7 +254,8 @@ fn test_tree_sizing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_528); // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_528);
+            // TODO: update
         }
 
         // low_mem_insert only
@@ -232,7 +264,8 @@ fn test_tree_sizing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 41_040); // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 41_040);
+            // TODO: update
         }
 
         // high_assurance only
@@ -241,7 +274,8 @@ fn test_tree_sizing() {
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_496); // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_496);
+            // TODO: update
         }
 
         // fast_rebalance only
@@ -250,7 +284,8 @@ fn test_tree_sizing() {
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 57_440); // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 57_440);
+            // TODO: update
         }
 
         // Optimize for size
@@ -259,7 +294,8 @@ fn test_tree_sizing() {
         #[cfg(feature = "low_mem_insert")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_432); // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_432);
+            // TODO: update
         }
     }
 }

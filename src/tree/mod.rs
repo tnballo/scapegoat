@@ -1,9 +1,4 @@
-// TODO: remove this!
-mod types;
-pub(crate) use types::{ElemRefIter, ElemRefVec};
-
 mod node_dispatch;
-mod arena_dispatch;
 
 #[cfg(test)]
 mod test;

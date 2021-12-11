@@ -512,8 +512,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     ) -> SmallVec<[U; N]> {
         let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, Idx>, U); N]> =
             smallvec![(&self.arena[idx], U::checked_from(idx))];
-        let mut subtree_worklist: SmallVec<[&Node<K, V, Idx>; N]> =
-            smallvec![&self.arena[idx]];
+        let mut subtree_worklist: SmallVec<[&Node<K, V, Idx>; N]> = smallvec![&self.arena[idx]];
 
         while let Some(node) = subtree_worklist.pop() {
             if let Some(left_idx) = node.left_idx() {
@@ -630,7 +629,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(&mut self, key: K, val: V) -> Option<V> {
+    fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
+        &mut self,
+        key: K,
+        val: V,
+    ) -> Option<V> {
         let mut path: SmallVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
         let opt_val = self.priv_insert(&mut path, key, val);
 
@@ -1056,7 +1059,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             parent_subtree_size = self.get_subtree_size_differential::<U>(
                 path[parent_path_idx].usize(),     // Parent index
                 path[parent_path_idx + 1].usize(), // Child index
-                node_subtree_size,         // Child subtree size
+                node_subtree_size,                 // Child subtree size
             );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
@@ -1085,7 +1088,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             parent_subtree_size = self.get_subtree_size_differential::<U>(
                 path[parent_path_idx].usize(),     // Parent index
                 path[parent_path_idx + 1].usize(), // Child index
-                node_subtree_size,         // Child subtree size
+                node_subtree_size,                 // Child subtree size
             );
 
             debug_assert!(parent_subtree_size > node_subtree_size);
@@ -1234,8 +1237,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         // Iteratively re-assign all children
         while let Some((sorted_idx, parent_nrh)) = subtree_worklist.pop() {
-            let parent_node = &mut self
-                .arena[sorted_arena_idxs[sorted_idx.usize()]];
+            let parent_node = &mut self.arena[sorted_arena_idxs[sorted_idx.usize()]];
 
             parent_node.set_left_idx(None);
             parent_node.set_right_idx(None);

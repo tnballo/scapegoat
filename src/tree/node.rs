@@ -276,7 +276,8 @@ mod tests {
         {
             // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20); // TODO: update
+                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20);
+                // TODO: update
             }
         }
 
@@ -295,7 +296,8 @@ mod tests {
         {
             // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
             if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16); // TODO: update
+                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
+                // TODO: update
             }
         }
     }

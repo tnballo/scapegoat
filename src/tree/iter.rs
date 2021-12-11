@@ -1,8 +1,8 @@
 use smallvec::SmallVec;
 
-use super::tree::{SGTree, Idx};
 use super::node::Node;
 use super::node_dispatch::SmallNode;
+use super::tree::{Idx, SGTree};
 
 // Immutable Reference Iterator ----------------------------------------------------------------------------------------
 
