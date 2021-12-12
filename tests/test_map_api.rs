@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
-use scapegoat::SGMap;
+use scapegoat::{SGMap, SGErr};
 
 use rand::Rng;
 
 const DEFAULT_CAPACITY: usize = 10;
+
+// Normal APIs ---------------------------------------------------------------------------------------------------------
 
 #[test]
 fn test_debug() {
@@ -243,40 +245,61 @@ fn test_map_iter_mut_rand() {
 fn test_map_append() {
     let mut a = SGMap::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        a.insert(1, "1");
-        a.insert(2, "2");
-        a.insert(3, "3");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(a.insert(1, "1").is_ok());
-        assert!(a.insert(2, "2").is_ok());
-        assert!(a.insert(3, "3").is_ok());
-    }
+    a.insert(1, "1");
+    a.insert(2, "2");
+    a.insert(3, "3");
 
     let mut b = SGMap::<_, _, DEFAULT_CAPACITY>::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        b.insert(4, "4");
-        b.insert(5, "5");
-        b.insert(6, "6");
-        a.append(&mut b);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(b.insert(4, "4").is_ok());
-        assert!(b.insert(5, "5").is_ok());
-        assert!(b.insert(6, "6").is_ok());
-        assert!(a.append(&mut b).is_ok());
-    }
+    b.insert(4, "4");
+    b.insert(5, "5");
+    b.insert(6, "6");
+    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
+
+    assert_eq!(
+        a.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
+    );
+}
+
+
+// Fallible APIs -------------------------------------------------------------------------------------------------------
+
+#[test]
+fn test_map_insert_fallible() {
+    let mut a = SGMap::<_, _, 3>::new();
+
+    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+
+    assert_eq!(a.try_insert(3, "3"), Ok(None));
+    assert_eq!(a.try_insert(1, "1"), Ok(Some("1"))); // CRITICAL TODO: interesting bug, this should work!
+    assert_eq!(a.try_insert(4, "4"), Err(SGErr::StackCapacityExceeded));
+}
+
+#[test]
+fn test_map_append_fallible() {
+    let mut a = SGMap::<_, _, 6>::new();
+
+    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+    assert!(a.try_insert(3, "3").is_ok());
+
+    let mut b = SGMap::<_, _, 6>::new();
+
+    assert!(b.try_insert(4, "4").is_ok());
+    assert!(b.try_insert(5, "5").is_ok());
+    assert!(b.try_insert(6, "6").is_ok());
+    assert!(a.try_append(&mut b).is_ok());
+
+    assert!(b.is_empty());
+    assert_eq!(b.try_insert(7, "7"), Ok(None));
+
+    assert_eq!(a.len(), 6);
+    assert_eq!(a.try_insert(7, "7"), Err(SGErr::StackCapacityExceeded));
 
     assert_eq!(
         a.into_iter().collect::<Vec<(usize, &str)>>(),

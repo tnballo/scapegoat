@@ -238,11 +238,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGMap<K, V, N>) {
         self.bst.append(&mut other.bst);
     }
 
+    // TODO: re-write this example!
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
@@ -271,9 +271,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGMap<K, V, N>) -> Result<(), SGErr> {
-        self.bst.append(&mut other.bst)
+    pub fn try_append(&mut self, other: &mut SGMap<K, V, N>) -> Result<(), SGErr> {
+        self.bst.try_append(&mut other.bst)
     }
 
     /// Insert a key-value pair into the map.
@@ -294,7 +293,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[&37], "c");
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, key: K, val: V) -> Option<V>
     where
         K: Ord,
@@ -302,6 +300,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
         self.bst.insert(key, val)
     }
 
+    // TODO: review this example!
     /// Insert a key-value pair into the map.
     /// Returns `Err` if map's stack capacity is full, else the `Ok` contains:
     /// * `None` if the map did not have this key present.
@@ -314,11 +313,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// use scapegoat::{SGMap, SGErr};
     ///
     /// let mut map = SGMap::<_, _, 10>::new();
-    /// assert_eq!(map.insert(37, "a"), Ok(None));
+    /// assert_eq!(map.try_insert(37, "a"), Ok(None));
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.insert(37, "c"), Ok(Some("b")));
+    /// assert_eq!(map.try_insert(37, "c"), Ok(Some("b")));
     /// assert_eq!(map[&37], "c");
     ///
     /// let mut key = 38;
@@ -331,14 +330,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!(map.last_key(), Some(&(37 + (map.capacity() - 1))));
     /// assert_eq!(map.len(), map.capacity());
     ///
-    /// assert_eq!(map.insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
+    /// assert_eq!(map.try_insert(key, "out of bounds"), Err(SGErr::StackCapacityExceeded));
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
     where
         K: Ord,
     {
-        self.bst.insert(key, val)
+        self.bst.try_insert(key, val)
     }
 
     /// Gets an iterator over the entries of the map, sorted by key.

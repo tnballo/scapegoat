@@ -3,11 +3,12 @@
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SGErr {
     /// Requested operation cannot complete, stack storage is full.
-    /// This error is unique to the `high_assurance` feature.
     StackCapacityExceeded,
 
-    /// Invalid rebalance factor requested, cannot set.
-    RebalanceFactorOutOfRange,
+    /*
+    /// Requested operation cannot complete, heap storage is full.
+    HeapCapacityExceeded,
+    */
 
     /// Reserved for future use
     Reserved2,
@@ -26,4 +27,23 @@ pub enum SGErr {
 
     /// Reserved for future use
     Reserved7,
+
+    /// Invalid rebalance factor requested, cannot set.
+    RebalanceFactorOutOfRange,
 }
+
+/*
+
+Requires nightly feature:
+
+#[cfg(test)]
+mod tests {
+    use crate::SGErr;
+    use std::mem::variant_count;
+
+    #[test]
+    fn test_err_var_cnt() {
+        assert_eq!(variant_count::<SGErr>(), 8);
+    }
+}
+*/

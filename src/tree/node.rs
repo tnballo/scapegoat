@@ -263,7 +263,6 @@ mod tests {
     fn test_node_sizing() {
         // No features
         #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
             assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
@@ -271,19 +270,13 @@ mod tests {
 
         // All features
         #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "high_assurance")]
         #[cfg(feature = "fast_rebalance")]
         {
-            // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
-            if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20);
-                // TODO: update
-            }
+            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20); // TODO: update
         }
 
         // fast_rebalance only
         #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "high_assurance"))]
         #[cfg(feature = "fast_rebalance")]
         {
             assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 48); // TODO: update
@@ -291,14 +284,9 @@ mod tests {
 
         // high_assurance only
         #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "high_assurance")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
-            if MAX_ELEMS < u16::MAX.into() {
-                assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
-                // TODO: update
-            }
+            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16); // TODO: update
         }
     }
 }

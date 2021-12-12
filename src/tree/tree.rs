@@ -110,7 +110,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
-    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SGTree<K, V, N>)
     where
         K: Ord,
@@ -136,8 +135,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
-    #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGTree<K, V, N>) -> Result<(), SGErr> {
+    pub fn try_append(&mut self, other: &mut SGTree<K, V, N>) -> Result<(), SGErr> {
         // Nothing to append!
         if other.is_empty() {
             return Ok(());
@@ -170,7 +168,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// If the tree did not have this key present, `None` is returned.
     /// If the tree did have this key present, the value is updated, the old value is returned,
     /// and the key is updated. This accommodates types that can be `==` without being identical.
-    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, key: K, val: V) -> Option<V>
     where
         K: Ord,
@@ -183,8 +180,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// * `None` if the tree did not have this key present.
     /// * The old value if the tree did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
-    #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
     where
         K: Ord,
     {

@@ -59,7 +59,9 @@ let mut stack_str = "your friend the";
 example.insert(3, "the");
 example.insert(2, "don't blame");
 example.insert(1, "Please");
-example.insert(4, "borrow checker");
+
+// Fallible insert variant
+assert!(example.try_insert(4, "borrow checker").is_ok());
 
 // Ordered reference iterator
 assert!(example
@@ -180,6 +182,10 @@ Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/maste
 Contributions are welcome!
 */
 
+// Test temp
+//#![feature(variant_count)]
+
+// Production
 #![forbid(unsafe_code)]
 #![cfg_attr(not(any(test, fuzzing)), no_std)]
 #![cfg_attr(not(any(test, fuzzing)), deny(missing_docs))]
