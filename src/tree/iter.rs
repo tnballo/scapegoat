@@ -109,7 +109,6 @@ pub struct IntoIter<K: Default, V: Default, const N: usize> {
 }
 
 impl<K: Ord + Default, V: Default, const N: usize> IntoIter<K, V, N> {
-    /// Constructor
     pub fn new(bst: SGTree<K, V, N>) -> Self {
         let mut ordered_iter = IntoIter {
             bst,

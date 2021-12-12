@@ -200,9 +200,10 @@ mod map;
 pub use crate::map::SGMap;
 
 /// [`SGMap`][crate::map::SGMap]'s custom iterator returns.
-pub mod map_structs;
+pub mod map_types;
 
-/*
 mod set;
 pub use crate::set::SGSet;
-*/
+
+/// [`SGSet`][crate::map::SGSet]'s custom iterator returns.
+pub mod set_types;

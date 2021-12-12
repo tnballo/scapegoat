@@ -1,5 +1,9 @@
 use crate::tree::{IntoIter, Iter, IterMut};
 
+// General Iterators ---------------------------------------------------------------------------------------------------
+
+// TODO: move here
+
 // Key Iterators -------------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility

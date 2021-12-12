@@ -129,7 +129,7 @@ let big_map: SGMap<u64, u64, 2_048> = SGMap::new(); // 2,048 item capacity
 
 The maximum supported capacity is `65_535` (e.g. `0xffff` or [`u16::MAX`](https://doc.rust-lang.org/std/primitive.u16.html#associatedconstant.MAX)) items.
 
-> **Warning:**
+> **WARNING:**
 > Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `N` (const generic capacity) and/or the stored item type (generic) is too large.
 > Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
 > Regardless, you must test to ensure you don't exceed the stack frame(s) size limit of your target platform.
@@ -172,7 +172,7 @@ The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.m
 
 * [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
-* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: 2-3x more stack space is required for runtime book keeping (e.g. rebalancing).
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 
 #### Trusted Dependencies
 

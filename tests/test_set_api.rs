@@ -1,5 +1,3 @@
-/* TODO: re-write/re-enable these tests
-
 use scapegoat::SGSet;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
@@ -26,7 +24,7 @@ fn test_clone() {
 
 #[test]
 fn test_basic_set_functionality() {
-    let mut sgs = SGSet::new();
+    let mut sgs = SGSet::<_, 10>::new();
 
     assert!(sgs.is_empty());
 
@@ -110,7 +108,7 @@ fn test_basic_set_functionality() {
 #[test]
 fn test_set_from_iter() {
     let keys = vec![1, 10, 100];
-    let sgs = SGSet::from_iter(keys.into_iter());
+    let sgs = SGSet::<_, 3>::from_iter(keys.into_iter());
 
     assert!(sgs.len() == 3);
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
@@ -128,7 +126,7 @@ fn test_set_from_iter_panic() {
 #[test]
 fn test_set_iter() {
     let keys = vec![1, 2, 3];
-    let sgs = SGSet::from_iter(keys.into_iter());
+    let sgs = SGSet::<_, 3>::from_iter(keys.into_iter());
     let mut sgs_iter = sgs.iter();
 
     assert_eq!(sgs_iter.next(), Some(&1));
@@ -155,7 +153,7 @@ fn test_set_append() {
         assert!(a.insert(3).is_ok());
     }
 
-    let mut b = SGSet::new();
+    let mut b = SGSet::<_, 10>::new();
 
     #[cfg(not(feature = "high_assurance"))]
     {
@@ -227,7 +225,7 @@ fn test_set_intersection() {
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     assert_eq!(intersection, [2, 4, 10]);
 
-    let c: SGSet<usize> = SGSet::new();
+    let c: SGSet<usize, 10> = SGSet::new();
     assert!(c.is_empty());
 
     let intersection: Vec<_> = c.intersection(&b).cloned().collect();
@@ -236,39 +234,39 @@ fn test_set_intersection() {
 
 #[test]
 fn test_set_difference() {
-    let a = SGSet::from_iter(&[1, 3, 9, 7]);
-    let b = SGSet::from_iter(&[2, 8, 9, 1]);
+    let a = SGSet::from_iter([1, 3, 9, 7]);
+    let b = SGSet::<_, 4>::from_iter([2, 8, 9, 1]);
     assert_eq!(
-        a.difference(&b).copied().collect::<Vec<&usize>>(),
-        vec![&3, &7]
+        a.difference(&b).copied().collect::<Vec<usize>>(),
+        vec![3, 7]
     );
 }
 
 #[test]
 fn test_set_symmetric_difference() {
-    let a = SGSet::from_iter(&[1, 2, 3, 4, 5]);
-    let b = SGSet::from_iter(&[4, 5, 6, 7, 8]);
+    let a = SGSet::from_iter([1, 2, 3, 4, 5]);
+    let b = SGSet::<_, 5>::from_iter([4, 5, 6, 7, 8]);
     assert_eq!(
-        a.symmetric_difference(&b).copied().collect::<Vec<&usize>>(),
-        vec![&1, &2, &3, &6, &7, &8]
+        a.symmetric_difference(&b).copied().collect::<Vec<usize>>(),
+        vec![1, 2, 3, 6, 7, 8]
     );
 }
 
 #[test]
 fn test_set_union() {
-    let a = SGSet::from_iter(&[1, 3, 9, 7]);
-    let b = SGSet::from_iter(&[2, 8]);
+    let a = SGSet::from_iter([1, 3, 9, 7]);
+    let b = SGSet::<_, 2>::from_iter([2, 8]);
     assert_eq!(
-        a.union(&b).copied().collect::<Vec<&usize>>(),
-        vec![&1, &2, &3, &7, &8, &9]
+        a.union(&b).copied().collect::<Vec<usize>>(),
+        vec![1, 2, 3, 7, 8, 9]
     );
 }
 
 #[test]
 fn test_set_is_superset() {
-    let a = SGSet::from_iter(&[1, 3, 5]);
-    let b = SGSet::from_iter(&[5, 1]);
-    let c = SGSet::from_iter(&[1, 3, 4, 5]);
+    let a = SGSet::from_iter([1, 3, 5]);
+    let b = SGSet::from_iter([5, 1]);
+    let c = SGSet::<_, 4>::from_iter([1, 3, 4, 5]);
     assert!(a.is_superset(&b));
     assert!(!b.is_superset(&a));
     assert!(!a.is_superset(&c));
@@ -276,9 +274,9 @@ fn test_set_is_superset() {
 
 #[test]
 fn test_set_is_subset() {
-    let a = SGSet::from_iter(&[2, 4, 6]);
-    let b = SGSet::from_iter(&[1, 2, 3, 4, 5, 6, 7]);
-    let c = SGSet::from_iter(&[1, 2, 3, 4, 5]);
+    let a = SGSet::from_iter([2, 4, 6]);
+    let b = SGSet::from_iter([1, 2, 3, 4, 5, 6, 7]);
+    let c = SGSet::<_, 5>::from_iter([1, 2, 3, 4, 5]);
     assert!(a.is_subset(&b));
     assert!(!b.is_subset(&a));
     assert!(!a.is_subset(&c));
@@ -286,10 +284,9 @@ fn test_set_is_subset() {
 
 #[test]
 fn test_set_is_disjoint() {
-    let a = SGSet::from_iter(&[1, 2, 3]);
-    let b = SGSet::from_iter(&[4, 5, 6]);
-    let c = SGSet::from_iter(&[3, 4, 5]);
+    let a = SGSet::from_iter([1, 2, 3]);
+    let b = SGSet::from_iter([4, 5, 6]);
+    let c = SGSet::<_, 3>::from_iter([3, 4, 5]);
     assert!(a.is_disjoint(&b));
     assert!(!a.is_disjoint(&c));
 }
-*/

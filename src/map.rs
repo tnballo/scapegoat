@@ -4,7 +4,7 @@ use core::iter::FromIterator;
 use core::ops::Index;
 
 use crate::tree::{IntoIter, Iter, IterMut, SGErr, SGTree};
-use crate::map_structs::{IntoKeys, Keys, IntoValues, Values, ValuesMut};
+use crate::map_types::{IntoKeys, Keys, IntoValues, Values, ValuesMut};
 
 /// Ordered map.
 /// A wrapper interface for `SGTree`.
