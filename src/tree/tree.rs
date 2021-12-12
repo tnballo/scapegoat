@@ -75,17 +75,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     ///     * If `a` reached `1.0`, it'd mean a tree that never rebalances.
     ///
     /// Returns `Err` if `0.5 <= alpha_num / alpha_denom < 1.0` isn't `true` (invalid `a`, out of range).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use scapegoat::SGTree;
-    ///
-    /// let mut sgt: SGTree<isize, isize, 10> = SGTree::new();
-    ///
-    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
-    /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
-    /// ```
     pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
         let a = alpha_num / alpha_denom;
         match (0.5..1.0).contains(&a) {
@@ -100,20 +89,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
     /// See [the corresponding setter method][SGTree::set_rebal_param] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use scapegoat::SGTree;
-    ///
-    /// let mut sgt: SGTree<isize, isize, 10> = SGTree::new();
-    ///
-    /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
-    /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
-    ///
-    /// // Get the currently set value
-    /// assert_eq!(sgt.rebal_param(), (2.0, 3.0));
-    /// ```
     pub fn rebal_param(&self) -> (f32, f32) {
         (self.alpha_num, self.alpha_denom)
     }
@@ -218,54 +193,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     /// Gets an iterator over the entries of the tree, sorted by key.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use scapegoat::SGTree;
-    ///
-    /// let mut tree = SGTree::<_, _, 10>::new();
-    /// tree.insert(3, "c");
-    /// tree.insert(2, "b");
-    /// tree.insert(1, "a");
-    ///
-    /// for (key, value) in tree.iter() {
-    ///     println!("{}: {}", key, value);
-    /// }
-    ///
-    /// let (first_key, first_value) = tree.iter().next().unwrap();
-    /// assert_eq!((*first_key, *first_value), (1, "a"));
-    /// ```
     pub fn iter(&self) -> Iter<'_, K, V, N> {
         Iter::new(self)
     }
 
     /// Gets a mutable iterator over the entries of the tree, sorted by key.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use scapegoat::SGTree;
-    ///
-    /// let mut tree = SGTree::<_, _, 10>::new();
-    /// tree.insert("a", 1);
-    /// tree.insert("b", 2);
-    /// tree.insert("c", 3);
-    ///
-    /// // Add 10 to the value if the key isn't "a"
-    /// for (key, value) in tree.iter_mut() {
-    ///     if key != &"a" {
-    ///         *value += 10;
-    ///     }
-    /// }
-    ///
-    /// let (second_key, second_value) = tree.iter().skip(1).next().unwrap();
-    /// assert_eq!((*second_key, *second_value), ("b", 12));
-    /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V, N> {
         IterMut::new(self)
     }
@@ -1319,13 +1251,6 @@ where
     K: Ord + Default,
     V: Default,
 {
-    /// ```
-    /// use scapegoat::SGTree;
-    ///
-    /// let tree1 = SGTree::from([(1, 2), (3, 4)]);
-    /// let tree2: SGTree<_, _, 2> = [(1, 2), (3, 4)].into();
-    /// assert_eq!(tree1, tree2);
-    /// ```
     fn from(arr: [(K, V); N]) -> Self {
         core::array::IntoIter::new(arr).collect()
     }

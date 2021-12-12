@@ -194,10 +194,13 @@ include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 pub use crate::tree::{Arena, Node, NodeGetHelper, NodeRebuildHelper};
 
 mod tree;
-pub use crate::tree::{SGErr, SGTree};
+pub use crate::tree::SGErr;
 
 mod map;
-pub use crate::map::{IntoKeys, IntoValues, Keys, SGMap, Values, ValuesMut};
+pub use crate::map::SGMap;
+
+/// [`SGMap`][crate::map::SGMap]'s custom iterator returns.
+pub mod map_structs;
 
 /*
 mod set;
