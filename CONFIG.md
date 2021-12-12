@@ -18,25 +18,21 @@ It controls the trade-off between total rebuild time and maximum height guarante
 
 We choose 2/3, e.g. `a = 0.666...`, by default.
 
-* This is the same  default used in the [recursive] [Open Data Structures textbook implementation](https://opendatastructures.org/ods-java/8_Scapegoat_Trees.html) of a scapegoat tree.
-
 * The original paper does not recommend any specific value for `a`, but Figure 4 shows comparative results for values in the range `0.55 <= a < 0.75`. The authors recommend tuning `a` for your expected workload.
+
+* This is the same  default used in the [recursive] [Open Data Structures textbook implementation](https://opendatastructures.org/ods-java/8_Scapegoat_Trees.html) of a scapegoat tree.
 
 Note our default is almost exactly in the middle of the paper's range, suggesting it's a balanced choice (pun intended).
 
-Just like with stack arena size, `a` can be compile-timed configured by exporting environment variables before build.
-The `a` denominator is the floating point string assigned to env var `SG_ALPHA_NUMERATOR`.
-The `a` denominator is the floating point string assigned to env var `SG_ALPHA_DENOMINATOR`.
+`a` can be changed at runtime via the API `set_rebal_param(alpha_num: f32, alpha_denom: f32)`.
+The library's performance characteristics can be tuned on-the-fly, without recompiling.
 For example, manually setting the default 2/3 would be:
 
+```rust
+use scapegoat::SGMap;
+let mut map: SGMap<isize, isize, 10> = SGMap::new();
+assert!(map.set_rebal_param(2.0, 3.0).is_ok());
 ```
-export SG_ALPHA_NUMERATOR=2.0
-export SG_ALPHA_DENOMINATOR=3.0
-cargo build --release
-```
-
-`a` can also be changed at runtime via the API `set_rebal_param(alpha_num: f32, alpha_denom: f32)`.
-The library's performance characteristics can be tuned on-the-fly, without recompiling.
 
 ## Additional Features
 

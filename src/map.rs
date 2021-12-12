@@ -56,6 +56,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(map.set_rebal_param(2.0, 3.0).is_ok());
     /// ```
+    #[doc(alias = "rebalance")]
+    #[doc(alias = "alpha")]
     pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
@@ -76,6 +78,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// // Get the currently set value
     /// assert_eq!(map.rebal_param(), (2.0, 3.0));
     /// ```
+    #[doc(alias = "rebalance")]
+    #[doc(alias = "alpha")]
     pub fn rebal_param(&self) -> (f32, f32) {
         self.bst.rebal_param()
     }

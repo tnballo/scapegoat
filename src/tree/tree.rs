@@ -12,15 +12,17 @@ use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::SmallNode;
 
-use crate::{ALPHA_DENOM, ALPHA_NUM};
-
 #[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use smallvec::{smallvec, SmallVec};
 
-// TODO: document rationale in updated README for v2.0
+// TODO: doc link here
 pub(crate) type Idx = u16;
+
+// See: https://github.com/tnballo/scapegoat/blob/master/CONFIG.md
+const DEFAULT_ALPHA_NUM: f32 = 2.0;
+const DEFAULT_ALPHA_DENOM: f32 = 3.0;
 
 /// A memory-efficient, self-balancing binary search tree.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
@@ -57,8 +59,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             max_idx: 0,
             min_idx: 0,
             curr_size: 0,
-            alpha_num: ALPHA_NUM,
-            alpha_denom: ALPHA_DENOM,
+            alpha_num: DEFAULT_ALPHA_NUM,
+            alpha_denom: DEFAULT_ALPHA_DENOM,
             max_size: 0,
             rebal_cnt: 0,
         }
