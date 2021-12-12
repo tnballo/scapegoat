@@ -199,11 +199,11 @@ pub use crate::tree::SGErr;
 mod map;
 pub use crate::map::SGMap;
 
-/// [`SGMap`][crate::map::SGMap]'s custom iterator returns.
+/// [`SGMap`][crate::map::SGMap]'s iterator return types.
 pub mod map_types;
 
 mod set;
 pub use crate::set::SGSet;
 
-/// [`SGSet`][crate::map::SGSet]'s custom iterator returns.
+/// [`SGSet`][crate::set::SGSet]'s iterator return types.
 pub mod set_types;

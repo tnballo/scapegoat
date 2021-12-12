@@ -3,16 +3,19 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
+use crate::set_types::{Difference, Intersection, IntoIter, Iter, SymmetricDifference, Union};
 use crate::tree::{SGErr, SGTree};
-use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter}; // TODO: remove once iters moved to set_types.rs
-use crate::set_types::{Difference, SymmetricDifference, Union, Intersection};
 
-/// Ordered set.
-/// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
+/// Embedded-friendly ordered set.
+///
+/// ### Attribution Note
+///
+/// The majority of API examples and descriptions are adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
+/// The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGSet<T: Ord + Default, const N: usize> {
-    bst: SGTree<T, (), N>,
+    pub(crate) bst: SGTree<T, (), N>,
 }
 
 impl<T: Ord + Default, const N: usize> SGSet<T, N> {
@@ -832,25 +835,6 @@ impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SGSet<T, N> {
 
 // TODO: move this to set_types.rs and document
 /// Reference iterator wrapper
-pub struct Iter<'a, T: Ord + Default, const N: usize> {
-    ref_iter: TreeIter<'a, T, (), N>,
-}
-
-impl<'a, T: Ord + Default, const N: usize> Iter<'a, T, N> {
-    pub fn new(set: &'a SGSet<T, N>) -> Self {
-        Iter {
-            ref_iter: TreeIter::new(&set.bst),
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> Iterator for Iter<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.ref_iter.next().map(|(k, _)| k)
-    }
-}
 
 // Consuming iterator
 impl<T: Ord + Default, const N: usize> IntoIterator for SGSet<T, N> {
@@ -859,28 +843,6 @@ impl<T: Ord + Default, const N: usize> IntoIterator for SGSet<T, N> {
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter::new(self)
-    }
-}
-
-// TODO: move this to set_types.rs and document
-/// Consuming iterator wrapper
-pub struct IntoIter<T: Ord + Default, const N: usize> {
-    cons_iter: TreeIntoIter<T, (), N>,
-}
-
-impl<T: Ord + Default, const N: usize> IntoIter<T, N> {
-    pub fn new(set: SGSet<T, N>) -> Self {
-        IntoIter {
-            cons_iter: TreeIntoIter::new(set.bst),
-        }
-    }
-}
-
-impl<T: Ord + Default, const N: usize> Iterator for IntoIter<T, N> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.cons_iter.next().map(|(k, _)| k)
     }
 }
 

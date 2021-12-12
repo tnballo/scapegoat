@@ -29,7 +29,7 @@ fn test_clone() {
 
 #[test]
 fn test_basic_map_functionality() {
-    let mut sgm = SGMap::<_,_, DEFAULT_CAPACITY>::new();
+    let mut sgm = SGMap::<_, _, DEFAULT_CAPACITY>::new();
 
     assert!(sgm.is_empty());
 

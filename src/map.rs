@@ -3,16 +3,19 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::tree::{IntoIter, Iter, IterMut, SGErr, SGTree};
-use crate::map_types::{IntoKeys, Keys, IntoValues, Values, ValuesMut};
+use crate::map_types::{IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
+use crate::tree::{SGErr, SGTree};
 
-/// Ordered map.
-/// A wrapper interface for `SGTree`.
-/// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
+/// Embedded-friendly ordered map.
+///
+/// ### Attribution Note
+///
+/// The majority of API examples and descriptions are adapted or directly copied from the standard library's [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html).
+/// The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
 #[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct SGMap<K: Ord + Default, V: Default, const N: usize> {
-    bst: SGTree<K, V, N>,
+    pub(crate) bst: SGTree<K, V, N>,
 }
 
 impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
@@ -356,7 +359,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     pub fn iter(&self) -> Iter<'_, K, V, N> {
-        Iter::new(&self.bst)
+        Iter::new(&self)
     }
 
     /// Gets a mutable iterator over the entries of the map, sorted by key.
@@ -384,7 +387,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!((*second_key, *second_value), ("b", 12));
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V, N> {
-        IterMut::new(&mut self.bst)
+        IterMut::new(self)
     }
 
     /// Removes a key from the map, returning the stored key and value if the key
@@ -868,7 +871,6 @@ impl<K: Ord + Default, V: Default, const N: usize> IntoIterator for SGMap<K, V, 
     type IntoIter = IntoIter<K, V, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter::new(self.bst)
+        IntoIter::new(self)
     }
 }
-
