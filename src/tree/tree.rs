@@ -81,7 +81,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// ```
     /// use scapegoat::SGTree;
     ///
-    /// let mut sgt: SGTree<isize, isize> = SGTree::new();
+    /// let mut sgt: SGTree<isize, isize, 10> = SGTree::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
@@ -106,7 +106,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// ```
     /// use scapegoat::SGTree;
     ///
-    /// let mut sgt: SGTree<isize, isize> = SGTree::new();
+    /// let mut sgt: SGTree<isize, isize, 10> = SGTree::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(sgt.set_rebal_param(2.0, 3.0).is_ok());
@@ -226,7 +226,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// ```
     /// use scapegoat::SGTree;
     ///
-    /// let mut tree = SGTree::new();
+    /// let mut tree = SGTree::<_, _, 10>::new();
     /// tree.insert(3, "c");
     /// tree.insert(2, "b");
     /// tree.insert(1, "a");
@@ -251,7 +251,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// ```
     /// use scapegoat::SGTree;
     ///
-    /// let mut tree = SGTree::new();
+    /// let mut tree = SGTree::<_, _, 10>::new();
     /// tree.insert("a", 1);
     /// tree.insert("b", 2);
     /// tree.insert("c", 3);
@@ -478,7 +478,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(not(feature = "fast_rebalance"))]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
-        if (0..self.arena.len()).contains(&idx) {
+        if self.arena.is_occupied(idx) {
             let node = &self.arena[idx];
             let ngh: NodeGetHelper<Idx> = self.priv_get(None, node.key());
             debug_assert!(
@@ -495,7 +495,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // A wrapper for by-key removal, traversal is still required to determine node parent.
     #[cfg(feature = "fast_rebalance")]
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
-        if (0..self.arena.len()).contains(&idx) {
+        if self.arena.is_occupied(idx) {
             let node = &self.arena[idx];
             let mut path = Arena::new_idx_vec();
             let ngh = self.priv_get(Some(&mut path), node.key());
@@ -1323,7 +1323,7 @@ where
     /// use scapegoat::SGTree;
     ///
     /// let tree1 = SGTree::from([(1, 2), (3, 4)]);
-    /// let tree2: SGTree<_, _> = [(1, 2), (3, 4)].into();
+    /// let tree2: SGTree<_, _, 2> = [(1, 2), (3, 4)].into();
     /// assert_eq!(tree1, tree2);
     /// ```
     fn from(arr: [(K, V); N]) -> Self {
