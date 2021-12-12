@@ -36,7 +36,7 @@ Strives for three properties:
 
 * **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code):
     * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `from`, etc.) is available.
-    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SGErr>`](crate::SGErr)>.
+    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SGErr>`](crate::SGErr).
     * Heap fragmentation doesn't impact **Worst Case Execution Time (WCET)**, this library doesn't use the heap.
 
 Other features:
@@ -53,9 +53,9 @@ use scapegoat::SGMap;
 use smallvec::{smallvec, SmallVec};
 
 // This const is an argument to each generic constructor below.
-// So we'll use *only the bare minium* memory for 5 elements.
-// * Stack RAM usage can be precisely controlled: per map instance (constructor call-site).
-// * To save executable RAM/ROM (monomorphization!), stick to a single global like this.
+// So we'll use *only the bare minimum* memory for 5 elements.
+// - Stack RAM usage can be precisely controlled: per map instance (constructor call-site).
+// - To save executable RAM/ROM (monomorphization!), stick to a global capacity like this.
 const CAPACITY: usize = 5;
 
 let mut example = SGMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
@@ -150,7 +150,7 @@ The standard library has been heavily optimized for cache performance.
 This library is optimized for low, stack-only memory footprint.
 It offers:
 
-* **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
+* **Best-effort Compatibility:** APIs are mostly a subset of `BTreeMap`'s/`BTreeSet`'s, making it a mostly "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
 
