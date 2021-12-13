@@ -129,9 +129,17 @@ The maximum supported capacity is `65_535` (e.g. `0xffff` or [`u16::MAX`](https:
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
 
-### Considerations
+### Trusted Dependencies
 
-#### General Goals
+This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
+
+* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
+* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
+* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
+
+### Additional Considerations
+
+**General Goals**
 
 This project is an exercise in safe, portable data structure design.
 The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
@@ -148,9 +156,9 @@ It offers:
 
 * **Tunable Performance:** A [single floating point value](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#tuning-the-the-trees-a-factor) optimizes relative performance of `insert`, `get`, and `remove` operation classes. And it can be changed at runtime.
 
-#### Algorithmic Complexity
+**Algorithmic Complexity**
 
-Space complexity is always `O(n)`.
+Space complexity is always `O(n)`. Time complexity:
 
 | Operation | Average Case | Worst Case |
 | --- | --- | --- |
@@ -160,19 +168,11 @@ Space complexity is always `O(n)`.
 
 The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
 
-#### Memory Footprint Demos
+**Memory Footprint Demos**
 
 * [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
 * [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
-
-#### Trusted Dependencies
-
-This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
-
-* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
-* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
-* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
 ### License and Contributing
 
