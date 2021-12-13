@@ -31,7 +31,6 @@ rand = { version = "0.7", features = ["small_rng"] }
 lazy_static = "1"
 
 [features]
-high_assurance = []
 alt_impl = []
 low_mem_insert = []
 fast_rebalance = []

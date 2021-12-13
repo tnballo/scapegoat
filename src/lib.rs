@@ -72,7 +72,7 @@ assert!(example
 // Container indexing
 assert_eq!(example[&3], "the");
 
-// Fast (no search) head removal
+// Head removal
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
@@ -113,6 +113,8 @@ let small_map: SGMap<u64, u64, 100> = SGMap::new(); // 100 item capacity
 let big_map: SGMap<u64, u64, 2_048> = SGMap::new(); // 2,048 item capacity
 
 #[cfg(target_pointer_width = "64")]
+#[cfg(not(feature = "low_mem_insert"))]
+#[cfg(not(feature = "fast_rebalance"))]
 {
     assert_eq!(size_of_val(&small_map), 2_696); // 2.7 KB
     assert_eq!(size_of_val(&big_map), 53_344);  // 53.3 KB

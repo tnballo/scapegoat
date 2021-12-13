@@ -80,7 +80,7 @@ assert!(example
 // Container indexing
 assert_eq!(example[&3], "the");
 
-// O(1), e.g. constant time, head removal
+// Head removal
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
@@ -121,6 +121,8 @@ let small_map: SGMap<u64, u64, 100> = SGMap::new(); // 100 item capacity
 let big_map: SGMap<u64, u64, 2_048> = SGMap::new(); // 2,048 item capacity
 
 #[cfg(target_pointer_width = "64")]
+#[cfg(not(feature = "low_mem_insert"))]
+#[cfg(not(feature = "fast_rebalance"))]
 {
     assert_eq!(size_of_val(&small_map), 2_696); // 2.7 KB
     assert_eq!(size_of_val(&big_map), 53_344);  // 53.3 KB
@@ -173,6 +175,8 @@ Space complexity is always `O(n)`. Time complexity:
 | `get` | `O(log n)` | `O(log n)` |
 | `insert` | `O(log n)` | Amortized `O(log n)` |
 | `remove` | `O(log n)` | Amortized `O(log n)` |
+| `first` | `O(1)` | `O(1)` |
+| `last` | `O(1)` | `O(1)` |
 
 The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
 

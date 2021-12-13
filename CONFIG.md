@@ -34,7 +34,7 @@ let mut map: SGMap<isize, isize, 10> = SGMap::new();
 assert!(map.set_rebal_param(2.0, 3.0).is_ok());
 ```
 
-## Additional Features
+## Optional Features
 
 ### The `low_mem_insert` feature
 

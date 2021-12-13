@@ -82,11 +82,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
         self.bst.rebal_param()
     }
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
-    /// Attempting to insert elements beyond capacity will panic, unless the `high_assurance` feature is enabled.
-    ///
-    /// If using `std`: fast capacity, e.g. number of set elements stored on the stack.
-    /// Elements inserted beyond capacity will be stored on the heap.
+    /// Total capacity, e.g. maximum number of set elements.
     ///
     /// # Examples
     ///

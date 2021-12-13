@@ -33,9 +33,9 @@ lazy_static::lazy_static! {
 }
 
 lazy_static::lazy_static! {
-    pub static ref SGS_100_RAND: SGSet<usize> = SGSet::from_iter(RAND_100.keys.clone());
-    pub static ref SGS_1_000_RAND: SGSet<usize> = SGSet::from_iter(RAND_1_000.keys.clone());
-    pub static ref SGS_10_000_RAND: SGSet<usize> = SGSet::from_iter(RAND_10_000.keys.clone());
+    pub static ref SGS_100_RAND: SGSet<usize, 100> = SGSet::from_iter(RAND_100.keys.clone());
+    pub static ref SGS_1_000_RAND: SGSet<usize, 1_000> = SGSet::from_iter(RAND_1_000.keys.clone());
+    pub static ref SGS_10_000_RAND: SGSet<usize, 10_000> = SGSet::from_iter(RAND_10_000.keys.clone());
 
     pub static ref STD_100_RAND: BTreeSet<usize> = BTreeSet::from_iter(RAND_100.keys.clone());
     pub static ref STD_1_000_RAND: BTreeSet<usize> = BTreeSet::from_iter(RAND_1_000.keys.clone());
@@ -69,9 +69,9 @@ lazy_static::lazy_static! {
 }
 
 lazy_static::lazy_static! {
-    pub static ref SGS_100_SEQ: SGSet<usize> = SGSet::from_iter(SEQ_100.keys.clone());
-    pub static ref SGS_1_000_SEQ: SGSet<usize> = SGSet::from_iter(SEQ_1_000.keys.clone());
-    pub static ref SGS_10_000_SEQ: SGSet<usize> = SGSet::from_iter(SEQ_10_000.keys.clone());
+    pub static ref SGS_100_SEQ: SGSet<usize, 100> = SGSet::from_iter(SEQ_100.keys.clone());
+    pub static ref SGS_1_000_SEQ: SGSet<usize, 1_000> = SGSet::from_iter(SEQ_1_000.keys.clone());
+    pub static ref SGS_10_000_SEQ: SGSet<usize, 10_000> = SGSet::from_iter(SEQ_10_000.keys.clone());
 
     pub static ref STD_100_SEQ: BTreeSet<usize> = BTreeSet::from_iter(SEQ_100.keys.clone());
     pub static ref STD_1_000_SEQ: BTreeSet<usize> = BTreeSet::from_iter(SEQ_1_000.keys.clone());

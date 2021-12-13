@@ -35,23 +35,11 @@ fn test_basic_map_functionality() {
 
     assert!(sgm.is_empty());
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgm.insert(1, "1");
-        sgm.insert(2, "2");
-        sgm.insert(3, "3");
-        sgm.insert(4, "4");
-        sgm.insert(5, "5");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgm.insert(1, "1").is_ok());
-        assert!(sgm.insert(2, "2").is_ok());
-        assert!(sgm.insert(3, "3").is_ok());
-        assert!(sgm.insert(4, "4").is_ok());
-        assert!(sgm.insert(5, "5").is_ok());
-    }
+    sgm.insert(1, "1");
+    sgm.insert(2, "2");
+    sgm.insert(3, "3");
+    sgm.insert(4, "4");
+    sgm.insert(5, "5");
 
     assert!(!sgm.is_empty());
     assert_eq!(sgm.len(), 5);
@@ -96,19 +84,9 @@ fn test_basic_map_functionality() {
 
     assert_eq!(sgm.len(), 2);
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgm.insert(0, "0");
-        sgm.insert(3, "3");
-        sgm.insert(10, "10");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgm.insert(0, "0").is_ok());
-        assert!(sgm.insert(3, "3").is_ok());
-        assert!(sgm.insert(10, "10").is_ok());
-    }
+    sgm.insert(0, "0");
+    sgm.insert(3, "3");
+    sgm.insert(10, "10");
 
     assert_eq!(sgm.len(), 5);
 
@@ -141,14 +119,15 @@ fn test_map_from_iter() {
     );
 }
 
-#[cfg(feature = "high_assurance")]
+/*
+TODO: re-enable for tinyvec
+
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_map_from_iter_panic() {
-    let sgm_temp: SGMap<isize, isize> = SGMap::new();
-    let max_capacity = sgm_temp.capacity();
-    let _ = SGMap::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
+    let _: SGMap<usize, usize, DEFAULT_CAPACITY> = SGMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
 }
+*/
 
 #[test]
 fn test_map_iter() {
@@ -212,13 +191,7 @@ fn test_map_iter_mut_rand() {
     let mut rng = rand::thread_rng();
 
     for _ in 0..CAPACITY {
-        #[cfg(not(feature = "high_assurance"))]
         sgm.insert(rng.gen(), 0);
-
-        #[cfg(feature = "high_assurance")]
-        {
-            assert!(sgm.insert(rng.gen(), 0).is_ok());
-        }
     }
 
     let min_key = *sgm.first_key().unwrap();

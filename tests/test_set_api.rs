@@ -2,6 +2,8 @@ use scapegoat::SGSet;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
+const DEFAULT_CAPACITY: usize = 10;
+
 #[test]
 fn test_debug() {
     let sgs = SGSet::from([3, 4, 1, 2, 5, 6]);
@@ -28,23 +30,11 @@ fn test_basic_set_functionality() {
 
     assert!(sgs.is_empty());
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgs.insert(1);
-        sgs.insert(2);
-        sgs.insert(3);
-        sgs.insert(4);
-        sgs.insert(5);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgs.insert(1).is_ok());
-        assert!(sgs.insert(2).is_ok());
-        assert!(sgs.insert(3).is_ok());
-        assert!(sgs.insert(4).is_ok());
-        assert!(sgs.insert(5).is_ok());
-    }
+    sgs.insert(1);
+    sgs.insert(2);
+    sgs.insert(3);
+    sgs.insert(4);
+    sgs.insert(5);
 
     assert!(!sgs.is_empty());
     assert_eq!(sgs.len(), 5);
@@ -75,19 +65,9 @@ fn test_basic_set_functionality() {
 
     assert_eq!(sgs.len(), 2);
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgs.insert(0);
-        sgs.insert(3);
-        sgs.insert(10);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgs.insert(0).is_ok());
-        assert!(sgs.insert(3).is_ok());
-        assert!(sgs.insert(10).is_ok());
-    }
+    sgs.insert(0);
+    sgs.insert(3);
+    sgs.insert(10);
 
     assert_eq!(sgs.len(), 5);
 
@@ -114,14 +94,15 @@ fn test_set_from_iter() {
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
 }
 
-#[cfg(feature = "high_assurance")]
+/*
+TODO: re-enable for tinyvec
+
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_set_from_iter_panic() {
-    let sgs_temp: SGSet<isize> = SGSet::new();
-    let max_capacity = sgs_temp.capacity();
-    let _ = SGSet::from_iter(0..(max_capacity + 1));
+    let _: SGSet<usize, DEFAULT_CAPACITY> = SGSet::from_iter(0..(DEFAULT_CAPACITY + 1));
 }
+*/
 
 #[test]
 fn test_set_iter() {
@@ -139,37 +120,16 @@ fn test_set_iter() {
 fn test_set_append() {
     let mut a = SGSet::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        a.insert(1);
-        a.insert(2);
-        a.insert(3);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(a.insert(1).is_ok());
-        assert!(a.insert(2).is_ok());
-        assert!(a.insert(3).is_ok());
-    }
+    a.insert(1);
+    a.insert(2);
+    a.insert(3);
 
     let mut b = SGSet::<_, 10>::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        b.insert(4);
-        b.insert(5);
-        b.insert(6);
-        a.append(&mut b);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(b.insert(4).is_ok());
-        assert!(b.insert(5).is_ok());
-        assert!(b.insert(6).is_ok());
-        assert!(a.append(&mut b).is_ok());
-    }
+    b.insert(4);
+    b.insert(5);
+    b.insert(6);
+    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -184,43 +144,19 @@ fn test_set_append() {
 fn test_set_intersection() {
     let mut a = SGSet::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        a.insert(2);
-        a.insert(4);
-        a.insert(6);
-        a.insert(8);
-        a.insert(10);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(a.insert(2).is_ok());
-        assert!(a.insert(4).is_ok());
-        assert!(a.insert(6).is_ok());
-        assert!(a.insert(8).is_ok());
-        assert!(a.insert(10).is_ok());
-    }
+    a.insert(2);
+    a.insert(4);
+    a.insert(6);
+    a.insert(8);
+    a.insert(10);
 
     let mut b = SGSet::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        b.insert(1);
-        b.insert(2);
-        b.insert(3);
-        b.insert(4);
-        b.insert(10);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(b.insert(1).is_ok());
-        assert!(b.insert(2).is_ok());
-        assert!(b.insert(3).is_ok());
-        assert!(b.insert(4).is_ok());
-        assert!(b.insert(10).is_ok());
-    }
+    b.insert(1);
+    b.insert(2);
+    b.insert(3);
+    b.insert(4);
+    b.insert(10);
 
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     assert_eq!(intersection, [2, 4, 10]);
@@ -254,8 +190,8 @@ fn test_set_symmetric_difference() {
 
 #[test]
 fn test_set_union() {
-    let a = SGSet::from_iter([1, 3, 9, 7]);
-    let b = SGSet::<_, 2>::from_iter([2, 8]);
+    let a: SGSet<_, DEFAULT_CAPACITY> = SGSet::from_iter([1, 3, 9, 7]);
+    let b = SGSet::<_, DEFAULT_CAPACITY>::from_iter([2, 8]);
     assert_eq!(
         a.union(&b).copied().collect::<Vec<usize>>(),
         vec![1, 2, 3, 7, 8, 9]
@@ -275,8 +211,8 @@ fn test_set_is_superset() {
 #[test]
 fn test_set_is_subset() {
     let a = SGSet::from_iter([2, 4, 6]);
-    let b = SGSet::from_iter([1, 2, 3, 4, 5, 6, 7]);
-    let c = SGSet::<_, 5>::from_iter([1, 2, 3, 4, 5]);
+    let b = SGSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5, 6, 7]);
+    let c = SGSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5]);
     assert!(a.is_subset(&b));
     assert!(!b.is_subset(&a));
     assert!(!a.is_subset(&c));

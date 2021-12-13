@@ -95,11 +95,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         (self.alpha_num, self.alpha_denom)
     }
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of tree pairs.
-    /// Attempting to insert pairs beyond capacity will panic, unless the `high_assurance` feature is enabled.
-    ///
-    /// If using `std`: fast capacity, e.g. number of tree pairs stored on the stack.
-    /// Pairs inserted beyond capacity will be stored on the heap.
+    /// Total capacity, e.g. maximum number of tree pairs.
     pub fn capacity(&self) -> usize {
         self.arena.capacity()
     }
@@ -428,7 +424,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         if self.arena.is_occupied(idx) {
             let node = &self.arena[idx];
-            let mut path = Arena::new_idx_vec();
+            let mut path = Arena::<K, V, Idx, N>::new_idx_vec();
             let ngh = self.priv_get(Some(&mut path), node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
@@ -582,8 +578,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         {
             // Update subtree sizes
             for parent_idx in &path {
-                let parent_node = self.arena[*parent_idx];
-                parent_node.subtree_size += 1;
+                let parent_node = &mut self.arena[(*parent_idx).usize()];
+                parent_node.set_subtree_size(parent_node.subtree_size() + 1);
             }
         }
 
@@ -740,7 +736,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let mut path = Arena::new_idx_vec();
+        let mut path = Arena::<K, V, Idx, N>::new_idx_vec();
         let ngh = self.priv_get(Some(&mut path), key);
         self.priv_remove(Some(&path), ngh)
     }
@@ -776,7 +772,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         let mut min_parent_idx = node_idx;
 
                         #[cfg(feature = "fast_rebalance")]
-                        let min_node_subtree_size = node_to_remove.subtree_size - 1;
+                        let min_node_subtree_size = node_to_remove.subtree_size() - 1;
 
                         loop {
                             let min_node = &self.arena[min_idx];
@@ -798,7 +794,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
                                             #[cfg(feature = "fast_rebalance")]
                                             {
-                                                min_parent_node.subtree_size -= 1;
+                                                min_parent_node.set_subtree_size(
+                                                    min_parent_node.subtree_size() - 1,
+                                                );
                                             }
                                         }
                                         break;
@@ -812,7 +810,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
                                             #[cfg(feature = "fast_rebalance")]
                                             {
-                                                min_parent_node.subtree_size -= 1;
+                                                min_parent_node.set_subtree_size(
+                                                    min_parent_node.subtree_size() - 1,
+                                                );
                                             }
                                         }
                                         break;
@@ -828,7 +828,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
                         #[cfg(feature = "fast_rebalance")]
                         {
-                            min_node.subtree_size = min_node_subtree_size;
+                            min_node.set_subtree_size(min_node_subtree_size);
                         }
 
                         // Return as new child
@@ -868,9 +868,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                     debug_assert!(opt_path.is_some());
                     if let Some(path) = opt_path {
                         for parent_idx in path {
-                            let parent_node = self.arena[*parent_idx];
-                            debug_assert!(parent_node.subtree_size > 1);
-                            parent_node.subtree_size -= 1;
+                            let parent_node = &mut self.arena[(*parent_idx).usize()];
+                            debug_assert!(parent_node.subtree_size() > 1);
+                            parent_node.set_subtree_size(parent_node.subtree_size() - 1);
                         }
                     }
                 }
@@ -924,15 +924,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         // Drain non-matches
         let mut drained_sgt = Self::new();
         for i in remove_idxs {
-            if let Some((key, val)) = self.priv_remove_by_idx(i) {
-                #[cfg(not(feature = "high_assurance"))]
-                {
-                    drained_sgt.insert(key, val);
-                }
-                #[cfg(feature = "high_assurance")]
-                {
-                    assert!(drained_sgt.insert(node.key(), node.val()).is_ok());
-                }
+            if let Some((k, v)) = self.priv_remove_by_idx(i) {
+                drained_sgt
+                    .try_insert(k, v)
+                    .expect("Stack-storage capacity exceeded!");
             }
         }
 
@@ -1062,7 +1057,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Retrieve cached subtree size
     #[cfg(feature = "fast_rebalance")]
     fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
-        self.arena[idx].subtree_size
+        self.arena[idx].subtree_size()
     }
 
     // Differential subtree size helper
@@ -1111,13 +1106,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     // Subtree size helper
     // Size already cached if `fast_rebalance` is enabled, no need for differential logic
     #[cfg(feature = "fast_rebalance")]
-    fn get_subtree_size_differential(
+    fn get_subtree_size_differential<U: SmallUnsigned>(
         &self,
         parent_idx: usize,
         _child_idx: usize,
         _child_subtree_size: usize,
     ) -> usize {
-        self.get_subtree_size(parent_idx)
+        self.get_subtree_size::<U>(parent_idx)
     }
 
     // Iterative in-place rebuild for balanced subtree
@@ -1206,8 +1201,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             // Set subtree size
             #[cfg(feature = "fast_rebalance")]
             {
-                parent_node.subtree_size = parent_nrh.high_idx - parent_nrh.low_idx + 1;
-                debug_assert!(parent_node.subtree_size >= 1);
+                parent_node
+                    .set_subtree_size(parent_nrh.high_idx.usize() - parent_nrh.low_idx.usize() + 1);
+                debug_assert!(parent_node.subtree_size() >= 1);
             }
         }
 
@@ -1288,11 +1284,8 @@ where
 {
     fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |(k, v)| {
-            #[cfg(not(feature = "high_assurance"))]
-            self.insert(k, v);
-
-            #[cfg(feature = "high_assurance")]
-            self.insert(k, v).expect("Stack-storage capacity exceeded!");
+            self.try_insert(k, v)
+                .expect("Stack-storage capacity exceeded!");
         });
     }
 }
@@ -1374,11 +1367,8 @@ where
         let mut sgt = SGTree::new();
 
         for (k, v) in iter {
-            #[cfg(not(feature = "high_assurance"))]
-            sgt.insert(k, v);
-
-            #[cfg(feature = "high_assurance")]
-            sgt.insert(k, v).expect("Stack-storage capacity exceeded!");
+            sgt.try_insert(k, v)
+                .expect("Stack-storage capacity exceeded!");
         }
 
         sgt

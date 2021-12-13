@@ -4,15 +4,13 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::node_dispatch::SmallNode;
 use super::tree::{Idx, SGTree};
-
-#[cfg(not(feature = "alt_impl"))]
 use super::SGErr;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use smallvec::{smallvec, SmallVec};
 
-const CAPACITY: usize = 1024;
+const CAPACITY: usize = 2048;
 
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
@@ -24,12 +22,7 @@ pub fn get_test_tree_and_keys() -> (SGTree<usize, &'static str, CAPACITY>, Vec<u
     assert!(sgt.is_empty());
 
     for k in &keys {
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(*k, "n/a").is_ok());
-
         assert_logical_invariants(&sgt);
     }
 
@@ -104,12 +97,7 @@ fn logical_fuzz<const N: usize>(
 
         // Rand value insert
         shadow_keys.insert(rand_key);
-
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(rand_key, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(rand_key, "n/a").is_ok());
 
         // Verify internal state post-insert
         if check_invars {
@@ -177,11 +165,7 @@ where
 {
     sgt.clear();
     for i in 0..sgt.capacity() {
-        #[cfg(not(feature = "high_assurance"))]
         assert!(sgt.insert(K::from(i), V::from(i)).is_none());
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(K::from(i), V::from(i)).is_ok());
     }
 
     assert_eq!(sgt.len(), sgt.capacity());
@@ -241,7 +225,6 @@ fn test_tree_sizing() {
     if CAPACITY == 1024 {
         // No features
         #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(not(feature = "fast_rebalance"))]
         {
@@ -250,52 +233,26 @@ fn test_tree_sizing() {
 
         // All features
         #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "high_assurance")]
         #[cfg(feature = "low_mem_insert")]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_528);
-            // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 20_560);
         }
 
         // low_mem_insert only
         #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "high_assurance"))]
         #[cfg(feature = "low_mem_insert")]
         #[cfg(not(feature = "fast_rebalance"))]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 41_040);
-            // TODO: update
-        }
-
-        // high_assurance only
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "high_assurance")]
-        #[cfg(not(feature = "low_mem_insert"))]
-        #[cfg(not(feature = "fast_rebalance"))]
-        {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 18_496);
-            // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_464);
         }
 
         // fast_rebalance only
         #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "high_assurance"))]
         #[cfg(not(feature = "low_mem_insert"))]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 57_440);
-            // TODO: update
-        }
-
-        // Optimize for size
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "high_assurance")]
-        #[cfg(feature = "low_mem_insert")]
-        #[cfg(not(feature = "fast_rebalance"))]
-        {
-            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 16_432);
-            // TODO: update
+            assert_eq!(core::mem::size_of::<SGTree<u32, u32, CAPACITY>>(), 22_624);
         }
     }
 }
@@ -346,50 +303,27 @@ fn test_from_iter() {
     );
 }
 
-#[cfg(feature = "high_assurance")]
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_from_iter_panic() {
-    let sgt_temp: SGTree<isize, isize, CAPACITY> = SGTree::new();
-    let max_capacity = sgt_temp.capacity();
-    let _ = SGTree::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
+    let _: SGTree<usize, usize, CAPACITY> =
+        SGTree::from_iter((0..(CAPACITY + 1)).map(|val| (val, val)));
 }
 
 #[test]
 fn test_append() {
     let mut a = SGTree::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        a.insert(1, "1");
-        a.insert(2, "2");
-        a.insert(3, "3");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(a.insert(1, "1").is_ok());
-        assert!(a.insert(2, "2").is_ok());
-        assert!(a.insert(3, "3").is_ok());
-    }
+    a.insert(1, "1");
+    a.insert(2, "2");
+    a.insert(3, "3");
 
     let mut b = SGTree::<_, _, CAPACITY>::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        b.insert(4, "4");
-        b.insert(5, "5");
-        b.insert(6, "6");
-        a.append(&mut b);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(b.insert(4, "4").is_ok());
-        assert!(b.insert(5, "5").is_ok());
-        assert!(b.insert(6, "6").is_ok());
-        assert!(a.append(&mut b).is_ok());
-    }
+    b.insert(4, "4");
+    b.insert(5, "5");
+    b.insert(6, "6");
+    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -407,11 +341,7 @@ fn test_two_child_removal_case_1() {
     let to_remove = 2;
 
     for k in &keys {
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     println!("Arena, pre-remove: {:#?}", sgt.arena);
@@ -434,11 +364,7 @@ fn test_two_child_removal_case_2() {
     let to_remove = 2;
 
     for k in &keys {
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     println!("Arena, pre-remove: {:#?}", sgt.arena);
@@ -461,11 +387,7 @@ fn test_two_child_removal_case_3() {
     let to_remove = 3;
 
     for k in &keys {
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
     sgt.remove(&to_remove);
@@ -532,12 +454,7 @@ fn test_first_last() {
     let keys = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let mut sgt = SGTree::<_, _, CAPACITY>::new();
     for k in &keys {
-        #[cfg(not(feature = "high_assurance"))]
         sgt.insert(*k, "n/a");
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt.insert(*k, "n/a").is_ok());
-
         assert_logical_invariants(&sgt);
         sgt.contains_key(k);
     }
@@ -560,61 +477,28 @@ fn test_first_last() {
 fn test_subtree_rebalance() {
     let mut sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgt.insert(237197427728999687, "n/a");
-        sgt.insert(2328219650045037451, "n/a");
-        sgt.insert(13658362701324851025, "n/a");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgt.insert(237197427728999687, "n/a").is_ok());
-        assert!(sgt.insert(2328219650045037451, "n/a").is_ok());
-        assert!(sgt.insert(13658362701324851025, "n/a").is_ok());
-    }
+    sgt.insert(237197427728999687, "n/a");
+    sgt.insert(2328219650045037451, "n/a");
+    sgt.insert(13658362701324851025, "n/a");
 
     sgt.remove(&13658362701324851025);
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgt.insert(2239831466376212988, "n/a");
-        sgt.insert(15954331640746224573, "n/a");
-        sgt.insert(8202281457156668544, "n/a");
-        sgt.insert(5226917524540172628, "n/a");
-        sgt.insert(11823668523937575827, "n/a");
-        sgt.insert(13519144312507908668, "n/a");
-        sgt.insert(17799627035639903362, "n/a");
-        sgt.insert(17491737414383996868, "n/a");
-        sgt.insert(2247619647701733096, "n/a");
-        sgt.insert(15122725631405182851, "n/a");
-        sgt.insert(9837932133859010449, "n/a");
-        sgt.insert(15426779056379992972, "n/a");
-        sgt.insert(1963900452029117196, "n/a");
-        sgt.insert(1328762018325194497, "n/a");
-        sgt.insert(7471075696232724572, "n/a");
-        sgt.insert(9350363297060113585, "n/a");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgt.insert(2239831466376212988, "n/a").is_ok());
-        assert!(sgt.insert(15954331640746224573, "n/a").is_ok());
-        assert!(sgt.insert(8202281457156668544, "n/a").is_ok());
-        assert!(sgt.insert(5226917524540172628, "n/a").is_ok());
-        assert!(sgt.insert(11823668523937575827, "n/a").is_ok());
-        assert!(sgt.insert(13519144312507908668, "n/a").is_ok());
-        assert!(sgt.insert(17799627035639903362, "n/a").is_ok());
-        assert!(sgt.insert(17491737414383996868, "n/a").is_ok());
-        assert!(sgt.insert(2247619647701733096, "n/a").is_ok());
-        assert!(sgt.insert(15122725631405182851, "n/a").is_ok());
-        assert!(sgt.insert(9837932133859010449, "n/a").is_ok());
-        assert!(sgt.insert(15426779056379992972, "n/a").is_ok());
-        assert!(sgt.insert(1963900452029117196, "n/a").is_ok());
-        assert!(sgt.insert(1328762018325194497, "n/a").is_ok());
-        assert!(sgt.insert(7471075696232724572, "n/a").is_ok());
-        assert!(sgt.insert(9350363297060113585, "n/a").is_ok());
-    }
+    sgt.insert(2239831466376212988, "n/a");
+    sgt.insert(15954331640746224573, "n/a");
+    sgt.insert(8202281457156668544, "n/a");
+    sgt.insert(5226917524540172628, "n/a");
+    sgt.insert(11823668523937575827, "n/a");
+    sgt.insert(13519144312507908668, "n/a");
+    sgt.insert(17799627035639903362, "n/a");
+    sgt.insert(17491737414383996868, "n/a");
+    sgt.insert(2247619647701733096, "n/a");
+    sgt.insert(15122725631405182851, "n/a");
+    sgt.insert(9837932133859010449, "n/a");
+    sgt.insert(15426779056379992972, "n/a");
+    sgt.insert(1963900452029117196, "n/a");
+    sgt.insert(1328762018325194497, "n/a");
+    sgt.insert(7471075696232724572, "n/a");
+    sgt.insert(9350363297060113585, "n/a");
 
     sgt.remove(&9350363297060113585);
 
@@ -622,11 +506,7 @@ fn test_subtree_rebalance() {
     assert!(sgt.contains_key(&13519144312507908668));
     let critical_val = 11827258012878092103;
 
-    #[cfg(not(feature = "high_assurance"))]
     sgt.insert(critical_val, "n/a");
-
-    #[cfg(feature = "high_assurance")]
-    assert!(sgt.insert(critical_val, "n/a").is_ok());
 
     assert!(sgt.contains_key(&11823668523937575827));
     assert!(sgt.contains_key(&critical_val));
@@ -638,29 +518,15 @@ fn test_subtree_rebalance() {
 #[test]
 fn test_logical_fuzz_fast() {
     let mut sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
-    let capacity = sgt.capacity();
-    logical_fuzz(&mut sgt, capacity, false); // Stack-only
-
-    // TODO: will need to be feature-gated on "alloc" in the future
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgt.clear();
-        logical_fuzz(&mut sgt, capacity + 2_000, false); // Stack + Heap
-    }
+    assert_eq!(CAPACITY, sgt.capacity());
+    logical_fuzz(&mut sgt, CAPACITY, false);
 }
 
 #[test]
 fn test_logical_fuzz_slow() {
     let mut sgt: SGTree<usize, &str, CAPACITY> = SGTree::new();
-    let capacity = sgt.capacity();
-    logical_fuzz(&mut sgt, capacity, true); // Stack-only
-
-    // TODO: will need to be feature-gated on "alloc" in the future
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgt.clear();
-        logical_fuzz(&mut sgt, capacity + 2_000, true); // Stack + Heap
-    }
+    assert_eq!(CAPACITY, sgt.capacity());
+    logical_fuzz(&mut sgt, CAPACITY, true);
 }
 
 #[test]
@@ -670,16 +536,8 @@ fn test_retain() {
     bt_map.insert(14483576400934207487, 0);
 
     let mut sg_map: SGTree<usize, usize, CAPACITY> = SGTree::new();
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sg_map.insert(14987934384537018497, 0);
-        sg_map.insert(14483576400934207487, 0);
-    }
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sg_map.insert(14987934384537018497, 0).is_ok());
-        assert!(sg_map.insert(14483576400934207487, 0).is_ok());
-    }
+    sg_map.insert(14987934384537018497, 0);
+    sg_map.insert(14483576400934207487, 0);
 
     assert!(sg_map.iter().eq(bt_map.iter()));
 
@@ -695,11 +553,7 @@ fn test_extend() {
     let mut sgt_2 = SGTree::<_, _, CAPACITY>::new();
 
     for i in 0..5 {
-        #[cfg(not(feature = "high_assurance"))]
         sgt_1.insert(i, i);
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt_1.insert(i, i).is_ok());
     }
 
     let iterable_1: SmallVec<[(&usize, &usize); 5]> =
@@ -708,11 +562,7 @@ fn test_extend() {
     assert!(sgt_1.iter().eq(iterable_1.into_iter()));
 
     for i in 5..10 {
-        #[cfg(not(feature = "high_assurance"))]
         sgt_2.insert(i, i);
-
-        #[cfg(feature = "high_assurance")]
-        assert!(sgt_2.insert(i, i).is_ok());
     }
 
     let iterable_2: SmallVec<[(&usize, &usize); 5]> =
@@ -747,16 +597,8 @@ fn test_slice_search() {
     assert_eq!(std::mem::size_of_val(&bad_food), 8);
 
     let mut sgt = SGTree::<_, _, CAPACITY>::new();
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgt.insert(bad_code, "badcode");
-        sgt.insert(bad_food, "badfood");
-    }
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgt.insert(bad_code, "badcode").is_ok());
-        assert!(sgt.insert(bad_food, "badfood").is_ok());
-    }
+    sgt.insert(bad_code, "badcode");
+    sgt.insert(bad_food, "badfood");
 
     let bad_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD];
     let bad_food_vec: Vec<u8> = vec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
@@ -769,29 +611,27 @@ fn test_slice_search() {
     assert_eq!(sgt.get(&bad_dude_vec[..]), None);
 }
 
-#[cfg(feature = "high_assurance")]
 #[test]
-fn test_high_assurance_insert() {
+fn test_fallible_insert() {
     let mut sgt: SGTree<usize, usize, CAPACITY> = SGTree::new();
     id_perm_fill(&mut sgt);
 
     // Fallible insert
     assert_eq!(
-        sgt.insert(usize::MAX, usize::MAX),
-        Err(super::error::SGErr::StackCapacityExceeded)
+        sgt.try_insert(usize::MAX, usize::MAX),
+        Err(SGErr::StackCapacityExceeded)
     );
 }
 
-#[cfg(feature = "high_assurance")]
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
-fn test_high_assurance_extend_panic() {
+fn test_extend_panic() {
     let mut sgt: SGTree<usize, usize, CAPACITY> = SGTree::new();
     id_perm_fill(&mut sgt);
 
     let mut sgt_2: SGTree<usize, usize, CAPACITY> = SGTree::new();
     for i in sgt_2.capacity()..(sgt_2.capacity() + 10) {
-        assert!(sgt_2.insert(i, i).is_ok());
+        assert!(sgt_2.try_insert(i, i).is_ok());
     }
 
     // Attempt to extend already full tree
@@ -844,7 +684,7 @@ fn test_clone() {
 
 #[cfg(not(feature = "alt_impl"))] // This affects rebalance count and is experimental.
 #[test]
-fn test_set_rebal_param_1() {
+fn test_set_rebal_param() {
     assert!(CAPACITY >= 100);
     let data: Vec<(usize, usize)> = (0..100).map(|x| (x, x)).collect();
     let sgt_1 = SGTree::<_, _, CAPACITY>::from_iter(data.clone().into_iter());
@@ -874,50 +714,6 @@ fn test_set_rebal_param_1() {
     assert_eq!(sgt_1.rebal_cnt(), 52);
     assert_eq!(sgt_2.rebal_cnt(), 8);
     assert_eq!(sgt_3.rebal_cnt(), 93);
-}
-
-// TODO: will need to be feature gated on "alloc" in the future
-#[cfg(not(feature = "alt_impl"))] // This affects rebalance count and is experimental.
-#[test]
-fn test_set_rebal_param_2() {
-    let data: Vec<(usize, usize)> = (0..10_000).map(|x| (x, x)).collect();
-    let sgt_1 = SGTree::<_, _, CAPACITY>::from_iter(data.clone().into_iter());
-
-    // Lax rebalancing
-    let mut sgt_2 = SGTree::<_, _, CAPACITY>::new();
-    assert!(sgt_2.set_rebal_param(0.9, 1.0).is_ok());
-    sgt_2.extend(data.clone().into_iter());
-
-    // Strict rebalancing
-    let mut sgt_3 = SGTree::<_, _, CAPACITY>::new();
-    assert!(sgt_3.set_rebal_param(1.0, 2.0).is_ok());
-    sgt_3.extend(data.into_iter());
-
-    // Invalid rebalance factor
-    assert_eq!(
-        sgt_3.set_rebal_param(2.0, 1.0),
-        Err(SGErr::RebalanceFactorOutOfRange)
-    );
-
-    // Alpha tuning OK
-    assert!(sgt_3.rebal_cnt() > sgt_2.rebal_cnt());
-    assert!(sgt_1.rebal_cnt() > sgt_2.rebal_cnt());
-    assert!(sgt_3.rebal_cnt() > sgt_1.rebal_cnt());
-
-    // Exact counts, useful to verify that different features being enabled don't change these numbers
-    #[cfg(feature = "high_assurance")]
-    {
-        assert_eq!(sgt_1.rebal_cnt(), 52);
-        assert_eq!(sgt_2.rebal_cnt(), 8);
-        assert_eq!(sgt_3.rebal_cnt(), 93);
-    }
-
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        assert_eq!(sgt_1.rebal_cnt(), 5_475);
-        assert_eq!(sgt_2.rebal_cnt(), 1_192);
-        assert_eq!(sgt_3.rebal_cnt(), 9_987);
-    }
 }
 
 #[test]

@@ -40,7 +40,7 @@ impl<K, V, U: SmallUnsigned> Node<K, V, U> {
             right_idx: None,
 
             #[cfg(feature = "fast_rebalance")]
-            subtree_size: 1,
+            subtree_size: U::checked_from(1),
         }
     }
 }
@@ -259,9 +259,6 @@ mod tests {
     use smallnum::small_unsigned;
     use std::mem::size_of;
 
-    #[cfg(feature = "high_assurance")]
-    use crate::MAX_ELEMS;
-
     #[test]
     fn test_node_sizing() {
         // No features
@@ -271,25 +268,11 @@ mod tests {
             assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16);
         }
 
-        // All features
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "fast_rebalance")]
-        {
-            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20); // TODO: update
-        }
-
         // fast_rebalance only
         #[cfg(target_pointer_width = "64")]
         #[cfg(feature = "fast_rebalance")]
         {
-            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 48); // TODO: update
-        }
-
-        // high_assurance only
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "fast_rebalance"))]
-        {
-            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 16); // TODO: update
+            assert_eq!(size_of::<Node<u32, u32, small_unsigned!(1024)>>(), 20);
         }
     }
 }

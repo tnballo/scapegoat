@@ -46,9 +46,11 @@ impl<
             free_list: SmallVec::<[U; N]>::new(),
         };
 
+        #[cfg(not(feature = "low_mem_insert"))]
         debug_assert_eq!(0, a.free_list.len());
         debug_assert_eq!(0, a.vec.len());
 
+        #[cfg(not(feature = "low_mem_insert"))]
         debug_assert_eq!(N, a.free_list.capacity());
         debug_assert_eq!(N, a.vec.capacity());
 
@@ -82,7 +84,11 @@ impl<
 
         // O(n) find, linear search
         #[cfg(feature = "low_mem_insert")]
-        let opt_free_idx = self.vec.iter().position(|x| x.is_none()).map(|i| i as U);
+        let opt_free_idx = self
+            .vec
+            .iter()
+            .position(|x| x.is_none())
+            .map(|i| U::checked_from(i));
 
         let node = Node::new(key, val);
         match opt_free_idx {
