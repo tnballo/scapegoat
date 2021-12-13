@@ -50,7 +50,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// Makes a new, empty `SGTree`.
     pub fn new() -> Self {
         if N > (Idx::MAX as usize) {
-            panic!("Max stack item capacity (0xffff) exceeded!");
+            panic!("Max stack item capacity (0x{:x}) exceeded!", Idx::MAX);
         }
 
         SGTree {
@@ -148,10 +148,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         }
 
         // Rip elements directly out of other's arena and clear it
-        if (self.len() + other.len()) <= self.capacity() {
+        if (self.len() + other.len() - self.intersect_cnt(other)) <= self.capacity() {
             for arena_idx in 0..other.arena.len() {
                 if let Some(mut node) = other.arena.remove(arena_idx) {
-                    self.insert(node.take_key(), node.take_val());
+                    self.try_insert(node.take_key(), node.take_val())?;
                 }
             }
             other.clear();
@@ -184,7 +184,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        match self.capacity() > self.len() {
+        // Replace current slot or safely fill a new one
+        match self.contains_key(&key) || (self.capacity() > self.len()) {
             true => Ok(self.priv_balancing_insert::<Idx>(key, val)),
             false => Err(SGErr::StackCapacityExceeded),
         }
@@ -487,6 +488,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             self.update_max_idx();
             self.update_min_idx();
         }
+    }
+
+    /// Total common elements between two trees
+    pub(crate) fn intersect_cnt(&self, other: &SGTree<K, V, N>) -> usize {
+        self.iter().filter(|(k, _)| other.contains_key(k)).count()
     }
 
     // Private API -----------------------------------------------------------------------------------------------------

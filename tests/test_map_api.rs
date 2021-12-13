@@ -272,11 +272,11 @@ fn test_map_append() {
 fn test_map_insert_fallible() {
     let mut a = SGMap::<_, _, 3>::new();
 
-    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(1, "1A").is_ok());
     assert!(a.try_insert(2, "2").is_ok());
 
     assert_eq!(a.try_insert(3, "3"), Ok(None));
-    assert_eq!(a.try_insert(1, "1"), Ok(Some("1"))); // CRITICAL TODO: interesting bug, this should work!
+    assert_eq!(a.try_insert(1, "1B"), Ok(Some("1A")));
     assert_eq!(a.try_insert(4, "4"), Err(SGErr::StackCapacityExceeded));
 }
 
@@ -299,10 +299,47 @@ fn test_map_append_fallible() {
     assert_eq!(b.try_insert(7, "7"), Ok(None));
 
     assert_eq!(a.len(), 6);
+    assert_eq!(a.len(), a.capacity());
     assert_eq!(a.try_insert(7, "7"), Err(SGErr::StackCapacityExceeded));
+
+    assert_eq!(a.pop_last(), Some ((6, "6")));
+
+    b.clear();
+    assert!(b.try_insert(4, "4").is_ok());
+    assert!(b.try_insert(5, "5").is_ok());
+    assert!(b.try_insert(6, "6").is_ok());
+
+    println!(
+        "a_len: {} of {}, b_len: {}, common_len: {}",
+        a.len(),
+        a.capacity(),
+        b.len(),
+        a.iter().filter(|(k, _)| b.contains_key(&k)).count()
+    );
+
+    assert!(a.try_append(&mut b).is_ok());
 
     assert_eq!(
         a.into_iter().collect::<Vec<(usize, &str)>>(),
         vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
     );
 }
+
+/*
+
+CRITICAL TODO: re-enable post tinyvec
+
+#[should_panic]
+#[test]
+fn test_map_insert_panic() {
+
+    let mut a = SGMap::<_, _, 3>::new();
+
+    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+    assert!(a.try_insert(3, "3").is_ok());
+    assert_eq!(a.try_insert(4, "4"), Err(SGErr::StackCapacityExceeded));
+
+    a.insert(4, "4"); // panic
+}
+*/

@@ -61,13 +61,13 @@ const CAPACITY: usize = 5;
 let mut example = SGMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
 let mut stack_str = "your friend the";
 
-// TODO: make last insert a `try_*` variant to show usage.
-
 // Insert "dynamically" (as if heap)
 example.insert(3, "the");
 example.insert(2, "don't blame");
 example.insert(1, "Please");
-example.insert(4, "borrow checker");
+
+// Fallible insert variant
+assert!(example.try_insert(4, "borrow checker").is_ok());
 
 // Ordered reference iterator
 assert!(example

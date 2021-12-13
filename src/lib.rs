@@ -53,8 +53,6 @@ const CAPACITY: usize = 5;
 let mut example = SGMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
 let mut stack_str = "your friend the";
 
-// TODO: make last insert a `try_*` variant to show usage.
-
 // Insert "dynamically" (as if heap)
 example.insert(3, "the");
 example.insert(2, "don't blame");

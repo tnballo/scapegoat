@@ -3,7 +3,7 @@ use core::iter::FromIterator;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::node_dispatch::SmallNode;
-use super::SGTree;
+use super::tree::{SGTree, Idx};
 
 #[cfg(not(feature = "alt_impl"))]
 use super::SGErr;
@@ -910,4 +910,28 @@ fn test_set_rebal_param_2() {
         assert_eq!(sgt_2.rebal_cnt(), 1_192);
         assert_eq!(sgt_3.rebal_cnt(), 9_987);
     }
+}
+
+#[test]
+fn test_intersect_cnt() {
+    let mut sgt_1 = SGTree::from([(3, 4), (1, 2), (5, 6)]);
+    let mut sgt_2: SGTree<_, _, 3> = [(7, 8), (3, 4), (5, 6)].into();
+
+    assert_eq!(sgt_1.intersect_cnt(&sgt_2), 2);
+
+    assert_eq!(sgt_2.pop_last(), Some((7, 8)));
+    assert_eq!(sgt_1.intersect_cnt(&sgt_2), 2);
+
+    assert_eq!(sgt_2.pop_last(), Some((5, 6)));
+    assert_eq!(sgt_1.intersect_cnt(&sgt_2), 1);
+
+    assert_eq!(sgt_1.remove(&3), Some(4));
+    assert_eq!(sgt_1.intersect_cnt(&sgt_2), 0);
+}
+
+#[should_panic(expected = "Max stack item capacity (0xffff) exceeded!")]
+#[test]
+fn test_capacity_exceed() {
+    const OVER_CAP: usize = (Idx::MAX as usize) + 1;
+    let _ = SGTree::<u8, u8, OVER_CAP>::new();
 }
