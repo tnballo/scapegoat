@@ -9,7 +9,6 @@ pub enum SGErr {
     /// Requested operation cannot complete, heap storage is full.
     HeapCapacityExceeded,
     */
-
     /// Reserved for future use
     Reserved2,
 

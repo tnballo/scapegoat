@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
-/// An iterator over the items of a `SGSet`.
+/// An iterator over the items of a [`SGSet`][crate::set::SGSet].
 ///
 /// This `struct` is created by the [`iter`][crate::set::SGSet::iter] method on [`SGSet`][crate::set::SGSet].
 /// See its documentation for more.
@@ -32,7 +32,7 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Iter<'a, T, N> {
     }
 }
 
-/// An owning iterator over the items of a `SGSet`.
+/// An owning iterator over the items of a [`SGSet`][crate::set::SGSet].
 ///
 /// This `struct` is created by the [`into_iter`][crate::set::SGSet::into_iter] method on [`SGSet`][crate::set::SGSet]
 /// (provided by the IntoIterator trait). See its documentation for more.
@@ -209,12 +209,12 @@ impl<'a, T: Ord + Default, const N: usize> Intersection<'a, T, N> {
 
         // O(n), linear time
         while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
-            match self_val.cmp(&other_val) {
+            match self_val.cmp(other_val) {
                 Ordering::Less => {
                     opt_self_val = self_iter.next();
                 }
                 Ordering::Equal => {
-                    intersection.push(&self_val);
+                    intersection.push(self_val);
                     opt_self_val = self_iter.next();
                     opt_other_val = other_iter.next();
                 }

@@ -361,7 +361,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGMap<K, V, N> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     pub fn iter(&self) -> Iter<'_, K, V, N> {
-        Iter::new(&self)
+        Iter::new(self)
     }
 
     /// Gets a mutable iterator over the entries of the map, sorted by key.

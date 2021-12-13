@@ -19,7 +19,7 @@ const `N` (e.g. static capacity).
 /// Binary tree node, meta programmable for low memory footprint.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Node<K, V, U> {
     key: K,
     val: V,
@@ -55,7 +55,7 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
     }
 
     fn take_key(&mut self) -> K {
-        core::mem::replace(&mut self.key, K::default())
+        core::mem::take(&mut self.key)
     }
 
     fn val(&self) -> &V {
@@ -67,7 +67,7 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
     }
 
     fn take_val(&mut self) -> V {
-        core::mem::replace(&mut self.val, V::default())
+        core::mem::take(&mut self.val)
     }
 
     fn set_val(&mut self, val: V) {
@@ -112,6 +112,7 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
+#[derive(Debug, PartialEq, Eq)]
 pub struct NodeGetHelper<U> {
     node_idx: Option<U>,
     parent_idx: Option<U>,
@@ -149,6 +150,7 @@ impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
 /// Helper for in-place iterative rebuild.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
+#[derive(Debug, PartialEq, Eq)]
 pub struct NodeRebuildHelper<U> {
     pub low_idx: U,
     pub high_idx: U,
@@ -177,6 +179,7 @@ impl<U: SmallUnsigned + Ord + Sub + Copy> NodeRebuildHelper<U> {
 /// If every index swap is logged, tracks mapping of original to current indexes.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
+#[derive(Debug)]
 pub struct NodeSwapHistHelper<U, const N: usize> {
     /// Map `original_idx` -> `current_idx`
     history: SmallVec<[(U, U); N]>,

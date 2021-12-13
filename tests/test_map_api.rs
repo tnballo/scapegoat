@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
-use scapegoat::{SGMap, SGErr};
+use scapegoat::{SGErr, SGMap};
 
 use rand::Rng;
 
@@ -265,7 +265,6 @@ fn test_map_append() {
     );
 }
 
-
 // Fallible APIs -------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -302,7 +301,7 @@ fn test_map_append_fallible() {
     assert_eq!(a.len(), a.capacity());
     assert_eq!(a.try_insert(7, "7"), Err(SGErr::StackCapacityExceeded));
 
-    assert_eq!(a.pop_last(), Some ((6, "6")));
+    assert_eq!(a.pop_last(), Some((6, "6")));
 
     b.clear();
     assert!(b.try_insert(4, "4").is_ok());

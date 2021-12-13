@@ -66,7 +66,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
                 }
 
                 let node = &self.bst.arena[pop_idx];
-                Some((&node.key(), &node.val()))
+                Some((node.key(), node.val()))
             }
             None => None,
         }

@@ -16,7 +16,7 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 */
 
 /// An arena allocator, meta programmable for low memory footprint.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Arena<K: Default, V: Default, U, const N: usize> {
     vec: SmallVec<[Option<Node<K, V, U>>; N]>,
 
@@ -120,11 +120,8 @@ impl<
 
             // Retrieve node
             return match self.vec.pop() {
-                Some(opt_node) => match opt_node {
-                    Some(node) => Some(node),
-                    None => unreachable!(), // We only swap for non-empties
-                },
-                None => unreachable!(), // This function pushed, pop should work
+                Some(Some(node)) => Some(node),
+                _ => unreachable!(), // We only swap for non-empties and this function pushed
             };
         }
 
@@ -208,7 +205,7 @@ impl<K: Default, V: Default, U, const N: usize> Index<usize> for Arena<K, V, U, 
 
     fn index(&self, index: usize) -> &Self::Output {
         match &self.vec[index] {
-            Some(node) => &node,
+            Some(node) => node,
             None => unreachable!(),
         }
     }

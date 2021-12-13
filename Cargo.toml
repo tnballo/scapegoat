@@ -8,9 +8,9 @@ readme = "README.md"
 homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
-keywords = ["scapegoat", "btree", "set", "map", "no_std"]
+keywords = ["tree", "set", "map", "no_std", "fallible"]
 categories = ["algorithms", "data-structures", "no-std", "embedded"]
-description = "Safe, embedded-friendly ordered set/map via a scapegoat tree. Validated against BTreeSet/BTreeMap."
+description = "Safe, embedded-friendly, fallible ordered set/map via a scapegoat tree. Validated against BTreeSet/BTreeMap."
 include = [
     "src/**/*.rs",
     "benches/**/*.rs",

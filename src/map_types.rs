@@ -3,7 +3,7 @@ use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIte
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
-/// An iterator over the entries of a `BTreeMap`.
+/// An iterator over the entries of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`iter`][crate::map::SGMap::iter] method on [`SGMap`][crate::map::SGMap].
 /// documentation for more.
@@ -29,7 +29,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
     }
 }
 
-/// An owning iterator over the entries of a `BTreeMap`.
+/// An owning iterator over the entries of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`into_iter`][crate::map::SGMap::into_iter] method on [`SGMap`][crate::map::SGMap].
 /// documentation for more.
@@ -54,7 +54,7 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoIter<K, V, N
     }
 }
 
-/// An mutable iterator over the entries of a `BTreeMap`.
+/// An mutable iterator over the entries of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`iter_mut`][crate::map::SGMap::iter_mut] method on [`SGMap`][crate::map::SGMap].
 /// documentation for more.
@@ -83,7 +83,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
 
 // TODO: these need more trait implementations for full compatibility
 
-/// An iterator over the keys of a `SGMap`.
+/// An iterator over the keys of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`keys`][crate::map::SGMap::keys] method on [`SGMap`][crate::map::SGMap].
 /// See its documentation for more.
@@ -99,7 +99,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Keys<'a, K, 
     }
 }
 
-/// An owning iterator over the keys of a `SGMap`.
+/// An owning iterator over the keys of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`into_keys`][crate::map::SGMap::into_keys] method on [`SGMap`][crate::map::SGMap].
 /// See its documentation for more.
@@ -119,7 +119,7 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoKeys<K, V, N
 
 // TODO: these need more trait implementations for full compatibility
 
-/// An iterator over the values of a `SGMap`.
+/// An iterator over the values of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`values`][crate::map::SGMap::values] method on [`SGMap`][crate::map::SGMap].
 /// See its documentation for more.
@@ -135,7 +135,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Values<'a, K
     }
 }
 
-/// An owning iterator over the values of a `SGMap`.
+/// An owning iterator over the values of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`into_values`][crate::map::SGMap::into_values] method on [`SGMap`][crate::map::SGMap].
 /// See its documentation for more.
@@ -151,7 +151,7 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoValues<K, V,
     }
 }
 
-/// A mutable iterator over the values of a `SGMap`.
+/// A mutable iterator over the values of a [`SGMap`][crate::map::SGMap].
 ///
 /// This `struct` is created by the [`values_mut`][crate::map::SGMap::values_mut] method on [`SGMap`][crate::map::SGMap].
 /// See its documentation for more.

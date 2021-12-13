@@ -336,7 +336,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        if self.len() > 0 {
+        if !self.is_empty() {
             let node = &self.arena[self.min_idx];
             Some((node.key(), node.val()))
         } else {
@@ -367,7 +367,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     where
         K: Ord,
     {
-        if self.len() > 0 {
+        if !self.is_empty() {
             let node = &self.arena[self.max_idx];
             Some((node.key(), node.val()))
         } else {
@@ -445,6 +445,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         &self,
         idx: usize,
     ) -> SmallVec<[U; N]> {
+        #[allow(clippy::type_complexity)]
         let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, Idx>, U); N]> =
             smallvec![(&self.arena[idx], U::checked_from(idx))];
         let mut subtree_worklist: SmallVec<[&Node<K, V, Idx>; N]> = smallvec![&self.arena[idx]];
@@ -465,7 +466,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
         // Sort by SmallNode key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key().cmp(&b.0.key()));
+        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key().cmp(b.0.key()));
 
         subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
     }
@@ -478,7 +479,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 .iter()
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
-                .map(|n| self.priv_get(None, &n.key()))
+                .map(|n| self.priv_get(None, n.key()))
                 .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
 
             sort_metadata.sort_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
@@ -616,7 +617,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                     let curr_node = &mut self.arena[curr_idx];
                     path.push(U::checked_from(curr_idx));
 
-                    match key.cmp(&curr_node.key()) {
+                    match key.cmp(curr_node.key()) {
                         Ordering::Less => {
                             match curr_node.left_idx() {
                                 Some(left_idx) => curr_idx = left_idx,
@@ -1159,7 +1160,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 self.root_idx = Some(subtree_root_arena_idx);
             } else {
                 let old_subtree_root = &self.arena[old_subtree_root_idx];
-                let ngh: NodeGetHelper<U> = self.priv_get(None, &old_subtree_root.key());
+                let ngh: NodeGetHelper<U> = self.priv_get(None, old_subtree_root.key());
                 debug_assert!(
                     ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"

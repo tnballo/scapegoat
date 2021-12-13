@@ -3,7 +3,7 @@ use core::iter::FromIterator;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use super::node_dispatch::SmallNode;
-use super::tree::{SGTree, Idx};
+use super::tree::{Idx, SGTree};
 
 #[cfg(not(feature = "alt_impl"))]
 use super::SGErr;
@@ -414,8 +414,12 @@ fn test_two_child_removal_case_1() {
         assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
+    println!("Arena, pre-remove: {:#?}", sgt.arena);
+
     sgt.remove(&to_remove);
     assert_logical_invariants(&sgt);
+
+    println!("Arena, post-remove: {:#?}", sgt.arena);
 
     assert_eq!(
         sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
@@ -437,8 +441,12 @@ fn test_two_child_removal_case_2() {
         assert!(sgt.insert(*k, "n/a").is_ok());
     }
 
+    println!("Arena, pre-remove: {:#?}", sgt.arena);
+
     sgt.remove(&to_remove);
     assert_logical_invariants(&sgt);
+
+    println!("Arena, post-remove: {:#?}", sgt.arena);
 
     assert_eq!(
         sgt.into_iter().map(|(k, _)| k).collect::<Vec<usize>>(),
