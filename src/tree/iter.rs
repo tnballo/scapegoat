@@ -2,25 +2,25 @@ use smallvec::SmallVec;
 
 use super::node::Node;
 use super::node_dispatch::SmallNode;
-use super::tree::{Idx, SGTree};
+use super::tree::{Idx, SgTree};
 
 // Immutable Reference Iterator ----------------------------------------------------------------------------------------
 
 /// Uses iterative in-order tree traversal algorithm.
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
 pub struct Iter<'a, K: Default, V: Default, const N: usize> {
-    bst: &'a SGTree<K, V, N>,
+    bst: &'a SgTree<K, V, N>,
     idx_stack: SmallVec<[usize; N]>,
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Iter<'a, K, V, N> {
-    pub fn new(bst: &'a SGTree<K, V, N>) -> Self {
+    pub fn new(bst: &'a SgTree<K, V, N>) -> Self {
         let mut ordered_iter = Iter {
             bst,
             idx_stack: SmallVec::<[usize; N]>::new(),
         };
 
-        if let Some(root_idx) = ordered_iter.bst.root_idx {
+        if let Some(root_idx) = ordered_iter.bst.opt_root_idx {
             let mut curr_idx = root_idx;
             loop {
                 let node = &ordered_iter.bst.arena[curr_idx];
@@ -80,7 +80,7 @@ pub struct IterMut<'a, K, V, const N: usize> {
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> IterMut<'a, K, V, N> {
-    pub fn new(bst: &'a mut SGTree<K, V, N>) -> Self {
+    pub fn new(bst: &'a mut SgTree<K, V, N>) -> Self {
         bst.sort_arena();
         IterMut {
             arena_iter_mut: bst.arena.iter_mut(),
@@ -104,18 +104,18 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
 /// Cheats a little by using internal flattening logic to sort, instead of re-implementing proper traversal.
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
 pub struct IntoIter<K: Default, V: Default, const N: usize> {
-    bst: SGTree<K, V, N>,
+    bst: SgTree<K, V, N>,
     sorted_idxs: SmallVec<[usize; N]>,
 }
 
 impl<K: Ord + Default, V: Default, const N: usize> IntoIter<K, V, N> {
-    pub fn new(bst: SGTree<K, V, N>) -> Self {
+    pub fn new(bst: SgTree<K, V, N>) -> Self {
         let mut ordered_iter = IntoIter {
             bst,
             sorted_idxs: SmallVec::<[usize; N]>::new(),
         };
 
-        if let Some(root_idx) = ordered_iter.bst.root_idx {
+        if let Some(root_idx) = ordered_iter.bst.opt_root_idx {
             ordered_iter.sorted_idxs = ordered_iter.bst.flatten_subtree_to_sorted_idxs(root_idx);
             ordered_iter.sorted_idxs.reverse();
         }

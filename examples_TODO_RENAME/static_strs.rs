@@ -1,11 +1,11 @@
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 use smallvec::{smallvec, SmallVec};
 
 const REF_BUF_LEN: usize = 5;
 
-// !#[no_std] demo mutable manipulation of SGMap<isize, &str>
+// !#[no_std] demo mutable manipulation of SgMap<isize, &str>
 fn main() {
-    let mut example = SGMap::new();
+    let mut example = SgMap::new();
     let mut stack_str = "your friend the";
 
     // Insert "dynamically" (as if heap)

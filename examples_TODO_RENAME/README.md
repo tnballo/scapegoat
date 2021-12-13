@@ -10,8 +10,8 @@ Alphabetical enumeration:
 
 * [`ha_insert`](./ha_insert.rs) - insertion semantics, with `high_assurance` feature enabled/disabled.
 * [`search_by_slice`](./search_by_slice.rs) - search set of sized types by an unsized type.
-* [`static_strs`](./static_strs.rs) - build sentences with a mutable `SGMap<isize, &str>` (from main [`README.md`](../README.md)).
-* [`tiny_map`](./tiny_map.rs) - 2.6KB `SGMap<u8, u8>` with configuration settings saving 78% (9.6KB) of stack usage.
+* [`static_strs`](./static_strs.rs) - build sentences with a mutable `SgMap<isize, &str>` (from main [`README.md`](../README.md)).
+* [`tiny_map`](./tiny_map.rs) - 2.6KB `SgMap<u8, u8>` with configuration settings saving 78% (9.6KB) of stack usage.
 
 Have another `!#[no_std]` example?
 Consider [contributing](https://github.com/tnballo/scapegoat/pulls) it!

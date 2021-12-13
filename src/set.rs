@@ -4,7 +4,7 @@ use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use crate::set_types::{Difference, Intersection, IntoIter, Iter, SymmetricDifference, Union};
-use crate::tree::{SGErr, SGTree};
+use crate::tree::{SgError, SgTree};
 
 /// Embedded-friendly ordered set.
 ///
@@ -12,24 +12,23 @@ use crate::tree::{SGErr, SGTree};
 ///
 /// The majority of API examples and descriptions are adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
 /// The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
-#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct SGSet<T: Ord + Default, const N: usize> {
-    pub(crate) bst: SGTree<T, (), N>,
+pub struct SgSet<T: Ord + Default, const N: usize> {
+    pub(crate) bst: SgTree<T, (), N>,
 }
 
-impl<T: Ord + Default, const N: usize> SGSet<T, N> {
-    /// Makes a new, empty `SGSet`.
+impl<T: Ord + Default, const N: usize> SgSet<T, N> {
+    /// Makes a new, empty `SgSet`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<i32, 10> = SGSet::new();
+    /// let mut set: SgSet<i32, 10> = SgSet::new();
     /// ```
     pub fn new() -> Self {
-        SGSet { bst: SGTree::new() }
+        SgSet { bst: SgTree::new() }
     }
 
     /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
@@ -47,28 +46,28 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<isize, 10> = SGSet::new();
+    /// let mut set: SgSet<isize, 10> = SgSet::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
     /// ```
     #[doc(alias = "rebalance")]
     #[doc(alias = "alpha")]
-    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
+    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SgError> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
 
     /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
-    /// See [the corresponding setter method][SGSet::set_rebal_param] for more details.
+    /// See [the corresponding setter method][SgSet::set_rebal_param] for more details.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<isize, 10> = SGSet::new();
+    /// let mut set: SgSet<isize, 10> = SgSet::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
@@ -87,9 +86,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<i32, 10> = SGSet::new();
+    /// let mut set: SgSet<i32, 10> = SgSet::new();
     ///
     /// assert!(set.capacity() == 10)
     /// ```
@@ -102,14 +101,14 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(3);
     /// b.insert(4);
     /// b.insert(5);
@@ -126,7 +125,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// assert!(a.contains(&5));
     /// ```
     #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGSet<T, N>)
+    pub fn append(&mut self, other: &mut SgSet<T, N>)
     where
         T: Ord,
     {
@@ -138,14 +137,14 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(3);
     /// b.insert(4);
     /// b.insert(5);
@@ -162,7 +161,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// assert!(a.contains(&5));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGSet<T, N>) -> Result<(), SGErr> {
+    pub fn append(&mut self, other: &mut SgSet<T, N>) -> Result<(), SgError> {
         self.bst.append(&mut other.bst)
     }
 
@@ -173,9 +172,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// assert_eq!(set.insert(2), true);
     /// assert_eq!(set.insert(2), false);
@@ -197,9 +196,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::{SGSet, SGErr};
+    /// use scapegoat::{SgSet, SgError};
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// assert_eq!(set.insert(2), Ok(true));
     /// assert_eq!(set.insert(2), Ok(false));
@@ -215,27 +214,27 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// assert_eq!(set.last(), Some(&(2 + (set.capacity() - 1))));
     /// assert_eq!(set.len(), set.capacity());
     ///
-    /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
+    /// assert_eq!(set.insert(elem), Err(SgError::StackCapacityExceeded));
     /// ```
     #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, value: T) -> Result<bool, SGErr>
+    pub fn insert(&mut self, value: T) -> Result<bool, SgError>
     where
         T: Ord,
     {
         match self.bst.insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
-            Err(_) => Err(SGErr::StackCapacityExceeded),
+            Err(_) => Err(SgError::StackCapacityExceeded),
         }
     }
 
-    /// Gets an iterator that visits the values in the `SGSet` in ascending order.
+    /// Gets an iterator that visits the values in the `SgSet` in ascending order.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<usize, 3> = [1, 2, 3].iter().cloned().collect();
+    /// let set: SgSet<usize, 3> = [1, 2, 3].iter().cloned().collect();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -246,9 +245,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// Values returned by the iterator are returned in ascending order:
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<usize, 3> = [3, 1, 2].iter().cloned().collect();
+    /// let set: SgSet<usize, 3> = [3, 1, 2].iter().cloned().collect();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -269,9 +268,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(2);
     /// assert_eq!(set.remove(&2), true);
@@ -293,9 +292,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// Basic usage:
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 5>::new();
+    /// let mut a = SgSet::<_, 5>::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
@@ -314,12 +313,12 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// assert!(b.contains(&17));
     /// assert!(b.contains(&41));
     /// ```
-    pub fn split_off<Q>(&mut self, value: &Q) -> SGSet<T, N>
+    pub fn split_off<Q>(&mut self, value: &Q) -> SgSet<T, N>
     where
         T: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        SGSet {
+        SgSet {
             bst: self.bst.split_off(value),
         }
     }
@@ -330,9 +329,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     /// set.insert(Vec::<i32>::new());
     ///
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
@@ -367,9 +366,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
@@ -389,10 +388,10 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
     /// let xs = [1, 2, 3, 4, 5, 6];
-    /// let mut set: SGSet<i32, 10> = xs.iter().cloned().collect();
+    /// let mut set: SgSet<i32, 10> = xs.iter().cloned().collect();
     /// // Keep only the even numbers.
     /// set.retain(|&k| k % 2 == 0);
     /// assert!(set.iter().eq([2, 4, 6].iter()));
@@ -414,9 +413,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
@@ -433,9 +432,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::<_, 10>::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// v.insert(1);
     /// v.clear();
     /// assert!(v.is_empty());;
@@ -453,9 +452,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
@@ -472,9 +471,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut map = SGSet::<_, 2>::new();
+    /// let mut map = SgSet::<_, 2>::new();
     /// assert_eq!(map.first(), None);
     /// map.insert(1);
     /// assert_eq!(map.first(), Some(&1));
@@ -494,9 +493,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(1);
     /// while let Some(n) = set.pop_first() {
@@ -516,9 +515,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut map = SGSet::<_, 10>::new();
+    /// let mut map = SgSet::<_, 10>::new();
     /// assert_eq!(map.first(), None);
     /// map.insert(1);
     /// assert_eq!(map.last(), Some(&1));
@@ -538,9 +537,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::<_, 10>::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(1);
     /// while let Some(n) = set.pop_last() {
@@ -560,9 +559,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::<_, 10>::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// assert_eq!(v.len(), 0);
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
@@ -576,20 +575,20 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference(&self, other: &SGSet<T, N>) -> Difference<T, N>
+    pub fn difference(&self, other: &SgSet<T, N>) -> Difference<T, N>
     where
         T: Ord,
     {
@@ -601,20 +600,20 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
-    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T, N>) -> SymmetricDifference<T, N>
+    pub fn symmetric_difference<'a>(&'a self, other: &'a SgSet<T, N>) -> SymmetricDifference<T, N>
     where
         T: Ord,
     {
@@ -626,20 +625,20 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection(&self, other: &SGSet<T, N>) -> Intersection<T, N>
+    pub fn intersection(&self, other: &SgSet<T, N>) -> Intersection<T, N>
     where
         T: Ord,
     {
@@ -651,18 +650,18 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::<_, 10>::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     ///
-    /// let mut b = SGSet::<_, 10>::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     ///
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SGSet<T, N>) -> Union<T, N>
+    pub fn union<'a>(&'a self, other: &'a SgSet<T, N>) -> Union<T, N>
     where
         T: Ord,
     {
@@ -674,9 +673,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::<_, 10>::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// assert!(v.is_empty());
     /// v.insert(1);
     /// assert!(!v.is_empty());
@@ -690,9 +689,9 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
-    /// let a: SGSet<_, 10> = [1, 2, 3].iter().cloned().collect();
-    /// let mut b = SGSet::new();
+    /// use scapegoat::SgSet;
+    /// let a: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let mut b = SgSet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
     /// b.insert(4);
@@ -700,7 +699,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    pub fn is_disjoint(&self, other: &SGSet<T, N>) -> bool
+    pub fn is_disjoint(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -712,10 +711,10 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let sup: SGSet<_, 10> = [1, 2, 3].iter().cloned().collect();
-    /// let mut set = SGSet::new();
+    /// let sup: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set = SgSet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
     /// set.insert(2);
@@ -723,7 +722,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    pub fn is_subset(&self, other: &SGSet<T, N>) -> bool
+    pub fn is_subset(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -735,10 +734,10 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let sub: SGSet<_, 2> = [1, 2].iter().cloned().collect();
-    /// let mut set = SGSet::new();
+    /// let sub: SgSet<_, 2> = [1, 2].iter().cloned().collect();
+    /// let mut set = SgSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
     ///
@@ -749,7 +748,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
-    pub fn is_superset(&self, other: &SGSet<T, N>) -> bool
+    pub fn is_superset(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -760,7 +759,7 @@ impl<T: Ord + Default, const N: usize> SGSet<T, N> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<T, const N: usize> Debug for SGSet<T, N>
+impl<T, const N: usize> Debug for SgSet<T, N>
 where
     T: Ord + Default + Debug,
 {
@@ -772,15 +771,15 @@ where
 }
 
 // From array.
-impl<T, const N: usize> From<[T; N]> for SGSet<T, N>
+impl<T, const N: usize> From<[T; N]> for SgSet<T, N>
 where
     T: Ord + Default,
 {
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set1 = SGSet::from([1, 2, 3, 4]);
-    /// let set2: SGSet<_, 4> = [1, 2, 3, 4].into();
+    /// let set1 = SgSet::from([1, 2, 3, 4]);
+    /// let set2: SgSet<_, 4> = [1, 2, 3, 4].into();
     /// assert_eq!(set1, set2);
     /// ```
     fn from(arr: [T; N]) -> Self {
@@ -789,19 +788,19 @@ where
 }
 
 // Construct from iterator.
-impl<T, const N: usize> FromIterator<T> for SGSet<T, N>
+impl<T, const N: usize> FromIterator<T> for SgSet<T, N>
 where
     T: Ord + Default,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut sgs = SGSet::new();
-        sgs.bst = SGTree::from_iter(iter.into_iter().map(|e| (e, ())));
+        let mut sgs = SgSet::new();
+        sgs.bst = SgTree::from_iter(iter.into_iter().map(|e| (e, ())));
         sgs
     }
 }
 
 // Extension from iterator.
-impl<T, const N: usize> Extend<T> for SGSet<T, N>
+impl<T, const N: usize> Extend<T> for SgSet<T, N>
 where
     T: Ord + Default,
 {
@@ -811,7 +810,7 @@ where
 }
 
 // Extension from reference iterator.
-impl<'a, T, const N: usize> Extend<&'a T> for SGSet<T, N>
+impl<'a, T, const N: usize> Extend<&'a T> for SgSet<T, N>
 where
     T: 'a + Ord + Default + Copy,
 {
@@ -824,7 +823,7 @@ where
 
 // TODO: move this to set_types.rs and document
 // Reference iterator
-impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SGSet<T, N> {
+impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SgSet<T, N> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T, N>;
 
@@ -837,7 +836,7 @@ impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SGSet<T, N> {
 /// Reference iterator wrapper
 
 // Consuming iterator
-impl<T: Ord + Default, const N: usize> IntoIterator for SGSet<T, N> {
+impl<T: Ord + Default, const N: usize> IntoIterator for SgSet<T, N> {
     type Item = T;
     type IntoIter = IntoIter<T, N>;
 
@@ -848,90 +847,90 @@ impl<T: Ord + Default, const N: usize> IntoIterator for SGSet<T, N> {
 
 // Operator Overloading ------------------------------------------------------------------------------------------------
 
-impl<T: Ord + Default + Clone, const N: usize> Sub<&SGSet<T, N>> for &SGSet<T, N> {
-    type Output = SGSet<T, N>;
+impl<T: Ord + Default + Clone, const N: usize> Sub<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the difference of `self` and `rhs` as a new `SGSet<T, N>`.
+    /// Returns the difference of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_, 10> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_, 10> = vec![3, 4, 5].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![3, 4, 5].into_iter().collect();
     ///
     /// let result = &a - &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2]);
     /// ```
-    fn sub(self, rhs: &SGSet<T, N>) -> SGSet<T, N> {
+    fn sub(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.difference(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Default + Clone, const N: usize> BitAnd<&SGSet<T, N>> for &SGSet<T, N> {
-    type Output = SGSet<T, N>;
+impl<T: Ord + Default + Clone, const N: usize> BitAnd<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the intersection of `self` and `rhs` as a new `SGSet<T, N>`.
+    /// Returns the intersection of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_, 10> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_, 10> = vec![2, 3, 4].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![2, 3, 4].into_iter().collect();
     ///
     /// let result = &a & &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [2, 3]);
     /// ```
-    fn bitand(self, rhs: &SGSet<T, N>) -> SGSet<T, N> {
+    fn bitand(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.intersection(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Default + Clone, const N: usize> BitOr<&SGSet<T, N>> for &SGSet<T, N> {
-    type Output = SGSet<T, N>;
+impl<T: Ord + Default + Clone, const N: usize> BitOr<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the union of `self` and `rhs` as a new `SGSet<T, N>`.
+    /// Returns the union of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_, 10> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_, 10> = vec![3, 4, 5].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![3, 4, 5].into_iter().collect();
     ///
     /// let result = &a | &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
     /// ```
-    fn bitor(self, rhs: &SGSet<T, N>) -> SGSet<T, N> {
+    fn bitor(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.union(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Default + Clone, const N: usize> BitXor<&SGSet<T, N>> for &SGSet<T, N> {
-    type Output = SGSet<T, N>;
+impl<T: Ord + Default + Clone, const N: usize> BitXor<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the symmetric difference of `self` and `rhs` as a new `SGSet<T, N>`.
+    /// Returns the symmetric difference of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_, 10> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_, 10> = vec![2, 3, 4].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![2, 3, 4].into_iter().collect();
     ///
     /// let result = &a ^ &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 4]);
     /// ```
-    fn bitxor(self, rhs: &SGSet<T, N>) -> SGSet<T, N> {
+    fn bitxor(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }

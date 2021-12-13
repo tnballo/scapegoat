@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
-use scapegoat::{SGErr, SGMap};
+use scapegoat::{SgError, SgMap};
 
 use rand::Rng;
 
@@ -11,7 +11,7 @@ const DEFAULT_CAPACITY: usize = 10;
 
 #[test]
 fn test_debug() {
-    let sgm = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let sgm = SgMap::from([(3, 4), (1, 2), (5, 6)]);
     let btm = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
     assert!(sgm.iter().eq(btm.iter()));
 
@@ -24,14 +24,14 @@ fn test_debug() {
 
 #[test]
 fn test_clone() {
-    let sgm_1 = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let sgm_1 = SgMap::from([(3, 4), (1, 2), (5, 6)]);
     let sgm_2 = sgm_1.clone();
     assert_eq!(sgm_1, sgm_2);
 }
 
 #[test]
 fn test_basic_map_functionality() {
-    let mut sgm = SGMap::<_, _, DEFAULT_CAPACITY>::new();
+    let mut sgm = SgMap::<_, _, DEFAULT_CAPACITY>::new();
 
     assert!(sgm.is_empty());
 
@@ -110,7 +110,7 @@ fn test_basic_map_functionality() {
 #[test]
 fn test_map_from_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
+    let sgm = SgMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
 
     assert!(sgm.len() == 3);
     assert_eq!(
@@ -125,14 +125,14 @@ TODO: re-enable for tinyvec
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_map_from_iter_panic() {
-    let _: SGMap<usize, usize, DEFAULT_CAPACITY> = SGMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
+    let _: SgMap<usize, usize, DEFAULT_CAPACITY> = SgMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
 }
 */
 
 #[test]
 fn test_map_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
+    let sgm = SgMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
     let mut sgm_iter = sgm.iter();
 
     assert_eq!(sgm_iter.next(), Some((&1, &"1")));
@@ -154,7 +154,7 @@ fn test_map_iter_mut() {
         ("c", 3),
     ];
 
-    let mut sgm = SGMap::<_, _, 8>::from_iter(key_val_tuples.into_iter());
+    let mut sgm = SgMap::<_, _, 8>::from_iter(key_val_tuples.into_iter());
     assert_eq!(sgm.len(), 8);
     assert_eq!(sgm.first_key_value(), Some((&"a", &1)));
     assert_eq!(sgm.last_key_value(), Some((&"h", &8)));
@@ -187,7 +187,7 @@ fn test_map_iter_mut() {
 #[test]
 fn test_map_iter_mut_rand() {
     const CAPACITY: usize = 500;
-    let mut sgm = SGMap::<isize, isize, CAPACITY>::new();
+    let mut sgm = SgMap::<isize, isize, CAPACITY>::new();
     let mut rng = rand::thread_rng();
 
     for _ in 0..CAPACITY {
@@ -216,13 +216,13 @@ fn test_map_iter_mut_rand() {
 
 #[test]
 fn test_map_append() {
-    let mut a = SGMap::new();
+    let mut a = SgMap::new();
 
     a.insert(1, "1");
     a.insert(2, "2");
     a.insert(3, "3");
 
-    let mut b = SGMap::<_, _, DEFAULT_CAPACITY>::new();
+    let mut b = SgMap::<_, _, DEFAULT_CAPACITY>::new();
 
     b.insert(4, "4");
     b.insert(5, "5");
@@ -242,25 +242,25 @@ fn test_map_append() {
 
 #[test]
 fn test_map_insert_fallible() {
-    let mut a = SGMap::<_, _, 3>::new();
+    let mut a = SgMap::<_, _, 3>::new();
 
     assert!(a.try_insert(1, "1A").is_ok());
     assert!(a.try_insert(2, "2").is_ok());
 
     assert_eq!(a.try_insert(3, "3"), Ok(None));
     assert_eq!(a.try_insert(1, "1B"), Ok(Some("1A")));
-    assert_eq!(a.try_insert(4, "4"), Err(SGErr::StackCapacityExceeded));
+    assert_eq!(a.try_insert(4, "4"), Err(SgError::StackCapacityExceeded));
 }
 
 #[test]
 fn test_map_append_fallible() {
-    let mut a = SGMap::<_, _, 6>::new();
+    let mut a = SgMap::<_, _, 6>::new();
 
     assert!(a.try_insert(1, "1").is_ok());
     assert!(a.try_insert(2, "2").is_ok());
     assert!(a.try_insert(3, "3").is_ok());
 
-    let mut b = SGMap::<_, _, 6>::new();
+    let mut b = SgMap::<_, _, 6>::new();
 
     assert!(b.try_insert(4, "4").is_ok());
     assert!(b.try_insert(5, "5").is_ok());
@@ -272,7 +272,7 @@ fn test_map_append_fallible() {
 
     assert_eq!(a.len(), 6);
     assert_eq!(a.len(), a.capacity());
-    assert_eq!(a.try_insert(7, "7"), Err(SGErr::StackCapacityExceeded));
+    assert_eq!(a.try_insert(7, "7"), Err(SgError::StackCapacityExceeded));
 
     assert_eq!(a.pop_last(), Some((6, "6")));
 
@@ -305,12 +305,12 @@ CRITICAL TODO: re-enable post tinyvec
 #[test]
 fn test_map_insert_panic() {
 
-    let mut a = SGMap::<_, _, 3>::new();
+    let mut a = SgMap::<_, _, 3>::new();
 
     assert!(a.try_insert(1, "1").is_ok());
     assert!(a.try_insert(2, "2").is_ok());
     assert!(a.try_insert(3, "3").is_ok());
-    assert_eq!(a.try_insert(4, "4"), Err(SGErr::StackCapacityExceeded));
+    assert_eq!(a.try_insert(4, "4"), Err(SgError::StackCapacityExceeded));
 
     a.insert(4, "4"); // panic
 }

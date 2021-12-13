@@ -1,11 +1,11 @@
 #[cfg(not(feature = "high_assurance"))]
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 
 #[cfg(feature = "high_assurance")]
-use scapegoat::{SGErr, SGMap};
+use scapegoat::{SgError, SgMap};
 
 // Identity permutation fill: (0, 0), (1, 1), (2, 2), ... , (n, n)
-fn id_perm_fill<K, V>(sgm: &mut SGMap<K, V>)
+fn id_perm_fill<K, V>(sgm: &mut SgMap<K, V>)
 where
     K: From<usize> + Ord,
     V: From<usize>,
@@ -22,7 +22,7 @@ where
 }
 
 fn main() {
-    let mut sgm: SGMap<usize, usize> = SGMap::new();
+    let mut sgm: SgMap<usize, usize> = SgMap::new();
     id_perm_fill(&mut sgm);
 
     #[cfg(not(feature = "high_assurance"))]
@@ -34,7 +34,7 @@ fn main() {
     {
         assert_eq!(
             sgm.insert(usize::MAX, usize::MAX),
-            Err(SGErr::StackCapacityExceeded)
+            Err(SgError::StackCapacityExceeded)
         );
     }
 }

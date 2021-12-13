@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
-use scapegoat::SGSet;
+use scapegoat::SgSet;
 
 #[derive(Arbitrary, Debug)]
 enum SetMethod<T: Ord + Debug> {
@@ -46,7 +46,7 @@ enum SetMethod<T: Ord + Debug> {
     Ord { other: Vec<T> },
 }
 
-fn checked_get_len<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>) -> usize {
+fn checked_get_len<T: Ord>(sg_set: &SgSet<T>, bt_set: &BTreeSet<T>) -> usize {
         let len = sg_set.len();
         assert_eq!(
             len,
@@ -56,7 +56,7 @@ fn checked_get_len<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>) -> usize {
         len
 }
 
-fn assert_len_unchanged<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>, old_len: usize) {
+fn assert_len_unchanged<T: Ord>(sg_set: &SgSet<T>, bt_set: &BTreeSet<T>, old_len: usize) {
     assert_eq!(
         checked_get_len(&sg_set, &bt_set),
         old_len
@@ -65,14 +65,14 @@ fn assert_len_unchanged<T: Ord>(sg_set: &SGSet<T>, bt_set: &BTreeSet<T>, old_len
 
 // Differential fuzzing harness
 fuzz_target!(|methods: Vec<SetMethod<usize>>| {
-    let mut sg_set = SGSet::new();      // Data structure under test
+    let mut sg_set = SgSet::new();      // Data structure under test
     let mut bt_set = BTreeSet::new();   // Reference data structure
 
     for m in methods {
         match m {
             // API Equivalence -----------------------------------------------------------------------------------------
             SetMethod::Append { other } => {
-                let mut sg_other = SGSet::from_iter(other.clone());
+                let mut sg_other = SgSet::from_iter(other.clone());
                 let mut bt_other = BTreeSet::from_iter(other);
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
@@ -101,7 +101,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 );
             },
             SetMethod::Difference { other } => {
-                let sg_diff: Vec<_> = sg_set.difference(&SGSet::from_iter(other.clone())).cloned().collect();
+                let sg_diff: Vec<_> = sg_set.difference(&SgSet::from_iter(other.clone())).cloned().collect();
                 let bt_diff: Vec<_> = bt_set.difference(&BTreeSet::from_iter(other)).cloned().collect();
 
                 assert_eq!(sg_diff, bt_diff);
@@ -138,7 +138,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
             },
             SetMethod::Intersection { other } => {
-                let sg_inter: Vec<_> = sg_set.intersection(&SGSet::from_iter(other.clone())).cloned().collect();
+                let sg_inter: Vec<_> = sg_set.intersection(&SgSet::from_iter(other.clone())).cloned().collect();
                 let bt_inter: Vec<_> = bt_set.intersection(&BTreeSet::from_iter(other)).cloned().collect();
 
                 assert_eq!(sg_inter, bt_inter);
@@ -146,7 +146,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             },
             SetMethod::IsDisjoint { other } => {
                 assert_eq!(
-                    sg_set.is_disjoint(&SGSet::from_iter(other.clone())),
+                    sg_set.is_disjoint(&SgSet::from_iter(other.clone())),
                     bt_set.is_disjoint(&BTreeSet::from_iter(other))
                 );
             },
@@ -158,7 +158,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             },
             SetMethod::IsSubset { other } => {
                 assert_eq!(
-                    sg_set.is_subset(&SGSet::from_iter(other.clone())),
+                    sg_set.is_subset(&SgSet::from_iter(other.clone())),
                     bt_set.is_subset(&BTreeSet::from_iter(other))
                 );
             },
@@ -167,7 +167,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             },
             SetMethod::IsSuperset { other } => {
                 assert_eq!(
-                    sg_set.is_superset(&SGSet::from_iter(other.clone())),
+                    sg_set.is_superset(&SgSet::from_iter(other.clone())),
                     bt_set.is_superset(&BTreeSet::from_iter(other))
                 );
             },
@@ -188,7 +188,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 );
             }
             SetMethod::New => {
-                sg_set = SGSet::new();
+                sg_set = SgSet::new();
                 bt_set = BTreeSet::new();
             },
             SetMethod::PopFirst => {
@@ -249,7 +249,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
             SetMethod::SymmetricDifference { other } => {
-                let sg_sym_diff: Vec<_> = sg_set.symmetric_difference(&SGSet::from_iter(other.clone())).cloned().collect();
+                let sg_sym_diff: Vec<_> = sg_set.symmetric_difference(&SgSet::from_iter(other.clone())).cloned().collect();
                 let bt_sym_diff: Vec<_> = bt_set.symmetric_difference(&BTreeSet::from_iter(other)).cloned().collect();
 
                 assert_eq!(sg_sym_diff, bt_sym_diff);
@@ -265,7 +265,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             },
             SetMethod::Union { other } => {
-                let sg_union: Vec<_>= sg_set.union(&SGSet::from_iter(other.clone())).cloned().collect();
+                let sg_union: Vec<_>= sg_set.union(&SgSet::from_iter(other.clone())).cloned().collect();
                 let bt_union: Vec<_> = bt_set.union(&BTreeSet::from_iter(other)).cloned().collect();
 
                 assert_eq!(sg_union, bt_union);
@@ -291,7 +291,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
             },
             SetMethod::Ord { other } => {
-                let sg_set_new = SGSet::from_iter(other.clone().into_iter());
+                let sg_set_new = SgSet::from_iter(other.clone().into_iter());
                 let bt_set_new = BTreeSet::from_iter(other.into_iter());
 
                 assert_eq!(

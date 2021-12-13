@@ -1,19 +1,19 @@
-## Minimum Executable Size Comparison: `SGMap` vs `BTreeMap`
+## Minimum Executable Size Comparison: `SgMap` vs `BTreeMap`
 
-This directory contains a repeatable experiment: how small can we possibly make binaries that use `SGMap` and it's API-compatible counterpart, `BTreeMap`?
+This directory contains a repeatable experiment: how small can we possibly make binaries that use `SgMap` and it's API-compatible counterpart, `BTreeMap`?
 In terms of executable code bytes stored in the `.text` section.
 
-[`min_size_no_std`](./min_size_no_std/src/main.rs) is a `scapegoat::SGMap` test binary that calls only the most basic functions of the data structure: `insert`, `get`, and `remove`.
-It doesn't need a global allocator, since `SGMap` uses a stack arena.
+[`min_size_no_std`](./min_size_no_std/src/main.rs) is a `scapegoat::SgMap` test binary that calls only the most basic functions of the data structure: `insert`, `get`, and `remove`.
+It doesn't need a global allocator, since `SgMap` uses a stack arena.
 
 ```rust
 #![no_std]
 #![no_main]
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 
 #[no_mangle]
 pub fn main(_argc: i32, _argv: *const *const u8) -> isize {
-    let mut map: SGMap<usize, usize> = SGMap::new();
+    let mut map: SgMap<usize, usize> = SgMap::new();
     map.insert(1, 2);
     assert_eq!(map.get(&1), Some(&2));
     assert_eq!(map.remove(&1), Some(2));
@@ -106,7 +106,7 @@ error: could not find native static library `c`, perhaps an -L flag is missing?
 
 Now we're ready to build some static binaries, fully from source!
 
-### Results for `scapegoat::SGMap`
+### Results for `scapegoat::SgMap`
 
 Determine executable byte count:
 
@@ -208,7 +208,7 @@ Sample output (oddly the reported `.text` size of 16.4KB is smaller than `cargo 
 
 ### Conclusion
 
-Both `scapegoat::SGMap` and `std::collections::BTreeMap` can produce working dynamic collections in binaries under 20KB.
+Both `scapegoat::SgMap` and `std::collections::BTreeMap` can produce working dynamic collections in binaries under 20KB.
 Much to my surprise, both produce 17KB binaries despite the latter including `musl` libc's memory allocator.
 
 * Thanks to everyone that made suggestions on [this reddit thread](https://www.reddit.com/r/rust/comments/qu3k38/1012x_smaller_executable_footprint_than/).

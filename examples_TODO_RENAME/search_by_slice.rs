@@ -1,6 +1,6 @@
 use core::mem::size_of_val;
 
-use scapegoat::SGSet;
+use scapegoat::SgSet;
 use smallvec::{smallvec, SmallVec};
 
 const U8_BUF_LEN: usize = 32;
@@ -18,7 +18,7 @@ fn main() {
     assert_eq!(size_of_val(&bad_food), 8);
 
     // Store the two words in our set
-    let mut set = SGSet::new();
+    let mut set = SgSet::new();
     #[cfg(not(feature = "high_assurance"))]
     {
         set.insert(bad_code);

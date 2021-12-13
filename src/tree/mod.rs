@@ -15,8 +15,8 @@ mod iter;
 pub use iter::{IntoIter, Iter, IterMut};
 
 mod error;
-pub use error::SGErr;
+pub use error::SgError;
 
 #[allow(clippy::module_inception)]
 mod tree;
-pub use tree::SGTree;
+pub use tree::SgTree;

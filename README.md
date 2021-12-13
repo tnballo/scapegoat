@@ -17,8 +17,8 @@ Ordered set and map data structures via an arena-based [scapegoat tree](https://
 
 Two APIs:
 
-* Ordered Set API ([`SGSet`](crate::SGSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
-* Ordered Map API ([`SGMap`](crate::SGMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
+* Ordered Set API ([`SgSet`](crate::SgSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
+* Ordered Map API ([`SgMap`](crate::SgMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
 
 Strives for three properties:
 
@@ -36,7 +36,7 @@ Strives for three properties:
 
 * **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code):
     * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `from`, etc.) is available.
-    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SGErr>`](crate::SGErr).
+    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SgError>`](crate::SgError).
     * Heap fragmentation doesn't impact **Worst Case Execution Time (WCET)**, this library doesn't use the heap.
 
 Other features:
@@ -46,10 +46,10 @@ Other features:
 
 ### Usage
 
-`SGMap` non-exhaustive, `!#[no_std]` API example (would work almost identically for `std::collections::BTreeMap`):
+`SgMap` non-exhaustive, `!#[no_std]` API example (would work almost identically for `std::collections::BTreeMap`):
 
 ```rust
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 use smallvec::{smallvec, SmallVec};
 
 // This const is an argument to each generic constructor below.
@@ -58,7 +58,7 @@ use smallvec::{smallvec, SmallVec};
 // - To save executable RAM/ROM (monomorphization!), stick to a global capacity like this.
 const CAPACITY: usize = 5;
 
-let mut example = SGMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
+let mut example = SgMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
 let mut stack_str = "your friend the";
 
 // Insert "dynamically" (as if heap)
@@ -115,10 +115,10 @@ That usage is fixed:
 
 ```rust
 use core::mem::size_of_val;
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 
-let small_map: SGMap<u64, u64, 100> = SGMap::new(); // 100 item capacity
-let big_map: SGMap<u64, u64, 2_048> = SGMap::new(); // 2,048 item capacity
+let small_map: SgMap<u64, u64, 100> = SgMap::new(); // 100 item capacity
+let big_map: SgMap<u64, u64, 2_048> = SgMap::new(); // 2,048 item capacity
 
 #[cfg(target_pointer_width = "64")]
 #[cfg(not(feature = "low_mem_insert"))]
@@ -182,9 +182,9 @@ The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.m
 
 **Memory Footprint Demos**
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
-* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 
 ### License and Contributing
 

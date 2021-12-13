@@ -1,7 +1,7 @@
 // TODO: update case to "SgErr" in v2.0.0
 /// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum SGErr {
+pub enum SgError {
     /// Requested operation cannot complete, stack storage is full.
     StackCapacityExceeded,
 
@@ -37,12 +37,12 @@ Requires nightly feature:
 
 #[cfg(test)]
 mod tests {
-    use crate::SGErr;
+    use crate::SgError;
     use std::mem::variant_count;
 
     #[test]
     fn test_err_var_cnt() {
-        assert_eq!(variant_count::<SGErr>(), 8);
+        assert_eq!(variant_count::<SgError>(), 8);
     }
 }
 */

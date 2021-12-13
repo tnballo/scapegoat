@@ -29,8 +29,8 @@ The library's performance characteristics can be tuned on-the-fly, without recom
 For example, manually setting the default 2/3 would be:
 
 ```rust
-use scapegoat::SGMap;
-let mut map: SGMap<isize, isize, 10> = SGMap::new();
+use scapegoat::SgMap;
+let mut map: SgMap<isize, isize, 10> = SgMap::new();
 assert!(map.set_rebal_param(2.0, 3.0).is_ok());
 ```
 

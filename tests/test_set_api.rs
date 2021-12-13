@@ -1,4 +1,4 @@
-use scapegoat::SGSet;
+use scapegoat::SgSet;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
@@ -6,7 +6,7 @@ const DEFAULT_CAPACITY: usize = 10;
 
 #[test]
 fn test_debug() {
-    let sgs = SGSet::from([3, 4, 1, 2, 5, 6]);
+    let sgs = SgSet::from([3, 4, 1, 2, 5, 6]);
     let bts = BTreeSet::from([3, 4, 1, 2, 5, 6]);
     assert!(sgs.iter().eq(bts.iter()));
 
@@ -19,14 +19,14 @@ fn test_debug() {
 
 #[test]
 fn test_clone() {
-    let sgs_1 = SGSet::from([3, 4, 1, 2, 5, 6]);
+    let sgs_1 = SgSet::from([3, 4, 1, 2, 5, 6]);
     let sgs_2 = sgs_1.clone();
     assert_eq!(sgs_1, sgs_2);
 }
 
 #[test]
 fn test_basic_set_functionality() {
-    let mut sgs = SGSet::<_, 10>::new();
+    let mut sgs = SgSet::<_, 10>::new();
 
     assert!(sgs.is_empty());
 
@@ -88,7 +88,7 @@ fn test_basic_set_functionality() {
 #[test]
 fn test_set_from_iter() {
     let keys = vec![1, 10, 100];
-    let sgs = SGSet::<_, 3>::from_iter(keys.into_iter());
+    let sgs = SgSet::<_, 3>::from_iter(keys.into_iter());
 
     assert!(sgs.len() == 3);
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
@@ -100,14 +100,14 @@ TODO: re-enable for tinyvec
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_set_from_iter_panic() {
-    let _: SGSet<usize, DEFAULT_CAPACITY> = SGSet::from_iter(0..(DEFAULT_CAPACITY + 1));
+    let _: SgSet<usize, DEFAULT_CAPACITY> = SgSet::from_iter(0..(DEFAULT_CAPACITY + 1));
 }
 */
 
 #[test]
 fn test_set_iter() {
     let keys = vec![1, 2, 3];
-    let sgs = SGSet::<_, 3>::from_iter(keys.into_iter());
+    let sgs = SgSet::<_, 3>::from_iter(keys.into_iter());
     let mut sgs_iter = sgs.iter();
 
     assert_eq!(sgs_iter.next(), Some(&1));
@@ -118,13 +118,13 @@ fn test_set_iter() {
 
 #[test]
 fn test_set_append() {
-    let mut a = SGSet::new();
+    let mut a = SgSet::new();
 
     a.insert(1);
     a.insert(2);
     a.insert(3);
 
-    let mut b = SGSet::<_, 10>::new();
+    let mut b = SgSet::<_, 10>::new();
 
     b.insert(4);
     b.insert(5);
@@ -142,7 +142,7 @@ fn test_set_append() {
 
 #[test]
 fn test_set_intersection() {
-    let mut a = SGSet::new();
+    let mut a = SgSet::new();
 
     a.insert(2);
     a.insert(4);
@@ -150,7 +150,7 @@ fn test_set_intersection() {
     a.insert(8);
     a.insert(10);
 
-    let mut b = SGSet::new();
+    let mut b = SgSet::new();
 
     b.insert(1);
     b.insert(2);
@@ -161,7 +161,7 @@ fn test_set_intersection() {
     let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     assert_eq!(intersection, [2, 4, 10]);
 
-    let c: SGSet<usize, 10> = SGSet::new();
+    let c: SgSet<usize, 10> = SgSet::new();
     assert!(c.is_empty());
 
     let intersection: Vec<_> = c.intersection(&b).cloned().collect();
@@ -170,8 +170,8 @@ fn test_set_intersection() {
 
 #[test]
 fn test_set_difference() {
-    let a = SGSet::from_iter([1, 3, 9, 7]);
-    let b = SGSet::<_, 4>::from_iter([2, 8, 9, 1]);
+    let a = SgSet::from_iter([1, 3, 9, 7]);
+    let b = SgSet::<_, 4>::from_iter([2, 8, 9, 1]);
     assert_eq!(
         a.difference(&b).copied().collect::<Vec<usize>>(),
         vec![3, 7]
@@ -180,8 +180,8 @@ fn test_set_difference() {
 
 #[test]
 fn test_set_symmetric_difference() {
-    let a = SGSet::from_iter([1, 2, 3, 4, 5]);
-    let b = SGSet::<_, 5>::from_iter([4, 5, 6, 7, 8]);
+    let a = SgSet::from_iter([1, 2, 3, 4, 5]);
+    let b = SgSet::<_, 5>::from_iter([4, 5, 6, 7, 8]);
     assert_eq!(
         a.symmetric_difference(&b).copied().collect::<Vec<usize>>(),
         vec![1, 2, 3, 6, 7, 8]
@@ -190,8 +190,8 @@ fn test_set_symmetric_difference() {
 
 #[test]
 fn test_set_union() {
-    let a: SGSet<_, DEFAULT_CAPACITY> = SGSet::from_iter([1, 3, 9, 7]);
-    let b = SGSet::<_, DEFAULT_CAPACITY>::from_iter([2, 8]);
+    let a: SgSet<_, DEFAULT_CAPACITY> = SgSet::from_iter([1, 3, 9, 7]);
+    let b = SgSet::<_, DEFAULT_CAPACITY>::from_iter([2, 8]);
     assert_eq!(
         a.union(&b).copied().collect::<Vec<usize>>(),
         vec![1, 2, 3, 7, 8, 9]
@@ -200,9 +200,9 @@ fn test_set_union() {
 
 #[test]
 fn test_set_is_superset() {
-    let a = SGSet::from_iter([1, 3, 5]);
-    let b = SGSet::from_iter([5, 1]);
-    let c = SGSet::<_, 4>::from_iter([1, 3, 4, 5]);
+    let a = SgSet::from_iter([1, 3, 5]);
+    let b = SgSet::from_iter([5, 1]);
+    let c = SgSet::<_, 4>::from_iter([1, 3, 4, 5]);
     assert!(a.is_superset(&b));
     assert!(!b.is_superset(&a));
     assert!(!a.is_superset(&c));
@@ -210,9 +210,9 @@ fn test_set_is_superset() {
 
 #[test]
 fn test_set_is_subset() {
-    let a = SGSet::from_iter([2, 4, 6]);
-    let b = SGSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5, 6, 7]);
-    let c = SGSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5]);
+    let a = SgSet::from_iter([2, 4, 6]);
+    let b = SgSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5, 6, 7]);
+    let c = SgSet::<_, DEFAULT_CAPACITY>::from_iter([1, 2, 3, 4, 5]);
     assert!(a.is_subset(&b));
     assert!(!b.is_subset(&a));
     assert!(!a.is_subset(&c));
@@ -220,9 +220,9 @@ fn test_set_is_subset() {
 
 #[test]
 fn test_set_is_disjoint() {
-    let a = SGSet::from_iter([1, 2, 3]);
-    let b = SGSet::from_iter([4, 5, 6]);
-    let c = SGSet::<_, 3>::from_iter([3, 4, 5]);
+    let a = SgSet::from_iter([1, 2, 3]);
+    let b = SgSet::from_iter([4, 5, 6]);
+    let c = SgSet::<_, 3>::from_iter([3, 4, 5]);
     assert!(a.is_disjoint(&b));
     assert!(!a.is_disjoint(&c));
 }

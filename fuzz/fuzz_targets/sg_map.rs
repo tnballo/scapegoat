@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 
 #[derive(Arbitrary, Debug)]
 enum MapMethod<K: Ord + Debug, V: Debug> {
@@ -46,7 +46,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Ord { other: Vec<(K, V)> },
 }
 
-fn checked_get_len<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>) -> usize {
+fn checked_get_len<K: Ord, V>(sg_map: &SgMap<K, V>, bt_map: &BTreeMap<K, V>) -> usize {
     let len = sg_map.len();
     assert_eq!(
         len,
@@ -56,7 +56,7 @@ fn checked_get_len<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>) -> 
     len
 }
 
-fn assert_len_unchanged<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>, old_len: usize) {
+fn assert_len_unchanged<K: Ord, V>(sg_map: &SgMap<K, V>, bt_map: &BTreeMap<K, V>, old_len: usize) {
     assert_eq!(
         checked_get_len(&sg_map, &bt_map),
         old_len
@@ -65,14 +65,14 @@ fn assert_len_unchanged<K: Ord, V>(sg_map: &SGMap<K, V>, bt_map: &BTreeMap<K, V>
 
 // Differential fuzzing harness
 fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
-    let mut sg_map = SGMap::new();      // Data structure under test
+    let mut sg_map = SgMap::new();      // Data structure under test
     let mut bt_map = BTreeMap::new();   // Reference data structure
 
     for m in methods {
         match m {
             // API Equivalence -----------------------------------------------------------------------------------------
             MapMethod::Append { other } => {
-                let mut sg_other = SGMap::from_iter(other.clone());
+                let mut sg_other = SgMap::from_iter(other.clone());
                 let mut bt_other = BTreeMap::from_iter(other);
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -222,7 +222,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 );
             },
             MapMethod::New => {
-                sg_map = SGMap::new();
+                sg_map = SgMap::new();
                 bt_map = BTreeMap::new();
             },
             MapMethod::PopFirst => {
@@ -302,7 +302,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert!(checked_get_len(&sg_map, &bt_map) >= len_old);
             },
             MapMethod::Ord { other } => {
-                let sg_map_new = SGMap::from_iter(other.clone().into_iter());
+                let sg_map_new = SgMap::from_iter(other.clone().into_iter());
                 let bt_map_new = BTreeMap::from_iter(other.into_iter());
 
                 assert_eq!(

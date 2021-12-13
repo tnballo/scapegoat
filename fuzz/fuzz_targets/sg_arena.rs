@@ -23,7 +23,7 @@ enum ArenaMethod<K: Ord + fmt::Debug, V: fmt::Debug> {
     HardGet { idx: usize },
     HardGetMut { idx: usize },
     Len,
-    // sort() exercised through SGMap fuzz target (input invariants are complex, tree structure related)
+    // sort() exercised through SgMap fuzz target (input invariants are complex, tree structure related)
 }
 
 fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {

@@ -1,15 +1,15 @@
 use core::cmp::Ordering;
 
-use crate::set::SGSet;
+use crate::set::SgSet;
 use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter};
 
 use smallvec::SmallVec;
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
-/// An iterator over the items of a [`SGSet`][crate::set::SGSet].
+/// An iterator over the items of a [`SgSet`][crate::set::SgSet].
 ///
-/// This `struct` is created by the [`iter`][crate::set::SGSet::iter] method on [`SGSet`][crate::set::SGSet].
+/// This `struct` is created by the [`iter`][crate::set::SgSet::iter] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
 pub struct Iter<'a, T: Ord + Default, const N: usize> {
     ref_iter: TreeIter<'a, T, (), N>,
@@ -17,7 +17,7 @@ pub struct Iter<'a, T: Ord + Default, const N: usize> {
 
 impl<'a, T: Ord + Default, const N: usize> Iter<'a, T, N> {
     /// Construct reference iterator.
-    pub(crate) fn new(set: &'a SGSet<T, N>) -> Self {
+    pub(crate) fn new(set: &'a SgSet<T, N>) -> Self {
         Iter {
             ref_iter: TreeIter::new(&set.bst),
         }
@@ -32,9 +32,9 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Iter<'a, T, N> {
     }
 }
 
-/// An owning iterator over the items of a [`SGSet`][crate::set::SGSet].
+/// An owning iterator over the items of a [`SgSet`][crate::set::SgSet].
 ///
-/// This `struct` is created by the [`into_iter`][crate::set::SGSet::into_iter] method on [`SGSet`][crate::set::SGSet]
+/// This `struct` is created by the [`into_iter`][crate::set::SgSet::into_iter] method on [`SgSet`][crate::set::SgSet]
 /// (provided by the IntoIterator trait). See its documentation for more.
 pub struct IntoIter<T: Ord + Default, const N: usize> {
     cons_iter: TreeIntoIter<T, (), N>,
@@ -42,7 +42,7 @@ pub struct IntoIter<T: Ord + Default, const N: usize> {
 
 impl<T: Ord + Default, const N: usize> IntoIter<T, N> {
     /// Construct owning iterator.
-    pub(crate) fn new(set: SGSet<T, N>) -> Self {
+    pub(crate) fn new(set: SgSet<T, N>) -> Self {
         IntoIter {
             cons_iter: TreeIntoIter::new(set.bst),
         }
@@ -62,17 +62,17 @@ impl<T: Ord + Default, const N: usize> Iterator for IntoIter<T, N> {
 // TODO: these need more trait implementations for full compatibility
 // TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
 
-/// An iterator producing elements in the difference of [`SGSet`][crate::set::SGSet]s.
+/// An iterator producing elements in the difference of [`SgSet`][crate::set::SgSet]s.
 ///
-/// This `struct` is created by the [`difference`][crate::set::SGSet::difference] method
-/// on [`SGSet`][crate::set::SGSet]. See its documentation for more.
+/// This `struct` is created by the [`difference`][crate::set::SgSet::difference] method
+/// on [`SgSet`][crate::set::SgSet]. See its documentation for more.
 pub struct Difference<'a, T, const N: usize> {
     pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
 }
 
 impl<'a, T: Ord + Default, const N: usize> Difference<'a, T, N> {
     /// Construct `Difference` iterator.
-    pub(crate) fn new(this: &'a SGSet<T, N>, other: &SGSet<T, N>) -> Self {
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
         let mut diff = SmallVec::<[&'a T; N]>::default();
 
         for val in this {
@@ -100,17 +100,17 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Difference<'a, T, N> {
 // TODO: these need more trait implementations for full compatibility
 // TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
 
-/// An iterator producing elements in the symmetric difference of [`SGSet`][crate::set::SGSet]s.
+/// An iterator producing elements in the symmetric difference of [`SgSet`][crate::set::SgSet]s.
 ///
-/// This `struct` is created by the [`symmetric_difference`][crate::set::SGSet::symmetric_difference]
-/// method on [`SGSet`][crate::set::SGSet]. See its documentation for more.
+/// This `struct` is created by the [`symmetric_difference`][crate::set::SgSet::symmetric_difference]
+/// method on [`SgSet`][crate::set::SgSet]. See its documentation for more.
 pub struct SymmetricDifference<'a, T, const N: usize> {
     pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
 }
 
 impl<'a, T: Ord + Default, const N: usize> SymmetricDifference<'a, T, N> {
     /// Construct `SymmetricDifference` iterator.
-    pub(crate) fn new(this: &'a SGSet<T, N>, other: &'a SGSet<T, N>) -> Self {
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
         let mut sym_diff = SmallVec::<[&'a T; N]>::default();
 
         for val in this {
@@ -146,9 +146,9 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for SymmetricDifference<'a, 
 // TODO: these need more trait implementations for full compatibility
 // TODO: make this a lazy iterator like `std::collections::btree_set::Union`
 
-/// An iterator producing elements in the union of [`SGSet`][crate::set::SGSet]s.
+/// An iterator producing elements in the union of [`SgSet`][crate::set::SgSet]s.
 ///
-/// This `struct` is created by the [`union`][crate::set::SGSet::difference] method on [`SGSet`][crate::set::SGSet].
+/// This `struct` is created by the [`union`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
 pub struct Union<'a, T, const N: usize> {
     pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
@@ -156,7 +156,7 @@ pub struct Union<'a, T, const N: usize> {
 
 impl<'a, T: Ord + Default, const N: usize> Union<'a, T, N> {
     /// Construct `Union` iterator.
-    pub(crate) fn new(this: &'a SGSet<T, N>, other: &'a SGSet<T, N>) -> Self {
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
         let mut union = SmallVec::<[&'a T; N]>::default();
 
         for val in this {
@@ -190,9 +190,9 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Union<'a, T, N> {
 // TODO: these need more trait implementations for full compatibility
 // TODO: make this a lazy iterator like `std::collections::btree_set::Intersection`
 
-/// An iterator producing elements in the intersection of [`SGSet`][crate::set::SGSet]s.
+/// An iterator producing elements in the intersection of [`SgSet`][crate::set::SgSet]s.
 ///
-/// This `struct` is created by the [`intersection`][crate::set::SGSet::difference] method on [`SGSet`][crate::set::SGSet].
+/// This `struct` is created by the [`intersection`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
 pub struct Intersection<'a, T, const N: usize> {
     pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
@@ -200,7 +200,7 @@ pub struct Intersection<'a, T, const N: usize> {
 
 impl<'a, T: Ord + Default, const N: usize> Intersection<'a, T, N> {
     /// Construct `Intersection` iterator.
-    pub(crate) fn new(this: &'a SGSet<T, N>, other: &SGSet<T, N>) -> Self {
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
         let mut self_iter = this.into_iter();
         let mut other_iter = other.into_iter();
         let mut opt_self_val = self_iter.next();

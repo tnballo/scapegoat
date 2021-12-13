@@ -7,7 +7,7 @@ use core::mem;
 use core::ops::{Index, Sub};
 
 use super::arena::Arena;
-use super::error::SGErr;
+use super::error::SgError;
 use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::SmallNode;
@@ -25,12 +25,11 @@ const DEFAULT_ALPHA_NUM: f32 = 2.0;
 const DEFAULT_ALPHA_DENOM: f32 = 3.0;
 
 /// A memory-efficient, self-balancing binary search tree.
-#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
 #[derive(Clone)]
-pub struct SGTree<K: Default, V: Default, const N: usize> {
+pub struct SgTree<K: Default, V: Default, const N: usize> {
     // Storage
     pub(crate) arena: Arena<K, V, Idx, N>,
-    pub(crate) root_idx: Option<usize>, // TODO: rename to opt_root_idx
+    pub(crate) opt_root_idx: Option<usize>, // TODO: rename to opt_root_idx
 
     // Query cache
     max_idx: usize,
@@ -44,18 +43,18 @@ pub struct SGTree<K: Default, V: Default, const N: usize> {
     rebal_cnt: usize,
 }
 
-impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
+impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Public API ------------------------------------------------------------------------------------------------------
 
-    /// Makes a new, empty `SGTree`.
+    /// Makes a new, empty `SgTree`.
     pub fn new() -> Self {
         if N > (Idx::MAX as usize) {
             panic!("Max stack item capacity (0x{:x}) exceeded!", Idx::MAX);
         }
 
-        SGTree {
+        SgTree {
             arena: Arena::<K, V, Idx, N>::new(),
-            root_idx: None,
+            opt_root_idx: None,
             max_idx: 0,
             min_idx: 0,
             curr_size: 0,
@@ -77,7 +76,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     ///     * If `a` reached `1.0`, it'd mean a tree that never rebalances.
     ///
     /// Returns `Err` if `0.5 <= alpha_num / alpha_denom < 1.0` isn't `true` (invalid `a`, out of range).
-    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
+    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SgError> {
         let a = alpha_num / alpha_denom;
         match (0.5..1.0).contains(&a) {
             true => {
@@ -85,12 +84,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 self.alpha_denom = alpha_denom;
                 Ok(())
             }
-            false => Err(SGErr::RebalanceFactorOutOfRange),
+            false => Err(SgError::RebalanceFactorOutOfRange),
         }
     }
 
     /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
-    /// See [the corresponding setter method][SGTree::set_rebal_param] for more details.
+    /// See [the corresponding setter method][SgTree::set_rebal_param] for more details.
     pub fn rebal_param(&self) -> (f32, f32) {
         (self.alpha_num, self.alpha_denom)
     }
@@ -106,7 +105,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut SGTree<K, V, N>)
+    pub fn append(&mut self, other: &mut SgTree<K, V, N>)
     where
         K: Ord,
     {
@@ -131,7 +130,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     }
 
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
-    pub fn try_append(&mut self, other: &mut SGTree<K, V, N>) -> Result<(), SGErr> {
+    pub fn try_append(&mut self, other: &mut SgTree<K, V, N>) -> Result<(), SgError> {
         // Nothing to append!
         if other.is_empty() {
             return Ok(());
@@ -154,7 +153,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         } else {
             // Preemptive - we haven't mutated `self` or `other`!
             // Caller can assume unchanged state.
-            return Err(SGErr::StackCapacityExceeded);
+            return Err(SgError::StackCapacityExceeded);
         }
 
         Ok(())
@@ -176,14 +175,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     /// * `None` if the tree did not have this key present.
     /// * The old value if the tree did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
-    pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SGErr>
+    pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SgError>
     where
         K: Ord,
     {
         // Replace current slot or safely fill a new one
         match self.contains_key(&key) || (self.capacity() > self.len()) {
             true => Ok(self.priv_balancing_insert::<Idx>(key, val)),
-            false => Err(SGErr::StackCapacityExceeded),
+            false => Err(SgError::StackCapacityExceeded),
         }
     }
 
@@ -209,7 +208,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         match self.priv_remove_by_key(key) {
             Some((key, val)) => {
                 if self.max_size > (2 * self.curr_size) {
-                    if let Some(root_idx) = self.root_idx {
+                    if let Some(root_idx) = self.opt_root_idx {
                         self.rebuild::<Idx>(root_idx);
                         self.max_size = self.curr_size;
                     }
@@ -304,7 +303,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
     pub fn clear(&mut self) {
         if !self.is_empty() {
             let rebal_cnt = self.rebal_cnt;
-            *self = SGTree::new();
+            *self = SgTree::new();
             self.rebal_cnt = rebal_cnt;
         }
     }
@@ -323,7 +322,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Returns `true` if the tree contains no elements.
     pub fn is_empty(&self) -> bool {
-        self.root_idx.is_none()
+        self.opt_root_idx.is_none()
     }
 
     /// Returns a reference to the first key-value pair in the tree.
@@ -469,7 +468,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Sort the internal arena such that logically contiguous nodes are in-order (by key).
     pub(crate) fn sort_arena(&mut self) {
-        if let Some(root_idx) = self.root_idx {
+        if let Some(root_idx) = self.opt_root_idx {
             let mut sort_metadata = self
                 .arena
                 .iter()
@@ -481,14 +480,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
             sort_metadata.sort_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
             let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
 
-            self.root_idx = Some(sorted_root_idx);
+            self.opt_root_idx = Some(sorted_root_idx);
             self.update_max_idx();
             self.update_min_idx();
         }
     }
 
     /// Total common elements between two trees
-    pub(crate) fn intersect_cnt(&self, other: &SGTree<K, V, N>) -> usize {
+    pub(crate) fn intersect_cnt(&self, other: &SgTree<K, V, N>) -> usize {
         self.iter().filter(|(k, _)| other.contains_key(k)).count()
     }
 
@@ -505,7 +504,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        match self.root_idx {
+        match self.opt_root_idx {
             Some(root_idx) => {
                 let mut opt_parent_idx = None;
                 let mut curr_idx = root_idx;
@@ -602,7 +601,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         key: K,
         val: V,
     ) -> Option<V> {
-        match self.root_idx {
+        match self.opt_root_idx {
             // Sorted insert
             Some(idx) => {
                 // Iterative traversal
@@ -709,7 +708,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                 self.max_size += 1;
 
                 let root_idx = self.arena.add(key, val);
-                self.root_idx = Some(root_idx);
+                self.opt_root_idx = Some(root_idx);
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;
 
@@ -847,7 +846,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
                         }
                     }
                     None => {
-                        self.root_idx = new_child;
+                        self.opt_root_idx = new_child;
                     }
                 }
 
@@ -936,7 +935,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Minimum update without recursion
     fn update_min_idx(&mut self) {
-        match self.root_idx {
+        match self.opt_root_idx {
             Some(root_idx) => {
                 let mut curr_idx = root_idx;
                 loop {
@@ -956,7 +955,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 
     /// Maximum update without recursion
     fn update_max_idx(&mut self) {
-        match self.root_idx {
+        match self.opt_root_idx {
             Some(root_idx) => {
                 let mut curr_idx = root_idx;
                 loop {
@@ -1134,7 +1133,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         }
 
         debug_assert!(
-            self.root_idx.is_some(),
+            self.opt_root_idx.is_some(),
             "Internal invariant failed: rebalance of multi-node tree without root!"
         );
 
@@ -1150,9 +1149,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
         ));
 
         // Update tree root or subtree parent
-        if let Some(root_idx) = self.root_idx {
+        if let Some(root_idx) = self.opt_root_idx {
             if sorted_arena_idxs.contains(&root_idx) {
-                self.root_idx = Some(subtree_root_arena_idx);
+                self.opt_root_idx = Some(subtree_root_arena_idx);
             } else {
                 let old_subtree_root = &self.arena[old_subtree_root_idx];
                 let ngh: NodeGetHelper<U> = self.priv_get(None, old_subtree_root.key());
@@ -1225,7 +1224,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SGTree<K, V, N> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<K, V, const N: usize> Debug for SGTree<K, V, N>
+impl<K, V, const N: usize> Debug for SgTree<K, V, N>
 where
     K: Ord + Debug + Default,
     V: Debug + Default,
@@ -1236,7 +1235,7 @@ where
 }
 
 // Default
-impl<K, V, const N: usize> Default for SGTree<K, V, N>
+impl<K, V, const N: usize> Default for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
@@ -1247,7 +1246,7 @@ where
 }
 
 // From array
-impl<K, V, const N: usize> From<[(K, V); N]> for SGTree<K, V, N>
+impl<K, V, const N: usize> From<[(K, V); N]> for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
@@ -1258,7 +1257,7 @@ where
 }
 
 // Indexing
-impl<K, V, Q, const N: usize> Index<&Q> for SGTree<K, V, N>
+impl<K, V, Q, const N: usize> Index<&Q> for SgTree<K, V, N>
 where
     K: Borrow<Q> + Ord + Default,
     Q: Ord + ?Sized,
@@ -1270,14 +1269,14 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the key is not present in the `SGTree`.
+    /// Panics if the key is not present in the `SgTree`.
     fn index(&self, key: &Q) -> &Self::Output {
         self.get(key).expect("No value found for key")
     }
 }
 
 // Extension from iterator.
-impl<K, V, const N: usize> Extend<(K, V)> for SGTree<K, V, N>
+impl<K, V, const N: usize> Extend<(K, V)> for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
@@ -1291,7 +1290,7 @@ where
 }
 
 // Extension from reference iterator.
-impl<'a, K, V, const N: usize> Extend<(&'a K, &'a V)> for SGTree<K, V, N>
+impl<'a, K, V, const N: usize> Extend<(&'a K, &'a V)> for SgTree<K, V, N>
 where
     K: Ord + Copy + Default,
     V: Copy + Default,
@@ -1302,18 +1301,18 @@ where
 }
 
 // PartialEq
-impl<K, V, const N: usize> PartialEq for SGTree<K, V, N>
+impl<K, V, const N: usize> PartialEq for SgTree<K, V, N>
 where
     K: Ord + PartialEq + Default,
     V: PartialEq + Default,
 {
-    fn eq(&self, other: &SGTree<K, V, N>) -> bool {
+    fn eq(&self, other: &SgTree<K, V, N>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
 // Eq
-impl<K, V, const N: usize> Eq for SGTree<K, V, N>
+impl<K, V, const N: usize> Eq for SgTree<K, V, N>
 where
     K: Ord + Eq + Default,
     V: Eq + Default,
@@ -1321,29 +1320,29 @@ where
 }
 
 // PartialOrd
-impl<K, V, const N: usize> PartialOrd for SGTree<K, V, N>
+impl<K, V, const N: usize> PartialOrd for SgTree<K, V, N>
 where
     K: Ord + PartialOrd + Default,
     V: PartialOrd + Default,
 {
-    fn partial_cmp(&self, other: &SGTree<K, V, N>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &SgTree<K, V, N>) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 // Ord
-impl<K, V, const N: usize> Ord for SGTree<K, V, N>
+impl<K, V, const N: usize> Ord for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Ord + Default,
 {
-    fn cmp(&self, other: &SGTree<K, V, N>) -> Ordering {
+    fn cmp(&self, other: &SgTree<K, V, N>) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
 // Hash
-impl<K, V, const N: usize> Hash for SGTree<K, V, N>
+impl<K, V, const N: usize> Hash for SgTree<K, V, N>
 where
     K: Ord + Hash + Default,
     V: Hash + Default,
@@ -1358,13 +1357,13 @@ where
 // Iterators -----------------------------------------------------------------------------------------------------------
 
 // Construct from iterator.
-impl<K, V, const N: usize> FromIterator<(K, V)> for SGTree<K, V, N>
+impl<K, V, const N: usize> FromIterator<(K, V)> for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
 {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        let mut sgt = SGTree::new();
+        let mut sgt = SgTree::new();
 
         for (k, v) in iter {
             sgt.try_insert(k, v)
@@ -1376,7 +1375,7 @@ where
 }
 
 // Reference iterator, mutable
-impl<'a, K, V, const N: usize> IntoIterator for &'a mut SGTree<K, V, N>
+impl<'a, K, V, const N: usize> IntoIterator for &'a mut SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
@@ -1390,7 +1389,7 @@ where
 }
 
 // Reference iterator, immutable
-impl<'a, K, V, const N: usize> IntoIterator for &'a SGTree<K, V, N>
+impl<'a, K, V, const N: usize> IntoIterator for &'a SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,
@@ -1404,7 +1403,7 @@ where
 }
 
 // Consuming iterator
-impl<K, V, const N: usize> IntoIterator for SGTree<K, V, N>
+impl<K, V, const N: usize> IntoIterator for SgTree<K, V, N>
 where
     K: Ord + Default,
     V: Default,

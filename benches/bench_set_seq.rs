@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use scapegoat::SGSet;
+use scapegoat::SgSet;
 
 mod test_data;
 use test_data::{
@@ -17,7 +17,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("sgs_insert_100_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::<_, 100>::new();
+            let mut sgs = SgSet::<_, 100>::new();
             for k in &SEQ_100.keys {
                 sgs.insert(*k);
             }
@@ -37,7 +37,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("sgs_insert_1_000_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::<_, 1_000>::new();
+            let mut sgs = SgSet::<_, 1_000>::new();
             for k in &SEQ_1_000.keys {
                 sgs.insert(*k);
             }
@@ -57,7 +57,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("sgs_insert_10_000_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::<_, 10_000>::new();
+            let mut sgs = SgSet::<_, 10_000>::new();
             for k in &SEQ_10_000.keys {
                 sgs.insert(*k);
             }
@@ -131,9 +131,9 @@ fn bench_get(c: &mut Criterion) {
 }
 
 fn bench_remove(c: &mut Criterion) {
-    let mut sgs_100: SGSet<usize, 100> = SGSet::from_iter(SEQ_100.keys.clone());
-    let mut sgs_1_000: SGSet<usize, 1_000> = SGSet::from_iter(SEQ_1_000.keys.clone());
-    let mut sgs_10_000: SGSet<usize, 10_000> = SGSet::from_iter(SEQ_10_000.keys.clone());
+    let mut sgs_100: SgSet<usize, 100> = SgSet::from_iter(SEQ_100.keys.clone());
+    let mut sgs_1_000: SgSet<usize, 1_000> = SgSet::from_iter(SEQ_1_000.keys.clone());
+    let mut sgs_10_000: SgSet<usize, 10_000> = SgSet::from_iter(SEQ_10_000.keys.clone());
 
     let mut std_100: BTreeSet<usize> = BTreeSet::from_iter(SEQ_100.keys.clone());
     let mut std_1_000: BTreeSet<usize> = BTreeSet::from_iter(SEQ_1_000.keys.clone());
