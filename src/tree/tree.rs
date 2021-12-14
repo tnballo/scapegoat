@@ -325,6 +325,12 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         self.opt_root_idx.is_none()
     }
 
+    /// Returns `true` if the tree's capacity is filled.
+    pub fn is_full(&self) -> bool {
+        debug_assert!(self.len() <= self.capacity());
+        self.len() == self.capacity()
+    }
+
     /// Returns a reference to the first key-value pair in the tree.
     /// The key in this pair is the minimum key in the tree.
     pub fn first_key_value(&self) -> Option<(&K, &V)>

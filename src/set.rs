@@ -133,7 +133,6 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
     pub fn append(&mut self, other: &mut SgSet<T, N>)
     where
         T: Ord,
@@ -146,20 +145,23 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SgSet;
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgSet, SgError};
     ///
     /// let mut a = SgSet::<_, 10>::new();
-    /// a.insert(1);
-    /// a.insert(2);
-    /// a.insert(3);
+    /// assert!(a.try_insert(1).is_ok());
+    /// assert!(a.try_insert(2).is_ok());
+    /// assert!(a.try_insert(3).is_ok());
     ///
     /// let mut b = SgSet::<_, 10>::new();
-    /// b.insert(3);
-    /// b.insert(4);
-    /// b.insert(5);
+    /// assert!(b.try_insert(3).is_ok()); // Overwrite previous
+    /// assert!(b.try_insert(4).is_ok());
+    /// assert!(b.try_insert(5).is_ok());
     ///
-    /// a.append(&mut b);
+    /// // Successful append
+    /// assert!(a.try_append(&mut b).is_ok());
     ///
+    /// // Elements moved
     /// assert_eq!(a.len(), 5);
     /// assert_eq!(b.len(), 0);
     ///
@@ -168,10 +170,29 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// assert!(a.contains(&3));
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
+    ///
+    /// // Fill remaining capacity
+    /// let mut key = 6;
+    /// while a.len() < a.capacity() {
+    ///     assert!(a.try_insert(key).is_ok());
+    ///     key += 1;
+    /// }
+    ///
+    /// // Full
+    /// assert!(a.is_full());
+    ///
+    /// // More data
+    /// let mut c = SgSet::<_, 10>::from_iter([11, 12]);
+    /// let mut d = SgSet::<_, 10>::from_iter([1, 2]);
+    ///
+    /// // Cannot append new pairs
+    /// assert_eq!(a.try_append(&mut c), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing paris
+    /// assert!(a.try_append(&mut d).is_ok());
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SgSet<T, N>) -> Result<(), SgError> {
-        self.bst.append(&mut other.bst)
+    pub fn try_append(&mut self, other: &mut SgSet<T, N>) -> Result<(), SgError> {
+        self.bst.try_append(&mut other.bst)
     }
 
     /// Adds a value to the set.
@@ -189,7 +210,6 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,
@@ -198,7 +218,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     }
 
     /// Adds a value to the set.
-    /// Returns `Err` if sets's stack capacity is full, else the `Ok` contains:
+    /// Returns `Err` if the operation can't be completed, else the `Ok` contains:
     /// * `true` if the set did not have this value present.
     /// * `false` if the set did have this value present (and that old entry is overwritten).
     ///
@@ -209,28 +229,34 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     ///
     /// let mut set = SgSet::<_, 10>::new();
     ///
-    /// assert_eq!(set.insert(2), Ok(true));
-    /// assert_eq!(set.insert(2), Ok(false));
+    /// // Add a new element
+    /// assert_eq!(set.try_insert(2), Ok(true));
+    ///
+    /// // Replace existing element
+    /// assert_eq!(set.try_insert(2), Ok(false));
     /// assert_eq!(set.len(), 1);
     ///
+    /// // Fill remaining capacity
     /// let mut elem = 3;
     /// while set.len() < set.capacity() {
-    ///     set.insert(elem);
+    ///     assert!(set.try_insert(elem).is_ok());
     ///     elem += 1;
     /// }
     ///
-    /// assert_eq!(set.first(), Some(&2));
-    /// assert_eq!(set.last(), Some(&(2 + (set.capacity() - 1))));
-    /// assert_eq!(set.len(), set.capacity());
+    /// // Full
+    /// assert!(set.is_full());
     ///
-    /// assert_eq!(set.insert(elem), Err(SgError::StackCapacityExceeded));
+    /// // Cannot insert new element
+    /// assert_eq!(set.try_insert(elem), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing element
+    /// assert_eq!(set.try_insert(elem - 1), Ok(false));
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, value: T) -> Result<bool, SgError>
+    pub fn try_insert(&mut self, value: T) -> Result<bool, SgError>
     where
         T: Ord,
     {
-        match self.bst.insert(value, ()) {
+        match self.bst.try_insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
             Err(_) => Err(SgError::StackCapacityExceeded),
         }
@@ -691,6 +717,23 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.bst.is_empty()
+    }
+
+    /// Returns `true` if the set's capacity is filled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgSet;
+    ///
+    /// let mut a = SgSet::<_, 2>::new();
+    /// a.insert(1);
+    /// assert!(!a.is_full());
+    /// a.insert(2);
+    /// assert!(a.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.bst.is_full()
     }
 
     /// Returns `true` if `self` has no elements in common with other (empty intersection).

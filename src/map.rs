@@ -250,26 +250,28 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         self.bst.append(&mut other.bst);
     }
 
-    // TODO: re-write this example!
     /// Attempts to move all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SgMap;
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgMap, SgError};
     ///
     /// let mut a = SgMap::<_, _, 10>::new();
-    /// a.insert(1, "a");
-    /// a.insert(2, "b");
-    /// a.insert(3, "c");
+    /// a.try_insert(1, "a").is_ok();
+    /// a.try_insert(2, "b").is_ok();
+    /// a.try_insert(3, "c").is_ok();
     ///
     /// let mut b = SgMap::<_, _, 10>::new();
-    /// b.insert(3, "d");
-    /// b.insert(4, "e");
-    /// b.insert(5, "f");
+    /// b.try_insert(3, "d").is_ok(); // Overwrite previous
+    /// b.try_insert(4, "e").is_ok();
+    /// b.try_insert(5, "f").is_ok();
     ///
-    /// a.append(&mut b);
+    /// // Successful append
+    /// assert!(a.try_append(&mut b).is_ok());
     ///
+    /// // Elements moved
     /// assert_eq!(a.len(), 5);
     /// assert_eq!(b.len(), 0);
     ///
@@ -278,6 +280,26 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// assert_eq!(a[&3], "d");
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
+    ///
+    /// // Fill remaining capacity
+    /// let mut key = 6;
+    /// while a.len() < a.capacity() {
+    ///     assert!(a.try_insert(key, "filler").is_ok());
+    ///     key += 1;
+    /// }
+    ///
+    /// // Full
+    /// assert!(a.is_full());
+    ///
+    /// // More data
+    /// let mut c = SgMap::<_, _, 10>::from_iter([(11, "k"), (12, "l")]);
+    /// let mut d = SgMap::<_, _, 10>::from_iter([(1, "a2"), (2, "b2")]);
+    ///
+    /// // Cannot append new pairs
+    /// assert_eq!(a.try_append(&mut c), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing paris
+    /// assert!(a.try_append(&mut d).is_ok());
     /// ```
     pub fn try_append(&mut self, other: &mut SgMap<K, V, N>) -> Result<(), SgError> {
         self.bst.try_append(&mut other.bst)
@@ -308,11 +330,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         self.bst.insert(key, val)
     }
 
-    // TODO: review this example!
     /// Insert a key-value pair into the map.
-    /// Returns `Err` if map's stack capacity is full, else the `Ok` contains:
+    /// Returns `Err` if the operation can't be completed, else the `Ok` contains:
     /// * `None` if the map did not have this key present.
-    /// * The old value if the tree did have this key present (both the value and key are updated,
+    /// * The old value if the map did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
     ///
     /// # Examples
@@ -321,24 +342,31 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// use scapegoat::{SgMap, SgError};
     ///
     /// let mut map = SgMap::<_, _, 10>::new();
+    ///
+    /// // Add a new pair
     /// assert_eq!(map.try_insert(37, "a"), Ok(None));
     /// assert_eq!(map.is_empty(), false);
     ///
+    /// // Replace existing pair
     /// map.insert(37, "b");
     /// assert_eq!(map.try_insert(37, "c"), Ok(Some("b")));
     /// assert_eq!(map[&37], "c");
     ///
+    /// // Fill remaining capacity
     /// let mut key = 38;
     /// while map.len() < map.capacity() {
-    ///     map.insert(key, "filler");
+    ///     assert!(map.try_insert(key, "filler").is_ok());
     ///     key += 1;
     /// }
     ///
-    /// assert_eq!(map.first_key(), Some(&37));
-    /// assert_eq!(map.last_key(), Some(&(37 + (map.capacity() - 1))));
-    /// assert_eq!(map.len(), map.capacity());
+    /// // Full
+    /// assert!(map.is_full());
     ///
+    /// // Cannot insert new pair
     /// assert_eq!(map.try_insert(key, "out of bounds"), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing pair
+    /// assert_eq!(map.try_insert(key - 1, "overwrite filler"), Ok(Some("filler")));
     /// ```
     pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SgError>
     where
@@ -633,6 +661,23 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.bst.is_empty()
+    }
+
+    /// Returns `true` if the map's capacity is filled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut a = SgMap::<_, _, 2>::new();
+    /// a.insert(1, "a");
+    /// assert!(!a.is_full());
+    /// a.insert(2, "b");
+    /// assert!(a.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.bst.is_full()
     }
 
     /// Returns a reference to the first key-value pair in the map.
