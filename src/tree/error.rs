@@ -1,4 +1,3 @@
-// TODO: update case to "SgErr" in v2.0.0
 /// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SgError {
@@ -9,6 +8,7 @@ pub enum SgError {
     /// Requested operation cannot complete, heap storage is full.
     HeapCapacityExceeded,
     */
+
     /// Reserved for future use
     Reserved2,
 

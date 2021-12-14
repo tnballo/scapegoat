@@ -66,12 +66,7 @@ impl<
         self.vec.iter_mut()
     }
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of items.
-    /// Attempting to insert items beyond capacity will panic.
-    ///
-    /// TODO: update the below for v2.0
-    /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
-    /// Items inserted beyond capacity will be stored on the heap.
+    /// Total capacity, e.g. maximum number of items.
     pub fn capacity(&self) -> usize {
         N
     }

@@ -441,7 +441,6 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
         removed
     }
 
-    // TODO v2.0: impl and add fuzz test
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
     /// The value may be any borrowed form of the set's value type,
@@ -930,9 +929,8 @@ where
     }
 }
 
-// Iterators -----------------------------------------------------------------------------------------------------------
+// General Iterators ---------------------------------------------------------------------------------------------------
 
-// TODO: move this to set_types.rs and document
 // Reference iterator
 impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SgSet<T, N> {
     type Item = &'a T;
@@ -942,9 +940,6 @@ impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SgSet<T, N> {
         self.iter()
     }
 }
-
-// TODO: move this to set_types.rs and document
-/// Reference iterator wrapper
 
 // Consuming iterator
 impl<T: Ord + Default, const N: usize> IntoIterator for SgSet<T, N> {
