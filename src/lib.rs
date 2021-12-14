@@ -24,10 +24,8 @@ Strives for three properties:
     * **Recursion-free:** all operations are iterative, so stack use is fixed and runtime is minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
 
-**TODO: Not implemented yet, must remove `high_assurance` feature (we now have a better default!).
-
 * **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code):
-    * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `from`, etc.) is available.
+    * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `extend`, etc.) is available.
     * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SgError>`](crate::SgError).
     * Heap fragmentation doesn't impact **Worst Case Execution Time (WCET)**, this library doesn't use the heap.
 

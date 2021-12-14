@@ -48,7 +48,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     /// Makes a new, empty `SgTree`.
     pub fn new() -> Self {
-        if N > (Idx::MAX as usize) {
+        if N > SgTree::<K, V, N>::max_capacity() {
             panic!("Max stack item capacity (0x{:x}) exceeded!", Idx::MAX);
         }
 
@@ -198,6 +198,17 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
             Ok(())
         } else {
             Err(SgError::StackCapacityExceeded)
+        }
+    }
+
+    // Attempt conversion from an iterator.
+    /// Will fail if iterator length exceeds `u16::MAX`.
+    pub fn try_from_iter<I: ExactSizeIterator + IntoIterator<Item = (K, V)>>(
+        iter: I,
+    ) -> Result<Self, SgError> {
+        match iter.len() <= SgTree::<K, V, N>::max_capacity() {
+            true => Ok(SgTree::from_iter(iter)),
+            false => Err(SgError::StackCapacityExceeded)
         }
     }
 
@@ -510,6 +521,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     /// Total common elements between two trees
     pub(crate) fn intersect_cnt(&self, other: &SgTree<K, V, N>) -> usize {
         self.iter().filter(|(k, _)| other.contains_key(k)).count()
+    }
+
+    // Maximum tree capacity (const N value).
+    pub(crate) fn max_capacity() -> usize {
+        Idx::MAX as usize
     }
 
     // Private API -----------------------------------------------------------------------------------------------------

@@ -15,7 +15,9 @@ use crate::tree::{SgError, SgTree};
 /// * [`try_extend`][crate::map::SgMap::try_extend]
 /// * [`try_from_iter`][crate::map::SgMap::try_from_iter]
 ///
-/// For an explanation of why a fallible `TryFrom` is not implemented, please see [`From`'s documentation][crate::map::SgMap::from].
+/// [`TryFrom`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html) isn't implemented because it would collide with the blanket implementation.
+/// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
+/// this is a known Rust limitation that should be fixed via specialization in the future.
 ///
 /// ### Attribution Note
 ///
@@ -387,11 +389,30 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// // Fits
     /// assert!(a.try_extend(c.into_iter()).is_ok());
     /// ```
+    ///
+    /// ### Note
+    ///
+    /// There is no `TryExtend` trait in `core`/`std`.
     pub fn try_extend<I: ExactSizeIterator + IntoIterator<Item = (K, V)>>(
         &mut self,
         iter: I,
     ) -> Result<(), SgError> {
         self.bst.try_extend(iter)
+    }
+
+    /// Attempt conversion from an iterator.
+    /// Will fail if iterator length exceeds `u16::MAX`.
+    ///
+    /// ### Note
+    ///
+    /// There is no `TryFromIterator` trait in `core`/`std`.
+    pub fn try_from_iter<I: ExactSizeIterator + IntoIterator<Item = (K, V)>>(
+        iter: I,
+    ) -> Result<Self, SgError> {
+        match iter.len() <= SgTree::<K, V, N>::max_capacity() {
+            true => Ok(SgMap::from_iter(iter)),
+            false => Err(SgError::StackCapacityExceeded)
+        }
     }
 
     /// Gets an iterator over the entries of the map, sorted by key.
@@ -868,7 +889,7 @@ where
     ///
     /// ### Warning
     ///
-    /// This library doesn't implement a fallible try `TryFrom` because it would collide with the blanket implementation.
+    /// [`TryFrom`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html) isn't implemented because it would collide with the blanket implementation.
     /// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
     /// this is a known Rust limitation that should be fixed via specialization in the future.
     #[doc(alias = "tryfrom")]
