@@ -111,8 +111,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use scapegoat::SgMap;
     ///
@@ -153,8 +151,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use scapegoat::SgMap;
     ///
@@ -194,8 +190,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// Gets a mutable iterator over the values of the map, in order by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use scapegoat::SgMap;
@@ -375,11 +369,34 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         self.bst.try_insert(key, val)
     }
 
-    /// Gets an iterator over the entries of the map, sorted by key.
+    /// Attempt to extend a collection with the contents of an iterator.
     ///
     /// # Examples
     ///
-    /// Basic usage:
+    /// ```
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgMap, SgError};
+    ///
+    /// let mut a = SgMap::<_, _, 2>::new();
+    /// let mut b = SgMap::<_, _, 3>::from_iter([(1, "a"), (2, "b"), (3, "c")]);
+    /// let mut c = SgMap::<_, _, 2>::from_iter([(1, "a"), (2, "b")]);
+    ///
+    /// // Too big
+    /// assert_eq!(a.try_extend(b.into_iter()), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Fits
+    /// assert!(a.try_extend(c.into_iter()).is_ok());
+    /// ```
+    pub fn try_extend<I: ExactSizeIterator + IntoIterator<Item = (K, V)>>(
+        &mut self,
+        iter: I,
+    ) -> Result<(), SgError> {
+        self.bst.try_extend(iter)
+    }
+
+    /// Gets an iterator over the entries of the map, sorted by key.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use scapegoat::SgMap;
@@ -403,8 +420,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use scapegoat::SgMap;
@@ -479,8 +494,6 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// including the key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use scapegoat::SgMap;

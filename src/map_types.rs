@@ -29,6 +29,12 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Iter<'a, K, V, N> {
+    fn len(&self) -> usize {
+        self.ref_iter.len()
+    }
+}
+
 /// An owning iterator over the entries of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_iter`][crate::map::SgMap::into_iter] method on [`SgMap`][crate::map::SgMap].
@@ -51,6 +57,12 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoIter<K, V, N
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cons_iter.next()
+    }
+}
+
+impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoIter<K, V, N> {
+    fn len(&self) -> usize {
+        self.cons_iter.len()
     }
 }
 
@@ -79,6 +91,12 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IterMut<'a, K, V, N> {
+    fn len(&self) -> usize {
+        self.mut_iter.len()
+    }
+}
+
 // Key Iterators -------------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -99,6 +117,12 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Keys<'a, K, 
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Keys<'a, K, V, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 /// An owning iterator over the keys of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_keys`][crate::map::SgMap::into_keys] method on [`SgMap`][crate::map::SgMap].
@@ -112,6 +136,12 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoKeys<K, V, N
 
     fn next(&mut self) -> Option<K> {
         self.inner.next().map(|(k, _)| k)
+    }
+}
+
+impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoKeys<K, V, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -135,6 +165,12 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Values<'a, K
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Values<'a, K, V, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 /// An owning iterator over the values of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_values`][crate::map::SgMap::into_values] method on [`SgMap`][crate::map::SgMap].
@@ -151,6 +187,12 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoValues<K, V,
     }
 }
 
+impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoValues<K, V, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 /// A mutable iterator over the values of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`values_mut`][crate::map::SgMap::values_mut] method on [`SgMap`][crate::map::SgMap].
@@ -164,5 +206,13 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for ValuesMut<'a
 
     fn next(&mut self) -> Option<&'a mut V> {
         self.inner.next().map(|(_, v)| v)
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator
+    for ValuesMut<'a, K, V, N>
+{
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }

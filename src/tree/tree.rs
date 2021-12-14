@@ -186,6 +186,21 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         }
     }
 
+    // Attempt to extend a collection with the contents of an iterator.
+    pub fn try_extend<I: ExactSizeIterator + IntoIterator<Item = (K, V)>>(
+        &mut self,
+        iter: I,
+    ) -> Result<(), SgError> {
+        if iter.len() <= (self.capacity() - self.len()) {
+            iter.into_iter().for_each(move |(k, v)| {
+                assert!(self.try_insert(k, v).is_ok());
+            });
+            Ok(())
+        } else {
+            Err(SgError::StackCapacityExceeded)
+        }
+    }
+
     /// Gets an iterator over the entries of the tree, sorted by key.
     pub fn iter(&self) -> Iter<'_, K, V, N> {
         Iter::new(self)

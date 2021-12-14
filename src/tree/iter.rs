@@ -11,6 +11,8 @@ use super::tree::{Idx, SgTree};
 pub struct Iter<'a, K: Default, V: Default, const N: usize> {
     bst: &'a SgTree<K, V, N>,
     idx_stack: SmallVec<[usize; N]>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Iter<'a, K, V, N> {
@@ -18,6 +20,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iter<'a, K, V, N> {
         let mut ordered_iter = Iter {
             bst,
             idx_stack: SmallVec::<[usize; N]>::new(),
+            total_cnt: bst.len(),
+            spent_cnt: 0,
         };
 
         if let Some(root_idx) = ordered_iter.bst.opt_root_idx {
@@ -66,10 +70,18 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Iter<'a, K, 
                 }
 
                 let node = &self.bst.arena[pop_idx];
+                self.spent_cnt += 1;
                 Some((node.key(), node.val()))
             }
             None => None,
         }
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Iter<'a, K, V, N> {
+    fn len(&self) -> usize {
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }
 
@@ -96,6 +108,12 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
             Some(Some(node)) => Some(node.get_mut()),
             _ => None,
         }
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IterMut<'a, K, V, N> {
+    fn len(&self) -> usize {
+        self.arena_iter_mut.len()
     }
 }
 
@@ -138,5 +156,11 @@ impl<K: Ord + Default, V: Default, const N: usize> Iterator for IntoIter<K, V, N
             },
             None => None,
         }
+    }
+}
+
+impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoIter<K, V, N> {
+    fn len(&self) -> usize {
+        self.sorted_idxs.len()
     }
 }

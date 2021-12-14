@@ -262,6 +262,37 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
         }
     }
 
+    /// Attempt to extend a collection with the contents of an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgSet, SgError};
+    ///
+    /// let mut a = SgSet::<_, 2>::new();
+    /// let mut b = SgSet::<_, 3>::from_iter([1, 2, 3]);
+    /// let mut c = SgSet::<_, 2>::from_iter([1, 2]);
+    ///
+    /// // Too big
+    /// assert_eq!(a.try_extend(b.into_iter()), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Fits
+    /// assert!(a.try_extend(c.into_iter()).is_ok());
+    /// ```
+    pub fn try_extend<I: ExactSizeIterator + IntoIterator<Item = T>>(
+        &mut self,
+        iter: I,
+    ) -> Result<(), SgError> {
+        // Derp :P
+        if iter.len() <= (self.capacity() - self.len()) {
+            let map: crate::SgMap<T, (), N> = iter.into_iter().map(|e| (e, ())).collect();
+            self.bst.try_extend(map.into_iter())
+        } else {
+            Err(SgError::StackCapacityExceeded)
+        }
+    }
+
     /// Gets an iterator that visits the values in the `SgSet` in ascending order.
     ///
     /// # Examples
@@ -323,8 +354,6 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// including the value.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use scapegoat::SgSet;
@@ -508,12 +537,12 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// ```
     /// use scapegoat::SgSet;
     ///
-    /// let mut map = SgSet::<_, 2>::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.first(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.first(), Some(&1));
+    /// let mut set = SgSet::<_, 2>::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.first(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.first(), Some(&1));
     /// ```
     pub fn first(&self) -> Option<&T>
     where
@@ -552,12 +581,12 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// ```
     /// use scapegoat::SgSet;
     ///
-    /// let mut map = SgSet::<_, 10>::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.last(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.last(), Some(&2));
+    /// let mut set = SgSet::<_, 10>::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.last(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.last(), Some(&2));
     /// ```
     pub fn last(&self) -> Option<&T>
     where

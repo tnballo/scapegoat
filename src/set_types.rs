@@ -32,6 +32,12 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Iter<'a, T, N> {
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Iter<'a, T, N> {
+    fn len(&self) -> usize {
+        self.ref_iter.len()
+    }
+}
+
 /// An owning iterator over the items of a [`SgSet`][crate::set::SgSet].
 ///
 /// This `struct` is created by the [`into_iter`][crate::set::SgSet::into_iter] method on [`SgSet`][crate::set::SgSet]
@@ -54,6 +60,12 @@ impl<T: Ord + Default, const N: usize> Iterator for IntoIter<T, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cons_iter.next().map(|(k, _)| k)
+    }
+}
+
+impl<T: Ord + Default, const N: usize> ExactSizeIterator for IntoIter<T, N> {
+    fn len(&self) -> usize {
+        self.cons_iter.len()
     }
 }
 
@@ -92,6 +104,12 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Difference<'a, T, N> {
 
     fn next(&mut self) -> Option<&'a T> {
         self.inner.next()
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, T, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -141,6 +159,12 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for SymmetricDifference<'a, 
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDifference<'a, T, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 // Union Iterator ------------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -182,6 +206,12 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Union<'a, T, N> {
 
     fn next(&mut self) -> Option<&'a T> {
         self.inner.next()
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -235,5 +265,11 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Intersection<'a, T, N> {
 
     fn next(&mut self) -> Option<&'a T> {
         self.inner.next()
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Intersection<'a, T, N> {
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
