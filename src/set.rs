@@ -6,7 +6,16 @@ use core::ops::{BitAnd, BitOr, BitXor, Sub};
 use crate::set_types::{Difference, Intersection, IntoIter, Iter, SymmetricDifference, Union};
 use crate::tree::{SgError, SgTree};
 
-/// Embedded-friendly ordered set.
+/// Safe, fallible, embedded-friendly ordered set.
+///
+/// ### Fallible APIs
+///
+/// * [`try_insert`][crate::set::SgSet::try_insert]
+/// * [`try_append`][crate::set::SgSet::try_append]
+/// * [`try_extend`][crate::set::SgSet::try_extend]
+/// * [`try_from_iter`][crate::set::SgSet::try_from_iter]
+///
+/// For an explanation of why a fallible `TryFrom` is not implemented, please see [`From`'s documentation][crate::set::SgSet::from].
 ///
 /// ### Attribution Note
 ///
@@ -782,6 +791,15 @@ where
     /// let set2: SgSet<_, 4> = [1, 2, 3, 4].into();
     /// assert_eq!(set1, set2);
     /// ```
+    ///
+    /// ### Warning
+    ///
+    /// This library doesn't implement a fallible try `TryFrom` because it would collide with the blanket implementation.
+    /// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
+    /// this is a known Rust limitation that should be fixed via specialization in the future.
+    #[doc(alias = "tryfrom")]
+    #[doc(alias = "try_from")]
+    #[doc(alias = "TryFrom")]
     fn from(arr: [T; N]) -> Self {
         core::array::IntoIter::new(arr).collect()
     }

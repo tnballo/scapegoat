@@ -29,7 +29,7 @@ const DEFAULT_ALPHA_DENOM: f32 = 3.0;
 pub struct SgTree<K: Default, V: Default, const N: usize> {
     // Storage
     pub(crate) arena: Arena<K, V, Idx, N>,
-    pub(crate) opt_root_idx: Option<usize>, // TODO: rename to opt_root_idx
+    pub(crate) opt_root_idx: Option<usize>,
 
     // Query cache
     max_idx: usize,
@@ -1255,6 +1255,35 @@ where
         core::array::IntoIter::new(arr).collect()
     }
 }
+
+/*
+Error excerpt:
+
+     = note: conflicting implementation in crate `core`:
+             - impl<T, U> TryFrom<U> for T
+               where U: Into<T>;
+
+For more information about this error, try `rustc --explain E0119`.
+
+TODO: Currently a limitation of Rust's trait system? No workaround?
+See issue from 2018: https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839
+
+// TryFrom array
+impl<K, V, const N: usize> TryFrom<[(K, V); N]> for SgTree<K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
+    type Error = SgError;
+
+    fn try_from(arr: [(K, V); N]) -> Result<Self, Self::Error> {
+        match arr.len() <= Idx::MAX {
+            true => Ok(core::array::IntoIter::new(arr).collect()),
+            false => Err(SgError::StackCapacityExceeded)
+        }
+    }
+}
+*/
 
 // Indexing
 impl<K, V, Q, const N: usize> Index<&Q> for SgTree<K, V, N>
