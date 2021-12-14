@@ -1,8 +1,11 @@
-use scapegoat::SgSet;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
+use scapegoat::{SgSet, SgError};
+
 const DEFAULT_CAPACITY: usize = 10;
+
+// Normal APIs ---------------------------------------------------------------------------------------------------------
 
 #[test]
 fn test_debug() {
@@ -226,3 +229,81 @@ fn test_set_is_disjoint() {
     assert!(a.is_disjoint(&b));
     assert!(!a.is_disjoint(&c));
 }
+
+// Fallible APIs -------------------------------------------------------------------------------------------------------
+
+#[test]
+fn test_map_insert_fallible() {
+    let mut a = SgSet::<_, 3>::new();
+
+    assert!(a.try_insert(1).is_ok());
+    assert!(a.try_insert(2).is_ok());
+
+    assert_eq!(a.try_insert(3), Ok(true));
+    assert_eq!(a.try_insert(1), Ok(false));
+    assert_eq!(a.try_insert(4), Err(SgError::StackCapacityExceeded));
+}
+
+#[test]
+fn test_map_append_fallible() {
+    let mut a = SgSet::<_, 6>::new();
+
+    assert!(a.try_insert(1).is_ok());
+    assert!(a.try_insert(2).is_ok());
+    assert!(a.try_insert(3).is_ok());
+
+    let mut b = SgSet::<_, 6>::new();
+
+    assert!(b.try_insert(4).is_ok());
+    assert!(b.try_insert(5).is_ok());
+    assert!(b.try_insert(6).is_ok());
+    assert!(a.try_append(&mut b).is_ok());
+
+    assert!(b.is_empty());
+    assert_eq!(b.try_insert(7), Ok(true));
+
+    assert_eq!(a.len(), 6);
+    assert_eq!(a.len(), a.capacity());
+    assert_eq!(a.try_insert(7), Err(SgError::StackCapacityExceeded));
+
+    assert_eq!(a.pop_last(), Some(6));
+
+    b.clear();
+    assert!(b.try_insert(4).is_ok());
+    assert!(b.try_insert(5).is_ok());
+    assert!(b.try_insert(6).is_ok());
+
+    println!(
+        "a_len: {} of {}, b_len: {}, common_len: {}",
+        a.len(),
+        a.capacity(),
+        b.len(),
+        a.iter().filter(|k| b.contains(&k)).count()
+    );
+
+    assert!(a.try_append(&mut b).is_ok());
+
+    assert_eq!(
+        a.into_iter().collect::<Vec<usize>>(),
+        vec![1, 2, 3, 4, 5, 6]
+    );
+}
+
+/*
+
+CRITICAL TODO: re-enable post tinyvec
+
+#[should_panic]
+#[test]
+fn test_map_insert_panic() {
+
+    let mut a = SgSet::<_, _, 3>::new();
+
+    assert!(a.try_insert(1).is_ok());
+    assert!(a.try_insert(2).is_ok());
+    assert!(a.try_insert(3).is_ok());
+    assert_eq!(a.try_insert(4), Err(SgError::StackCapacityExceeded));
+
+    a.insert(4); // panic
+}
+*/
