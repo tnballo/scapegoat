@@ -74,7 +74,7 @@ assert_eq!(example[&3], "the");
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
-// By-predicate removal (iterates all entries, O(n))
+// By-predicate removal
 example.retain(|_, v| !v.contains("a"));
 
 // Extension

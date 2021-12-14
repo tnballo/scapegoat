@@ -190,7 +190,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// // Cannot append new pairs
     /// assert_eq!(a.try_append(&mut c), Err(SgError::StackCapacityExceeded));
     ///
-    /// // Can still replace existing paris
+    /// // Can still replace existing pairs
     /// assert!(a.try_append(&mut d).is_ok());
     /// ```
     pub fn try_append(&mut self, other: &mut SgSet<T, N>) -> Result<(), SgError> {
@@ -302,6 +302,21 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// Attempt conversion from an iterator.
     /// Will fail if iterator length exceeds `u16::MAX`.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::{SgSet, SgError};
+    ///
+    /// const CAPACITY_1: usize = 1_000;
+    /// assert!(SgSet::<_, CAPACITY_1>::try_from_iter((0..CAPACITY_1)).is_ok());
+    ///
+    /// const CAPACITY_2: usize = (u16::MAX as usize) + 1;
+    /// assert_eq!(
+    ///     SgSet::<_, CAPACITY_2>::try_from_iter((0..CAPACITY_2)),
+    ///     Err(SgError::MaximumCapacityExceeded)
+    /// );
+    /// ```
+    ///
     /// ### Note
     ///
     /// There is no `TryFromIterator` trait in `core`/`std`.
@@ -310,7 +325,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     ) -> Result<Self, SgError> {
         match iter.len() <= SgTree::<T, (), N>::max_capacity() {
             true => Ok(SgSet::from_iter(iter)),
-            false => Err(SgError::StackCapacityExceeded)
+            false => Err(SgError::MaximumCapacityExceeded)
         }
     }
 
@@ -440,6 +455,8 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
 
         removed
     }
+
+    // CRITICAL TODO: try_replace!
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///

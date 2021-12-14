@@ -294,7 +294,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// // Cannot append new pairs
     /// assert_eq!(a.try_append(&mut c), Err(SgError::StackCapacityExceeded));
     ///
-    /// // Can still replace existing paris
+    /// // Can still replace existing pairs
     /// assert!(a.try_append(&mut d).is_ok());
     /// ```
     pub fn try_append(&mut self, other: &mut SgMap<K, V, N>) -> Result<(), SgError> {
@@ -403,6 +403,23 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// Attempt conversion from an iterator.
     /// Will fail if iterator length exceeds `u16::MAX`.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::{SgMap, SgError};
+    ///
+    /// const CAPACITY_1: usize = 1_000;
+    /// let vec: Vec<(usize, usize)> = (0..CAPACITY_1).map(|n|(n, n)).collect();
+    /// assert!(SgMap::<usize, usize, CAPACITY_1>::try_from_iter(vec.into_iter()).is_ok());
+    ///
+    /// const CAPACITY_2: usize = (u16::MAX as usize) + 1;
+    /// let vec: Vec<(usize, usize)> = (0..CAPACITY_2).map(|n|(n, n)).collect();
+    /// assert_eq!(
+    ///     SgMap::<usize, usize, CAPACITY_2>::try_from_iter(vec.into_iter()),
+    ///     Err(SgError::MaximumCapacityExceeded)
+    /// );
+    /// ```
+    ///
     /// ### Note
     ///
     /// There is no `TryFromIterator` trait in `core`/`std`.
@@ -411,7 +428,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ) -> Result<Self, SgError> {
         match iter.len() <= SgTree::<K, V, N>::max_capacity() {
             true => Ok(SgMap::from_iter(iter)),
-            false => Err(SgError::StackCapacityExceeded)
+            false => Err(SgError::MaximumCapacityExceeded)
         }
     }
 

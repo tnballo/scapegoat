@@ -1,6 +1,9 @@
 /// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum SgError {
+    /// Cannot construct instance, maximum supported capacity exceeded.
+    MaximumCapacityExceeded,
+
     /// Requested operation cannot complete, stack storage is full.
     StackCapacityExceeded,
 
@@ -8,9 +11,6 @@ pub enum SgError {
     /// Requested operation cannot complete, heap storage is full.
     HeapCapacityExceeded,
     */
-
-    /// Reserved for future use
-    Reserved2,
 
     /// Reserved for future use
     Reserved3,
