@@ -3,8 +3,8 @@ use core::cmp::Ordering;
 use crate::set::SgSet;
 use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter};
 
-use tinyvec::{ArrayVec, ArrayVecIterator};
 use smallnum::SmallUnsigned;
+use tinyvec::{ArrayVec, ArrayVecIterator};
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 

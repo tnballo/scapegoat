@@ -10,7 +10,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use tinyvec::array_vec;
 
-const CAPACITY: usize = 2048;
+const CAPACITY: usize = 1024;
 
 // Test Helpers --------------------------------------------------------------------------------------------------------
 
@@ -221,39 +221,38 @@ fn test_tree_packing() {
 
 #[test]
 fn test_tree_sizing() {
-    // Assumes `SG_MAX_STACK_ELEMS == 1024` (default)
-    if CAPACITY == 1024 {
-        // No features
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "low_mem_insert"))]
-        #[cfg(not(feature = "fast_rebalance"))]
-        {
-            assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 18_528);
-        }
+    assert_eq!(CAPACITY, 1024);
 
-        // All features
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "low_mem_insert")]
-        #[cfg(feature = "fast_rebalance")]
-        {
-            assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 20_560);
-        }
+    // No features
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(not(feature = "low_mem_insert"))]
+    #[cfg(not(feature = "fast_rebalance"))]
+    {
+        assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 18_504);
+    }
 
-        // low_mem_insert only
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(feature = "low_mem_insert")]
-        #[cfg(not(feature = "fast_rebalance"))]
-        {
-            assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 16_464);
-        }
+    // All features
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(feature = "low_mem_insert")]
+    #[cfg(feature = "fast_rebalance")]
+    {
+        assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 20_552);
+    }
 
-        // fast_rebalance only
-        #[cfg(target_pointer_width = "64")]
-        #[cfg(not(feature = "low_mem_insert"))]
-        #[cfg(feature = "fast_rebalance")]
-        {
-            assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 22_624);
-        }
+    // low_mem_insert only
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(feature = "low_mem_insert")]
+    #[cfg(not(feature = "fast_rebalance"))]
+    {
+        assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 16_456);
+    }
+
+    // fast_rebalance only
+    #[cfg(target_pointer_width = "64")]
+    #[cfg(not(feature = "low_mem_insert"))]
+    #[cfg(feature = "fast_rebalance")]
+    {
+        assert_eq!(core::mem::size_of::<SgTree<u32, u32, CAPACITY>>(), 22_600);
     }
 }
 

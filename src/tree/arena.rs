@@ -153,7 +153,15 @@ impl<
                 swap_history.add(curr_idx, sorted_idx);
 
                 #[cfg(not(feature = "low_mem_insert"))]
-                self.free_list.retain(|i| (*i).usize() != sorted_idx);
+                {
+                    let old_free_idx = U::checked_from(sorted_idx);
+                    let new_free_idx = U::checked_from(curr_idx);
+                    self.free_list.iter_mut().for_each(|i| {
+                        if *i == old_free_idx {
+                            *i = new_free_idx;
+                        }
+                    });
+                }
             }
         }
 

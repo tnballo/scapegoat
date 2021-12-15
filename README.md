@@ -9,8 +9,8 @@
 
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-* Safe: `#![forbid(unsafe_code)]`.
 * Embedded-friendly: `!#[no_std]` by default.
+* Safe: `#![forbid(unsafe_code)]`, including all dependencies.
 * Validated via differential fuzzing, against the standard library's `BTreeSet` and `BTreeMap`.
 
 ### About
@@ -71,7 +71,7 @@ assert!(example.try_insert(4, "borrow checker").is_ok());
 assert!(example
     .iter()
     .map(|(_, v)| *v)
-    .collect::<SmallVec<[&str; CAPACITY]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Please","don't blame","the","borrow checker"].iter()));
 
@@ -82,12 +82,14 @@ assert_eq!(example[&3], "the");
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
-// By-predicate removal (iterates all entries, O(n))
+// By-predicate removal
 example.retain(|_, v| !v.contains("a"));
 
 // Extension
-let iterable: SmallVec<[(isize, &str); CAPACITY]> =
-    smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
+let iterable = array_vec![
+    [(isize, &str); CAPACITY] =>
+    (1337, "safety!"), (0, "Leverage"), (100, "for")
+];
 example.extend(iterable.into_iter());
 
 // Value mutation
@@ -98,7 +100,7 @@ if let Some(three_val) = example.get_mut(&3) {
 // New message :)
 assert!(example
     .into_values()
-    .collect::<SmallVec<[&str; CAPACITY]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```
@@ -122,8 +124,8 @@ let big_map: SgMap<u64, u64, 2_048> = SgMap::new(); // 2,048 item capacity
 #[cfg(not(feature = "low_mem_insert"))]
 #[cfg(not(feature = "fast_rebalance"))]
 {
-    assert_eq!(size_of_val(&small_map), 2_696); // 2.7 KB
-    assert_eq!(size_of_val(&big_map), 53_344);  // 53.3 KB
+    assert_eq!(size_of_val(&small_map), 2_680); // 2.7 KB
+    assert_eq!(size_of_val(&big_map), 53_328);  // 53.3 KB
 }
 ```
 
@@ -141,9 +143,11 @@ For more advanced configuration options, see [the documentation here](https://gi
 
 This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
-* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
+* [`tinyvec`](https://crates.io/crates/tinyvec) - `!#[no_std]`, `#![forbid(unsafe_code)]` `Vec` alternative.
 * [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
 * [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
+
+Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code will be introduced into your project.
 
 ### Additional Considerations
 
