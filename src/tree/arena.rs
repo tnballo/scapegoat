@@ -5,7 +5,7 @@ use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
 use super::node_dispatch::SmallNode;
 
 use smallnum::SmallUnsigned;
-use smallvec::SmallVec;
+use tinyvec::ArrayVec;
 
 /*
 Note:
@@ -17,11 +17,11 @@ If caller obeys contract, `U` will be smallest unsigned capable of representing 
 
 /// An arena allocator, meta programmable for low memory footprint.
 #[derive(Clone, Debug)]
-pub struct Arena<K: Default, V: Default, U, const N: usize> {
-    vec: SmallVec<[Option<Node<K, V, U>>; N]>,
+pub struct Arena<K: Default, V: Default, U: Default, const N: usize> {
+    vec: ArrayVec<[Option<Node<K, V, U>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
-    free_list: SmallVec<[U; N]>,
+    free_list: ArrayVec<[U; N]>,
 }
 
 impl<
@@ -33,17 +33,17 @@ impl<
 {
     // TODO: is this function necessary?
     /// Const associated constructor for index scratch vector.
-    pub fn new_idx_vec() -> SmallVec<[U; N]> {
-        SmallVec::<[U; N]>::default()
+    pub fn new_idx_vec() -> ArrayVec<[U; N]> {
+        ArrayVec::<[U; N]>::default()
     }
 
     /// Constructor.
     pub fn new() -> Self {
         let a = Arena {
-            vec: SmallVec::<[Option<Node<K, V, U>>; N]>::new(),
+            vec: ArrayVec::<[Option<Node<K, V, U>>; N]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: SmallVec::<[U; N]>::new(),
+            free_list: ArrayVec::<[U; N]>::new(),
         };
 
         #[cfg(not(feature = "low_mem_insert"))]
@@ -110,20 +110,14 @@ impl<
         );
 
         if self.is_occupied(idx) {
-            // Move node to back, replacing with None, preserving order
-            self.vec.push(None);
-            let len = self.vec.len();
-            self.vec.swap(idx, len - 1);
+            // Extract node
+            let node = core::mem::replace(&mut self.vec[idx], None);
 
             // Append removed index to free list
             #[cfg(not(feature = "low_mem_insert"))]
             self.free_list.push(U::checked_from(idx));
 
-            // Retrieve node
-            return match self.vec.pop() {
-                Some(Some(node)) => Some(node),
-                _ => unreachable!(), // We only swap for non-empties and this function pushed
-            };
+            return node;
         }
 
         None
@@ -145,7 +139,7 @@ impl<
     pub fn sort(
         &mut self,
         root_idx: usize,
-        sort_metadata: SmallVec<[NodeGetHelper<usize>; N]>, // `usize` here avoids `U` in tree iter signatures
+        sort_metadata: ArrayVec<[NodeGetHelper<usize>; N]>, // `usize` here avoids `U` in tree iter signatures
     ) -> usize {
         debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
@@ -201,7 +195,7 @@ impl<
 
 /// Immutable indexing.
 /// Indexed location MUST be occupied.
-impl<K: Default, V: Default, U, const N: usize> Index<usize> for Arena<K, V, U, N> {
+impl<K: Default, V: Default, U: Default, const N: usize> Index<usize> for Arena<K, V, U, N> {
     type Output = Node<K, V, U>;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -214,7 +208,7 @@ impl<K: Default, V: Default, U, const N: usize> Index<usize> for Arena<K, V, U, 
 
 /// Mutable indexing
 /// Indexed location MUST be occupied.
-impl<K: Default, V: Default, U, const N: usize> IndexMut<usize> for Arena<K, V, U, N> {
+impl<K: Default, V: Default, U: Default, const N: usize> IndexMut<usize> for Arena<K, V, U, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match self.vec.index_mut(index) {
             Some(node) => node,
@@ -296,7 +290,7 @@ mod tests {
     use crate::tree::node_dispatch::SmallNode;
     use core::mem::size_of_val;
     use smallnum::small_unsigned;
-    use smallvec::smallvec;
+    use tinyvec::array_vec;
 
     const CAPACITY: usize = 1024;
 
@@ -384,7 +378,7 @@ mod tests {
         assert_eq!(arena.vec[2].as_ref().unwrap().key(), &1);
 
         // Would be supplied for the above tree
-        let sort_metadata = smallvec! {
+        let sort_metadata = array_vec! { [NodeGetHelper<usize>; CAPACITY] =>
             NodeGetHelper::new(Some(2), Some(1), false),
             NodeGetHelper::new(Some(1), None, false),
             NodeGetHelper::new(Some(0), Some(1), false),

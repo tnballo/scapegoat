@@ -48,7 +48,7 @@ Other features:
 
 ```rust
 use scapegoat::SgMap;
-use smallvec::{smallvec, SmallVec};
+use tinyvec::{array_vec, ArrayVec};
 
 // This const is an argument to each generic constructor below.
 // So we'll use *only the bare minimum* memory for 5 elements.

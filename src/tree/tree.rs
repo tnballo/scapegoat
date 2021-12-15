@@ -9,13 +9,13 @@ use core::ops::{Index, Sub};
 use super::arena::Arena;
 use super::error::SgError;
 use super::iter::{IntoIter, Iter, IterMut};
-use super::node::{Node, NodeGetHelper, NodeRebuildHelper};
+use super::node::{NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::SmallNode;
 
 #[allow(unused_imports)] // micromath only used if `no_std`
 use micromath::F32Ext;
 use smallnum::SmallUnsigned;
-use smallvec::{smallvec, SmallVec};
+use tinyvec::{array_vec, ArrayVec};
 
 // TODO: doc link here
 pub(crate) type Idx = u16;
@@ -53,7 +53,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         }
 
         SgTree {
-            arena: Arena::<K, V, Idx, N>::new(),
+            arena: Arena::<K, V, Idx, N>::default(),
             opt_root_idx: None,
             max_idx: 0,
             min_idx: 0,
@@ -468,34 +468,36 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     }
 
     // Flatten subtree into array of node indexes sorted by node key
-    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned + Copy>(
+    pub(crate) fn flatten_subtree_to_sorted_idxs<U: SmallUnsigned + Default + Copy>(
         &self,
         idx: usize,
-    ) -> SmallVec<[U; N]> {
-        #[allow(clippy::type_complexity)]
-        let mut subtree_node_idx_pairs: SmallVec<[(&Node<K, V, Idx>, U); N]> =
-            smallvec![(&self.arena[idx], U::checked_from(idx))];
-        let mut subtree_worklist: SmallVec<[&Node<K, V, Idx>; N]> = smallvec![&self.arena[idx]];
+    ) -> ArrayVec<[U; N]> {
+        let mut subtree_worklist = array_vec![[U; N] => U::checked_from(idx)];
+        let mut subtree_flattened = array_vec![[U; N] => U::checked_from(idx)];
 
-        while let Some(node) = subtree_worklist.pop() {
+        while let Some(idx) = subtree_worklist.pop() {
+            let node = &self.arena[idx.usize()];
+
             if let Some(left_idx) = node.left_idx() {
-                let left_child_node = &self.arena[left_idx];
-                subtree_node_idx_pairs.push((left_child_node, U::checked_from(left_idx)));
-                subtree_worklist.push(left_child_node);
+                let left = U::checked_from(left_idx);
+                subtree_worklist.push(left);
+                subtree_flattened.push(left);
             }
 
             if let Some(right_idx) = node.right_idx() {
-                let right_child_node = &self.arena[right_idx];
-                subtree_node_idx_pairs.push((right_child_node, U::checked_from(right_idx)));
-                subtree_worklist.push(right_child_node);
+                let right = U::checked_from(right_idx);
+                subtree_worklist.push(right);
+                subtree_flattened.push(right);
             }
         }
 
-        // Sort by SmallNode key
+        // Sort by key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_node_idx_pairs.sort_unstable_by(|a, b| a.0.key().cmp(b.0.key()));
+        subtree_flattened.sort_unstable_by(|a, b| {
+            self.arena[a.usize()].key().cmp(&self.arena[b.usize()].key())
+        });
 
-        subtree_node_idx_pairs.iter().map(|(_, idx)| *idx).collect()
+        subtree_flattened
     }
 
     /// Sort the internal arena such that logically contiguous nodes are in-order (by key).
@@ -507,9 +509,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
                 .map(|n| self.priv_get(None, n.key()))
-                .collect::<SmallVec<[NodeGetHelper<usize>; N]>>();
+                .collect::<ArrayVec<[NodeGetHelper<usize>; N]>>();
 
-            sort_metadata.sort_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
+            sort_metadata.sort_unstable_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
             let sorted_root_idx = self.arena.sort(root_idx, sort_metadata);
 
             self.opt_root_idx = Some(sorted_root_idx);
@@ -532,9 +534,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, U: SmallUnsigned + Copy>(
+    fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
         &self,
-        mut opt_path: Option<&mut SmallVec<[U; N]>>,
+        mut opt_path: Option<&mut ArrayVec<[U; N]>>,
         key: &Q,
     ) -> NodeGetHelper<U>
     where
@@ -607,7 +609,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         key: K,
         val: V,
     ) -> Option<V> {
-        let mut path: SmallVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
+        let mut path: ArrayVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
         let opt_val = self.priv_insert(&mut path, key, val);
 
         #[cfg(feature = "fast_rebalance")]
@@ -632,9 +634,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
-    fn priv_insert<U: SmallUnsigned + Copy>(
+    fn priv_insert<U: SmallUnsigned + Default + Copy>(
         &mut self,
-        path: &mut SmallVec<[U; N]>,
+        path: &mut ArrayVec<[U; N]>,
         key: K,
         val: V,
     ) -> Option<V> {
@@ -781,7 +783,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
     fn priv_remove<U: SmallUnsigned + Copy>(
         &mut self,
-        opt_path: Option<&SmallVec<[U; N]>>,
+        opt_path: Option<&ArrayVec<[U; N]>>,
         ngh: NodeGetHelper<U>,
     ) -> Option<(K, V)> {
         match ngh.node_idx() {
@@ -1013,7 +1015,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses the algorithm proposed in the original paper (Galperin and Rivest, 1993).
     #[cfg(not(feature = "alt_impl"))]
-    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned + Default>(&self, path: &[U]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
@@ -1071,19 +1073,20 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Iterative subtree size computation
     #[cfg(not(feature = "fast_rebalance"))]
-    fn get_subtree_size<U: SmallUnsigned>(&self, idx: usize) -> usize {
-        let mut subtree_worklist: SmallVec<[&Node<K, V, Idx>; N]> = smallvec![&self.arena[idx]];
+    fn get_subtree_size<U: SmallUnsigned + Default>(&self, idx: usize) -> usize {
+        let mut subtree_worklist = array_vec![[U; N] => U::checked_from(idx)];
         let mut subtree_size = 0;
 
-        while let Some(node) = subtree_worklist.pop() {
+        while let Some(idx) = subtree_worklist.pop() {
+            let node = &self.arena[idx.usize()];
             subtree_size += 1;
 
             if let Some(left_idx) = node.left_idx() {
-                subtree_worklist.push(&self.arena[left_idx]);
+                subtree_worklist.push(U::checked_from(left_idx));
             }
 
             if let Some(right_idx) = node.right_idx() {
-                subtree_worklist.push(&self.arena[right_idx]);
+                subtree_worklist.push(U::checked_from(right_idx));
             }
         }
 
@@ -1098,7 +1101,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Differential subtree size helper
     #[cfg(not(feature = "fast_rebalance"))]
-    fn get_subtree_size_differential<U: SmallUnsigned>(
+    fn get_subtree_size_differential<U: SmallUnsigned + Default>(
         &self,
         parent_idx: usize,
         child_idx: usize,
@@ -1152,7 +1155,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     }
 
     // Iterative in-place rebuild for balanced subtree
-    fn rebuild<U: Copy + Ord + Sub + SmallUnsigned>(&mut self, idx: usize) {
+    fn rebuild<U: Copy + Ord + Sub + SmallUnsigned + Default>(&mut self, idx: usize) {
         let sorted_sub = self.flatten_subtree_to_sorted_idxs(idx);
         self.rebalance_subtree_from_sorted_idxs::<U>(idx, &sorted_sub);
         self.rebal_cnt = self.rebal_cnt.wrapping_add(1);
@@ -1160,7 +1163,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Height re-balance of subtree (e.g. depth of the two subtrees of every node never differs by more than one).
     // Adapted from public interview question: https://afteracademy.com/blog/sorted-array-to-balanced-bst
-    fn rebalance_subtree_from_sorted_idxs<U: Copy + Ord + Sub + SmallUnsigned>(
+    fn rebalance_subtree_from_sorted_idxs<U: Copy + Ord + Default + Sub + SmallUnsigned>(
         &mut self,
         old_subtree_root_idx: usize,
         sorted_arena_idxs: &[usize],
@@ -1177,7 +1180,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         let sorted_last_idx = sorted_arena_idxs.len() - 1;
         let subtree_root_sorted_idx = sorted_last_idx / 2;
         let subtree_root_arena_idx = sorted_arena_idxs[subtree_root_sorted_idx];
-        let mut subtree_worklist = SmallVec::<[(U, NodeRebuildHelper<U>); N]>::new();
+        let mut subtree_worklist = ArrayVec::<[(U, NodeRebuildHelper<U>); N]>::default();
 
         // Init worklist with middle node (balanced subtree root)
         subtree_worklist.push((

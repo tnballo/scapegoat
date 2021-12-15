@@ -40,7 +40,7 @@ Other features:
 
 ```rust
 use scapegoat::SgMap;
-use smallvec::{smallvec, SmallVec};
+use tinyvec::{array_vec, ArrayVec};
 
 // This const is an argument to each generic constructor below.
 // So we'll use *only the bare minimum* memory for 5 elements.
@@ -63,7 +63,7 @@ assert!(example.try_insert(4, "borrow checker").is_ok());
 assert!(example
     .iter()
     .map(|(_, v)| *v)
-    .collect::<SmallVec<[&str; CAPACITY]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Please","don't blame","the","borrow checker"].iter()));
 
@@ -78,7 +78,7 @@ assert_eq!(please_tuple, (1, "Please"));
 example.retain(|_, v| !v.contains("a"));
 
 // Extension
-let iterable: SmallVec<[(isize, &str); CAPACITY]> =
+let iterable: ArrayVec<[(isize, &str); CAPACITY]> =
     smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
 example.extend(iterable.into_iter());
 
@@ -90,7 +90,7 @@ if let Some(three_val) = example.get_mut(&3) {
 // New message :)
 assert!(example
     .into_values()
-    .collect::<SmallVec<[&str; CAPACITY]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```

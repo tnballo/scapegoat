@@ -21,7 +21,7 @@ include = [
 ]
 
 [dependencies]
-smallvec = { version = "^1.7", features = ["const_generics"] } # Has no dependencies of it's own
+tinyvec = { version = "^1.5", features = ["rustc_1_55"] } # Has no dependencies of it's own
 micromath = "^2.0" # Has no dependenceis of it's own
 smallnum = "^0.4"  # Has no dependencies of it's own
 

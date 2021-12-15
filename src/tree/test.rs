@@ -8,7 +8,7 @@ use super::SgError;
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
-use smallvec::{smallvec, SmallVec};
+use tinyvec::array_vec;
 
 const CAPACITY: usize = 2048;
 
@@ -335,6 +335,34 @@ fn test_append() {
 }
 
 #[test]
+fn test_flatten() {
+    let keys = vec![2, 1, 3];
+    let mut sgt = SgTree::<_, _, CAPACITY>::new();
+
+    for k in &keys {
+        sgt.insert(*k, "n/a");
+    }
+
+    let root_idx = sgt.opt_root_idx.unwrap();
+    let sorted_idxs =  sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
+
+    assert_eq!(
+        sorted_idxs,
+        array_vec![[u16; CAPACITY] => 1, 0, 2]
+    );
+
+    sgt.remove(&2);
+
+    let root_idx = sgt.opt_root_idx.unwrap();
+    let sorted_idxs =  sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
+
+    assert_eq!(
+        sorted_idxs,
+        array_vec![[u16; CAPACITY] => 1, 2]
+    );
+}
+
+#[test]
 fn test_two_child_removal_case_1() {
     let keys = vec![2, 1, 3];
     let mut sgt = SgTree::<_, _, CAPACITY>::new();
@@ -556,36 +584,34 @@ fn test_extend() {
         sgt_1.insert(i, i);
     }
 
-    let iterable_1: SmallVec<[(&usize, &usize); 5]> =
-        smallvec![(&0, &0), (&1, &1), (&2, &2), (&3, &3), (&4, &4)];
+    let iterable_1 = array_vec![[(usize, usize); 5] => (0, 0), (1, 1), (2, 2), (3, 3), (4, 4)];
 
-    assert!(sgt_1.iter().eq(iterable_1.into_iter()));
+    assert!(sgt_1.clone().into_iter().eq(iterable_1.into_iter()));
 
     for i in 5..10 {
         sgt_2.insert(i, i);
     }
 
-    let iterable_2: SmallVec<[(&usize, &usize); 5]> =
-        smallvec![(&5, &5), (&6, &6), (&7, &7), (&8, &8), (&9, &9)];
+    let iterable_2 = array_vec![[(usize, usize); 5] => (5, 5), (6, 6), (7, 7), (8, 8), (9, 9)];
 
-    assert!(sgt_2.iter().eq(iterable_2.into_iter()));
+    assert!(sgt_2.clone().into_iter().eq(iterable_2.into_iter()));
 
-    let iterable_3: SmallVec<[(&usize, &usize); 10]> = smallvec![
-        (&0, &0),
-        (&1, &1),
-        (&2, &2),
-        (&3, &3),
-        (&4, &4),
-        (&5, &5),
-        (&6, &6),
-        (&7, &7),
-        (&8, &8),
-        (&9, &9)
+    let iterable_3 = array_vec![[(usize, usize); 10] =>
+        (0, 0),
+        (1, 1),
+        (2, 2),
+        (3, 3),
+        (4, 4),
+        (5, 5),
+        (6, 6),
+        (7, 7),
+        (8, 8),
+        (9, 9)
     ];
 
     sgt_1.extend(sgt_2.iter());
     assert_eq!(sgt_2.len(), 5);
-    assert!(sgt_1.iter().eq(iterable_3.into_iter()));
+    assert!(sgt_1.into_iter().eq(iterable_3.into_iter()));
 }
 
 #[test]

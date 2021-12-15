@@ -3,7 +3,7 @@ use core::ops::Sub;
 use super::node_dispatch::SmallNode;
 
 use smallnum::SmallUnsigned;
-use smallvec::SmallVec;
+use tinyvec::ArrayVec;
 
 /*
 Note:
@@ -19,7 +19,7 @@ const `N` (e.g. static capacity).
 /// Binary tree node, meta programmable for low memory footprint.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Node<K, V, U> {
     key: K,
     val: V,
@@ -112,7 +112,7 @@ impl<K: Default, V: Default, U: SmallUnsigned + Copy> SmallNode<K, V> for Node<K
 /// Helper for node retrieval, usage eliminates the need a store parent pointer in each node.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct NodeGetHelper<U> {
     node_idx: Option<U>,
     parent_idx: Option<U>,
@@ -150,7 +150,7 @@ impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
 /// Helper for in-place iterative rebuild.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct NodeRebuildHelper<U> {
     pub low_idx: U,
     pub high_idx: U,
@@ -179,17 +179,17 @@ impl<U: SmallUnsigned + Ord + Sub + Copy> NodeRebuildHelper<U> {
 /// If every index swap is logged, tracks mapping of original to current indexes.
 /// Users of it's APIs only need to declare `U` type or trait bounds at construction.
 /// All APIs take/return `usize` and normalize to `U` internally.
-#[derive(Debug)]
-pub struct NodeSwapHistHelper<U, const N: usize> {
+#[derive(Debug, Default)]
+pub struct NodeSwapHistHelper<U: Default, const N: usize> {
     /// Map `original_idx` -> `current_idx`
-    history: SmallVec<[(U, U); N]>,
+    history: ArrayVec<[(U, U); N]>,
 }
 
-impl<U: Ord + Copy + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
+impl<U: Ord + Default + Copy + SmallUnsigned, const N: usize> NodeSwapHistHelper<U, N> {
     /// Constructor.
     pub fn new() -> Self {
         NodeSwapHistHelper {
-            history: SmallVec::<[(U, U); N]>::default(),
+            history: ArrayVec::<[(U, U); N]>::default(),
         }
     }
 

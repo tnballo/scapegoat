@@ -1,5 +1,5 @@
 use scapegoat::SgMap;
-use smallvec::{smallvec, SmallVec};
+use tinyvec::{array_vec, ArrayVec};
 
 const REF_BUF_LEN: usize = 5;
 
@@ -28,7 +28,7 @@ fn main() {
     assert!(example
         .iter()
         .map(|(_, v)| *v)
-        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+        .collect::<ArrayVec<[&str; REF_BUF_LEN]>>()
         .iter()
         .eq(["Please", "don't blame", "the", "borrow checker"].iter()));
 
@@ -43,7 +43,7 @@ fn main() {
     example.retain(|_, v| !v.contains("a"));
 
     // Extension
-    let iterable: SmallVec<[(isize, &str); REF_BUF_LEN]> =
+    let iterable: ArrayVec<[(isize, &str); REF_BUF_LEN]> =
         smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
     example.extend(iterable.into_iter());
 
@@ -55,7 +55,7 @@ fn main() {
     // New message :)
     assert!(example
         .into_values()
-        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+        .collect::<ArrayVec<[&str; REF_BUF_LEN]>>()
         .iter()
         .eq([
             "Leverage",

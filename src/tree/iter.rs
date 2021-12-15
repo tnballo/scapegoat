@@ -1,4 +1,4 @@
-use smallvec::SmallVec;
+use tinyvec::ArrayVec;
 
 use super::node::Node;
 use super::node_dispatch::SmallNode;
@@ -10,7 +10,7 @@ use super::tree::{Idx, SgTree};
 /// Maintains a small stack of arena indexes (won't contain all indexes simultaneously for a balanced tree).
 pub struct Iter<'a, K: Default, V: Default, const N: usize> {
     bst: &'a SgTree<K, V, N>,
-    idx_stack: SmallVec<[usize; N]>,
+    idx_stack: ArrayVec<[usize; N]>,
     total_cnt: usize,
     spent_cnt: usize,
 }
@@ -19,7 +19,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iter<'a, K, V, N> {
     pub fn new(bst: &'a SgTree<K, V, N>) -> Self {
         let mut ordered_iter = Iter {
             bst,
-            idx_stack: SmallVec::<[usize; N]>::new(),
+            idx_stack: ArrayVec::<[usize; N]>::new(),
             total_cnt: bst.len(),
             spent_cnt: 0,
         };
@@ -123,14 +123,14 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Ite
 /// Maintains a shrinking list of arena indexes, initialized with all of them.
 pub struct IntoIter<K: Default, V: Default, const N: usize> {
     bst: SgTree<K, V, N>,
-    sorted_idxs: SmallVec<[usize; N]>,
+    sorted_idxs: ArrayVec<[usize; N]>,
 }
 
 impl<K: Ord + Default, V: Default, const N: usize> IntoIter<K, V, N> {
     pub fn new(bst: SgTree<K, V, N>) -> Self {
         let mut ordered_iter = IntoIter {
             bst,
-            sorted_idxs: SmallVec::<[usize; N]>::new(),
+            sorted_idxs: ArrayVec::<[usize; N]>::new(),
         };
 
         if let Some(root_idx) = ordered_iter.bst.opt_root_idx {

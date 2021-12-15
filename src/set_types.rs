@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use crate::set::SgSet;
 use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter};
 
-use smallvec::SmallVec;
+use tinyvec::{ArrayVec, ArrayVecIterator};
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
@@ -69,6 +69,18 @@ impl<T: Ord + Default, const N: usize> ExactSizeIterator for IntoIter<T, N> {
     }
 }
 
+// CRITICAL TODO: for all below `usize` -> `Idx`
+
+/*
+Workaround Note:
+
+The remaining iterators in this file only store indexes into the input set(s) iterator(s) and have to
+recover set elements with `set.iter().nth(idx)`. Rather inefficient, solves a blocking problem:
+in `ArrayVecIterator<[&'a T; N]>` `Default` is not implemented for `&'a T`.
+
+TODO: faster solution?
+*/
+
 // Difference Iterator -------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -78,23 +90,32 @@ impl<T: Ord + Default, const N: usize> ExactSizeIterator for IntoIter<T, N> {
 ///
 /// This `struct` is created by the [`difference`][crate::set::SgSet::difference] method
 /// on [`SgSet`][crate::set::SgSet]. See its documentation for more.
-pub struct Difference<'a, T, const N: usize> {
-    pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
+pub struct Difference<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[usize; N]>,
+    set_this: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
 impl<'a, T: Ord + Default, const N: usize> Difference<'a, T, N> {
     /// Construct `Difference` iterator.
+    /// Values that are in `this` but not in `other`.
     pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
-        let mut diff = SmallVec::<[&'a T; N]>::default();
+        let mut diff = ArrayVec::default();
+        let mut len = 0;
 
-        for val in this {
+        for (idx, val) in this.iter().enumerate() {
             if !other.contains(val) {
-                diff.push(val);
+                diff.push(idx);
+                len += 1;
             }
         }
 
         Difference {
             inner: diff.into_iter(),
+            set_this: this,
+            total_cnt: len,
+            spent_cnt: 0,
         }
     }
 }
@@ -103,13 +124,23 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Difference<'a, T, N> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        self.inner.next()
+        match self.inner.next() {
+            Some(idx) => match self.set_this.iter().nth(idx) {
+                Some(item) => {
+                    self.spent_cnt += 1;
+                    Some(item)
+                },
+                None => None,
+            },
+            None => None
+        }
     }
 }
 
 impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, T, N> {
     fn len(&self) -> usize {
-        self.inner.len()
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }
 
@@ -122,31 +153,49 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, 
 ///
 /// This `struct` is created by the [`symmetric_difference`][crate::set::SgSet::symmetric_difference]
 /// method on [`SgSet`][crate::set::SgSet]. See its documentation for more.
-pub struct SymmetricDifference<'a, T, const N: usize> {
-    pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
+pub struct SymmetricDifference<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[(usize, bool); N]>,
+    set_this: &'a SgSet<T, N>,
+    set_other: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
 impl<'a, T: Ord + Default, const N: usize> SymmetricDifference<'a, T, N> {
     /// Construct `SymmetricDifference` iterator.
+    /// Values that are in `this` or in `other` but not in both.
     pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
-        let mut sym_diff = SmallVec::<[&'a T; N]>::default();
+        let mut sym_diff = ArrayVec::default();
+        let mut len = 0;
 
-        for val in this {
+        for (idx, val) in this.iter().enumerate() {
             if !other.contains(val) {
-                sym_diff.push(val);
+                sym_diff.push((idx, true));
+                len += 1;
             }
         }
 
-        for val in other {
+        for (idx, val) in other.iter().enumerate() {
             if !this.contains(val) {
-                sym_diff.push(val);
+                sym_diff.push((idx, false));
+                len += 1;
             }
         }
 
-        sym_diff.sort_unstable();
+        // Ascending order
+        sym_diff.sort_unstable_by_key(|(idx, in_this)| {
+            match in_this {
+                true => this.iter().nth(*idx),
+                false => other.iter().nth(*idx),
+            }
+        });
 
         SymmetricDifference {
             inner: sym_diff.into_iter(),
+            set_this: this,
+            set_other: other,
+            total_cnt: len,
+            spent_cnt: 0,
         }
     }
 }
@@ -155,13 +204,32 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for SymmetricDifference<'a, 
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        self.inner.next()
+        match self.inner.next() {
+            Some((idx, in_this)) => match in_this {
+                true => match self.set_this.iter().nth(idx) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    },
+                    None => None,
+                },
+                false => match self.set_other.iter().nth(idx) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    },
+                    None => None,
+                }
+            },
+            None => None
+        }
     }
 }
 
 impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDifference<'a, T, N> {
     fn len(&self) -> usize {
-        self.inner.len()
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }
 
@@ -174,29 +242,47 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDiffer
 ///
 /// This `struct` is created by the [`union`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
-pub struct Union<'a, T, const N: usize> {
-    pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
+pub struct Union<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[(usize, bool); N]>,
+    set_this: &'a SgSet<T, N>,
+    set_other: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
 impl<'a, T: Ord + Default, const N: usize> Union<'a, T, N> {
     /// Construct `Union` iterator.
+    /// Values in `this` or `other`, without duplicates.
     pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
-        let mut union = SmallVec::<[&'a T; N]>::default();
+        let mut uni = ArrayVec::default();
+        let mut len = 0;
 
-        for val in this {
-            union.push(val);
+        for (idx, _) in this.iter().enumerate() {
+            uni.push((idx, true));
+            len += 1;
         }
 
-        for val in other {
-            if !union.contains(&val) {
-                union.push(val);
+        for (idx, val) in other.iter().enumerate() {
+            if !this.contains(&val) {
+                uni.push((idx, false));
+                len += 1;
             }
         }
 
-        union.sort_unstable();
+        // Ascending order
+        uni.sort_unstable_by_key(|(idx, in_this)| {
+            match in_this {
+                true => this.iter().nth(*idx),
+                false => other.iter().nth(*idx),
+            }
+        });
 
         Union {
-            inner: union.into_iter(),
+            inner: uni.into_iter(),
+            set_this: this,
+            set_other: other,
+            total_cnt: len,
+            spent_cnt: 0,
         }
     }
 }
@@ -205,13 +291,32 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Union<'a, T, N> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        self.inner.next()
+        match self.inner.next() {
+            Some((idx, in_this)) => match in_this {
+                true => match self.set_this.iter().nth(idx) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    },
+                    None => None,
+                },
+                false => match self.set_other.iter().nth(idx) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    },
+                    None => None,
+                }
+            },
+            None => None
+        }
     }
 }
 
 impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N> {
     fn len(&self) -> usize {
-        self.inner.len()
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }
 
@@ -224,38 +329,49 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N>
 ///
 /// This `struct` is created by the [`intersection`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
-pub struct Intersection<'a, T, const N: usize> {
-    pub(crate) inner: smallvec::IntoIter<[&'a T; N]>,
+pub struct Intersection<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[usize; N]>,
+    set_this: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
 impl<'a, T: Ord + Default, const N: usize> Intersection<'a, T, N> {
     /// Construct `Intersection` iterator.
+    /// Values that are both in `this` and `other`.
     pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
-        let mut self_iter = this.into_iter();
-        let mut other_iter = other.into_iter();
-        let mut opt_self_val = self_iter.next();
-        let mut opt_other_val = other_iter.next();
-        let mut intersection = SmallVec::<[&'a T; N]>::default();
+        let mut self_enum_iter = this.iter().enumerate();
+        let mut other_enum_iter = other.iter().enumerate();
 
-        // O(n), linear time
-        while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
+        let mut opt_self = self_enum_iter.next();
+        let mut opt_other = other_enum_iter.next();
+
+        let mut inter = ArrayVec::default();
+        let mut len = 0;
+
+        // If either is shorter, short-circuit.
+        while let (Some((self_idx, self_val)), Some((_, other_val))) = (opt_self, opt_other) {
             match self_val.cmp(other_val) {
                 Ordering::Less => {
-                    opt_self_val = self_iter.next();
+                    opt_self = self_enum_iter.next();
                 }
                 Ordering::Equal => {
-                    intersection.push(self_val);
-                    opt_self_val = self_iter.next();
-                    opt_other_val = other_iter.next();
+                    inter.push(self_idx);
+                    len += 1;
+                    opt_self = self_enum_iter.next();
+                    opt_other = other_enum_iter.next();
                 }
                 Ordering::Greater => {
-                    opt_other_val = other_iter.next();
+                    opt_other = other_enum_iter.next();
                 }
             }
         }
 
         Intersection {
-            inner: intersection.into_iter(),
+            inner: inter.into_iter(),
+            set_this: this,
+            total_cnt: len,
+            spent_cnt: 0,
         }
     }
 }
@@ -264,12 +380,22 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Intersection<'a, T, N> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        self.inner.next()
+        match self.inner.next() {
+            Some(idx) => match self.set_this.iter().nth(idx) {
+                Some(item) => {
+                    self.spent_cnt += 1;
+                    Some(item)
+                },
+                None => None,
+            },
+            None => None
+        }
     }
 }
 
 impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Intersection<'a, T, N> {
     fn len(&self) -> usize {
-        self.inner.len()
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }

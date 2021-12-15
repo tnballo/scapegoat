@@ -1,7 +1,7 @@
 use core::mem::size_of_val;
 
 use scapegoat::SgSet;
-use smallvec::{smallvec, SmallVec};
+use tinyvec::{array_vec, ArrayVec};
 
 const U8_BUF_LEN: usize = 32;
 
@@ -31,14 +31,14 @@ fn main() {
     }
 
     // Vec<u8> is sized, it's actually a fat pointer to a heap buffer.
-    // SmallVec<[u8; U8_BUF_LEN]> is sized, it's actually a stack buffer.
+    // ArrayVec<[u8; U8_BUF_LEN]> is sized, it's actually a stack buffer.
     // But slices of the vec are unsized! For example:
     //     &my_vec[0..5] is the first 5 elements
     //     &my_vec[1..] is all but the first element
     //     &my_vec[..] is all elements
-    let bad_food_vec: SmallVec<[u8; U8_BUF_LEN]> =
+    let bad_food_vec: ArrayVec<[u8; U8_BUF_LEN]> =
         smallvec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
-    let bad_dude_vec: SmallVec<[u8; U8_BUF_LEN]> =
+    let bad_dude_vec: ArrayVec<[u8; U8_BUF_LEN]> =
         smallvec![0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD];
 
     // We're effectively searching for a [u8; 8] present
