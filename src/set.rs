@@ -325,7 +325,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     ) -> Result<Self, SgError> {
         match iter.len() <= SgTree::<T, (), N>::max_capacity() {
             true => Ok(SgSet::from_iter(iter)),
-            false => Err(SgError::MaximumCapacityExceeded)
+            false => Err(SgError::MaximumCapacityExceeded),
         }
     }
 
@@ -714,6 +714,14 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
+    ///
+    /// ### Warning
+    ///
+    /// At present, this function may panic if set capacity `N` exceeds `2048`.
+    /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
+    /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
+    /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
+    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
     pub fn symmetric_difference<'a>(&'a self, other: &'a SgSet<T, N>) -> SymmetricDifference<T, N>
     where
         T: Ord,
@@ -762,6 +770,14 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
+    ///
+    /// ### Warning
+    ///
+    /// At present, this function may panic if set capacity `N` exceeds `2048`.
+    /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
+    /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
+    /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
+    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
     pub fn union<'a>(&'a self, other: &'a SgSet<T, N>) -> Union<T, N>
     where
         T: Ord,
@@ -854,7 +870,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// ```
     /// use scapegoat::SgSet;
     ///
-    /// let sub: SgSet<_, 2> = [1, 2].iter().cloned().collect();
+    /// let sub: SgSet<_, 3> = [1, 2].iter().cloned().collect();
     /// let mut set = SgSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);

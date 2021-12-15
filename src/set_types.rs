@@ -1,9 +1,10 @@
 use core::cmp::Ordering;
 
 use crate::set::SgSet;
-use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter};
+use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter};
 
 use tinyvec::{ArrayVec, ArrayVecIterator};
+use smallnum::SmallUnsigned;
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
@@ -81,244 +82,9 @@ in `ArrayVecIterator<[&'a T; N]>` `Default` is not implemented for `&'a T`.
 TODO: faster solution?
 */
 
-// Difference Iterator -------------------------------------------------------------------------------------------------
-
-// TODO: these need more trait implementations for full compatibility
-// TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
-
-/// An iterator producing elements in the difference of [`SgSet`][crate::set::SgSet]s.
-///
-/// This `struct` is created by the [`difference`][crate::set::SgSet::difference] method
-/// on [`SgSet`][crate::set::SgSet]. See its documentation for more.
-pub struct Difference<'a, T: Ord + Default, const N: usize> {
-    pub(crate) inner: ArrayVecIterator<[usize; N]>,
-    set_this: &'a SgSet<T, N>,
-    total_cnt: usize,
-    spent_cnt: usize,
-}
-
-impl<'a, T: Ord + Default, const N: usize> Difference<'a, T, N> {
-    /// Construct `Difference` iterator.
-    /// Values that are in `this` but not in `other`.
-    pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
-        let mut diff = ArrayVec::default();
-        let mut len = 0;
-
-        for (idx, val) in this.iter().enumerate() {
-            if !other.contains(val) {
-                diff.push(idx);
-                len += 1;
-            }
-        }
-
-        Difference {
-            inner: diff.into_iter(),
-            set_this: this,
-            total_cnt: len,
-            spent_cnt: 0,
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> Iterator for Difference<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<&'a T> {
-        match self.inner.next() {
-            Some(idx) => match self.set_this.iter().nth(idx) {
-                Some(item) => {
-                    self.spent_cnt += 1;
-                    Some(item)
-                },
-                None => None,
-            },
-            None => None
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, T, N> {
-    fn len(&self) -> usize {
-        debug_assert!(self.spent_cnt <= self.total_cnt);
-        self.total_cnt - self.spent_cnt
-    }
-}
-
-// Symmetric Difference Iterator ---------------------------------------------------------------------------------------
-
-// TODO: these need more trait implementations for full compatibility
-// TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
-
-/// An iterator producing elements in the symmetric difference of [`SgSet`][crate::set::SgSet]s.
-///
-/// This `struct` is created by the [`symmetric_difference`][crate::set::SgSet::symmetric_difference]
-/// method on [`SgSet`][crate::set::SgSet]. See its documentation for more.
-pub struct SymmetricDifference<'a, T: Ord + Default, const N: usize> {
-    pub(crate) inner: ArrayVecIterator<[(usize, bool); N]>,
-    set_this: &'a SgSet<T, N>,
-    set_other: &'a SgSet<T, N>,
-    total_cnt: usize,
-    spent_cnt: usize,
-}
-
-impl<'a, T: Ord + Default, const N: usize> SymmetricDifference<'a, T, N> {
-    /// Construct `SymmetricDifference` iterator.
-    /// Values that are in `this` or in `other` but not in both.
-    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
-        let mut sym_diff = ArrayVec::default();
-        let mut len = 0;
-
-        for (idx, val) in this.iter().enumerate() {
-            if !other.contains(val) {
-                sym_diff.push((idx, true));
-                len += 1;
-            }
-        }
-
-        for (idx, val) in other.iter().enumerate() {
-            if !this.contains(val) {
-                sym_diff.push((idx, false));
-                len += 1;
-            }
-        }
-
-        // Ascending order
-        sym_diff.sort_unstable_by_key(|(idx, in_this)| {
-            match in_this {
-                true => this.iter().nth(*idx),
-                false => other.iter().nth(*idx),
-            }
-        });
-
-        SymmetricDifference {
-            inner: sym_diff.into_iter(),
-            set_this: this,
-            set_other: other,
-            total_cnt: len,
-            spent_cnt: 0,
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> Iterator for SymmetricDifference<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<&'a T> {
-        match self.inner.next() {
-            Some((idx, in_this)) => match in_this {
-                true => match self.set_this.iter().nth(idx) {
-                    Some(item) => {
-                        self.spent_cnt += 1;
-                        Some(item)
-                    },
-                    None => None,
-                },
-                false => match self.set_other.iter().nth(idx) {
-                    Some(item) => {
-                        self.spent_cnt += 1;
-                        Some(item)
-                    },
-                    None => None,
-                }
-            },
-            None => None
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDifference<'a, T, N> {
-    fn len(&self) -> usize {
-        debug_assert!(self.spent_cnt <= self.total_cnt);
-        self.total_cnt - self.spent_cnt
-    }
-}
-
-// Union Iterator ------------------------------------------------------------------------------------------------------
-
-// TODO: these need more trait implementations for full compatibility
-// TODO: make this a lazy iterator like `std::collections::btree_set::Union`
-
-/// An iterator producing elements in the union of [`SgSet`][crate::set::SgSet]s.
-///
-/// This `struct` is created by the [`union`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
-/// See its documentation for more.
-pub struct Union<'a, T: Ord + Default, const N: usize> {
-    pub(crate) inner: ArrayVecIterator<[(usize, bool); N]>,
-    set_this: &'a SgSet<T, N>,
-    set_other: &'a SgSet<T, N>,
-    total_cnt: usize,
-    spent_cnt: usize,
-}
-
-impl<'a, T: Ord + Default, const N: usize> Union<'a, T, N> {
-    /// Construct `Union` iterator.
-    /// Values in `this` or `other`, without duplicates.
-    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
-        let mut uni = ArrayVec::default();
-        let mut len = 0;
-
-        for (idx, _) in this.iter().enumerate() {
-            uni.push((idx, true));
-            len += 1;
-        }
-
-        for (idx, val) in other.iter().enumerate() {
-            if !this.contains(&val) {
-                uni.push((idx, false));
-                len += 1;
-            }
-        }
-
-        // Ascending order
-        uni.sort_unstable_by_key(|(idx, in_this)| {
-            match in_this {
-                true => this.iter().nth(*idx),
-                false => other.iter().nth(*idx),
-            }
-        });
-
-        Union {
-            inner: uni.into_iter(),
-            set_this: this,
-            set_other: other,
-            total_cnt: len,
-            spent_cnt: 0,
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> Iterator for Union<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<&'a T> {
-        match self.inner.next() {
-            Some((idx, in_this)) => match in_this {
-                true => match self.set_this.iter().nth(idx) {
-                    Some(item) => {
-                        self.spent_cnt += 1;
-                        Some(item)
-                    },
-                    None => None,
-                },
-                false => match self.set_other.iter().nth(idx) {
-                    Some(item) => {
-                        self.spent_cnt += 1;
-                        Some(item)
-                    },
-                    None => None,
-                }
-            },
-            None => None
-        }
-    }
-}
-
-impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N> {
-    fn len(&self) -> usize {
-        debug_assert!(self.spent_cnt <= self.total_cnt);
-        self.total_cnt - self.spent_cnt
-    }
-}
+// TODO: without `feature(generic_const_exprs)`, `Union` and `SymmetricDifference` cannot compute `2 * N` length
+// iterator to support disjoint sets. This is a temporary workaround, documented in external API docs.
+const PLACEHOLDER_2N: usize = 4096;
 
 // Intersection Iterator -----------------------------------------------------------------------------------------------
 
@@ -330,7 +96,7 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N>
 /// This `struct` is created by the [`intersection`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
 /// See its documentation for more.
 pub struct Intersection<'a, T: Ord + Default, const N: usize> {
-    pub(crate) inner: ArrayVecIterator<[usize; N]>,
+    pub(crate) inner: ArrayVecIterator<[Idx; N]>,
     set_this: &'a SgSet<T, N>,
     total_cnt: usize,
     spent_cnt: usize,
@@ -356,7 +122,7 @@ impl<'a, T: Ord + Default, const N: usize> Intersection<'a, T, N> {
                     opt_self = self_enum_iter.next();
                 }
                 Ordering::Equal => {
-                    inter.push(self_idx);
+                    inter.push(Idx::checked_from(self_idx));
                     len += 1;
                     opt_self = self_enum_iter.next();
                     opt_other = other_enum_iter.next();
@@ -381,19 +147,254 @@ impl<'a, T: Ord + Default, const N: usize> Iterator for Intersection<'a, T, N> {
 
     fn next(&mut self) -> Option<&'a T> {
         match self.inner.next() {
-            Some(idx) => match self.set_this.iter().nth(idx) {
+            Some(idx) => match self.set_this.iter().nth(idx.usize()) {
                 Some(item) => {
                     self.spent_cnt += 1;
                     Some(item)
-                },
+                }
                 None => None,
             },
-            None => None
+            None => None,
         }
     }
 }
 
 impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Intersection<'a, T, N> {
+    fn len(&self) -> usize {
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
+    }
+}
+
+// Difference Iterator -------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+// TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
+
+/// An iterator producing elements in the difference of [`SgSet`][crate::set::SgSet]s.
+///
+/// This `struct` is created by the [`difference`][crate::set::SgSet::difference] method
+/// on [`SgSet`][crate::set::SgSet]. See its documentation for more.
+pub struct Difference<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[Idx; N]>,
+    set_this: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
+}
+
+impl<'a, T: Ord + Default, const N: usize> Difference<'a, T, N> {
+    /// Construct `Difference` iterator.
+    /// Values that are in `this` but not in `other`.
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &SgSet<T, N>) -> Self {
+        let mut diff = ArrayVec::default();
+        let mut len = 0;
+
+        for (idx, val) in this.iter().enumerate() {
+            if !other.contains(val) {
+                diff.push(Idx::checked_from(idx));
+                len += 1;
+            }
+        }
+
+        Difference {
+            inner: diff.into_iter(),
+            set_this: this,
+            total_cnt: len,
+            spent_cnt: 0,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> Iterator for Difference<'a, T, N> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        match self.inner.next() {
+            Some(idx) => match self.set_this.iter().nth(idx.usize()) {
+                Some(item) => {
+                    self.spent_cnt += 1;
+                    Some(item)
+                }
+                None => None,
+            },
+            None => None,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, T, N> {
+    fn len(&self) -> usize {
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
+    }
+}
+
+// Symmetric Difference Iterator ---------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+// TODO: make this a lazy iterator like `std::collections::btree_set::Difference`
+
+/// An iterator producing elements in the symmetric difference of [`SgSet`][crate::set::SgSet]s.
+///
+/// This `struct` is created by the [`symmetric_difference`][crate::set::SgSet::symmetric_difference]
+/// method on [`SgSet`][crate::set::SgSet]. See its documentation for more.
+pub struct SymmetricDifference<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[(Idx, bool); PLACEHOLDER_2N]>, // TODO: placeholder
+    set_this: &'a SgSet<T, N>,
+    set_other: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
+}
+
+impl<'a, T: Ord + Default, const N: usize> SymmetricDifference<'a, T, N> {
+    /// Construct `SymmetricDifference` iterator.
+    /// Values that are in `this` or in `other` but not in both.
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
+        let mut sym_diff = ArrayVec::default();
+        let mut len = 0;
+
+        for (idx, val) in this.iter().enumerate() {
+            if !other.contains(val) {
+                sym_diff.push((Idx::checked_from(idx), true));
+                len += 1;
+            }
+        }
+
+        for (idx, val) in other.iter().enumerate() {
+            if !this.contains(val) {
+                sym_diff.push((Idx::checked_from(idx), false));
+                len += 1;
+            }
+        }
+
+        // Ascending order
+        sym_diff.sort_unstable_by_key(|(idx, in_this): &(Idx, bool)| match in_this {
+            true => this.iter().nth(idx.usize()),
+            false => other.iter().nth(idx.usize()),
+        });
+
+        SymmetricDifference {
+            inner: sym_diff.into_iter(),
+            set_this: this,
+            set_other: other,
+            total_cnt: len,
+            spent_cnt: 0,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> Iterator for SymmetricDifference<'a, T, N> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        match self.inner.next() {
+            Some((idx, in_this)) => match in_this {
+                true => match self.set_this.iter().nth(idx.usize()) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    }
+                    None => None,
+                },
+                false => match self.set_other.iter().nth(idx.usize()) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    }
+                    None => None,
+                },
+            },
+            None => None,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDifference<'a, T, N> {
+    fn len(&self) -> usize {
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
+    }
+}
+
+// Union Iterator ------------------------------------------------------------------------------------------------------
+
+// TODO: these need more trait implementations for full compatibility
+// TODO: make this a lazy iterator like `std::collections::btree_set::Union`
+
+/// An iterator producing elements in the union of [`SgSet`][crate::set::SgSet]s.
+///
+/// This `struct` is created by the [`union`][crate::set::SgSet::difference] method on [`SgSet`][crate::set::SgSet].
+/// See its documentation for more.
+pub struct Union<'a, T: Ord + Default, const N: usize> {
+    pub(crate) inner: ArrayVecIterator<[(Idx, bool); PLACEHOLDER_2N]>,
+    set_this: &'a SgSet<T, N>,
+    set_other: &'a SgSet<T, N>,
+    total_cnt: usize,
+    spent_cnt: usize,
+}
+
+impl<'a, T: Ord + Default, const N: usize> Union<'a, T, N> {
+    /// Construct `Union` iterator.
+    /// Values in `this` or `other`, without duplicates.
+    pub(crate) fn new(this: &'a SgSet<T, N>, other: &'a SgSet<T, N>) -> Self {
+        let mut uni = ArrayVec::default();
+        let mut len = 0;
+
+        for (idx, _) in this.iter().enumerate() {
+            uni.push((Idx::checked_from(idx), true));
+            len += 1;
+        }
+
+        for (idx, val) in other.iter().enumerate() {
+            if !this.contains(val) {
+                uni.push((Idx::checked_from(idx), false));
+                len += 1;
+            }
+        }
+
+        // Ascending order
+        uni.sort_unstable_by_key(|(idx, in_this): &(Idx, bool)| match in_this {
+            true => this.iter().nth(idx.usize()),
+            false => other.iter().nth(idx.usize()),
+        });
+
+        Union {
+            inner: uni.into_iter(),
+            set_this: this,
+            set_other: other,
+            total_cnt: len,
+            spent_cnt: 0,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> Iterator for Union<'a, T, N> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        match self.inner.next() {
+            Some((idx, in_this)) => match in_this {
+                true => match self.set_this.iter().nth(idx.usize()) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    }
+                    None => None,
+                },
+                false => match self.set_other.iter().nth(idx.usize()) {
+                    Some(item) => {
+                        self.spent_cnt += 1;
+                        Some(item)
+                    }
+                    None => None,
+                },
+            },
+            None => None,
+        }
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N> {
     fn len(&self) -> usize {
         debug_assert!(self.spent_cnt <= self.total_cnt);
         self.total_cnt - self.spent_cnt

@@ -17,8 +17,8 @@ use micromath::F32Ext;
 use smallnum::SmallUnsigned;
 use tinyvec::{array_vec, ArrayVec};
 
-// TODO: doc link here
-pub(crate) type Idx = u16;
+// The `u16::MAX` limit is documented in our main `README.md`.
+pub type Idx = u16;
 
 // See: https://github.com/tnballo/scapegoat/blob/master/CONFIG.md
 const DEFAULT_ALPHA_NUM: f32 = 2.0;
@@ -208,7 +208,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     ) -> Result<Self, SgError> {
         match iter.len() <= SgTree::<K, V, N>::max_capacity() {
             true => Ok(SgTree::from_iter(iter)),
-            false => Err(SgError::MaximumCapacityExceeded)
+            false => Err(SgError::MaximumCapacityExceeded),
         }
     }
 
@@ -493,9 +493,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
         // Sort by key
         // Faster than sort_by() but may not preserve order of equal elements - OK b/c tree won't have equal nodes
-        subtree_flattened.sort_unstable_by(|a, b| {
-            self.arena[a.usize()].key().cmp(&self.arena[b.usize()].key())
-        });
+        subtree_flattened
+            .sort_unstable_by(|a, b| self.arena[a.usize()].key().cmp(self.arena[b.usize()].key()));
 
         subtree_flattened
     }
@@ -781,7 +780,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Remove a node from the tree, re-linking remaining nodes as necessary.
     #[allow(unused_variables)] // `opt_path` only used when feature `fast_rebalance` is enabled
-    fn priv_remove<U: SmallUnsigned + Copy>(
+    fn priv_remove<U: SmallUnsigned + Default + Copy>(
         &mut self,
         opt_path: Option<&ArrayVec<[U; N]>>,
         ngh: NodeGetHelper<U>,
@@ -937,10 +936,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
         // TODO: this implementation is rather inefficient!
 
-        // Note: this uses `usize` as a `U` stand-in to encapsulate `U` away for public APIs
-
-        let mut key_idxs = Arena::<K, V, usize, N>::new_idx_vec();
-        let mut remove_idxs = Arena::<K, V, usize, N>::new_idx_vec();
+        let mut key_idxs = Arena::<K, V, Idx, N>::new_idx_vec();
+        let mut remove_idxs = Arena::<K, V, Idx, N>::new_idx_vec();
 
         // Below iter_mut() will want to sort, require want consistent indexes, so do work up front
         self.sort_arena();
@@ -949,7 +946,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         for (k, _) in &(*self) {
             let ngh: NodeGetHelper<Idx> = self.priv_get(None, k.borrow());
             debug_assert!(ngh.node_idx().is_some());
-            key_idxs.push(ngh.node_idx().unwrap());
+            key_idxs.push(Idx::checked_from(ngh.node_idx().unwrap()));
         }
 
         // Filter arena index list to those not matching predicate
@@ -962,7 +959,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         // Drain non-matches
         let mut drained_sgt = Self::new();
         for i in remove_idxs {
-            if let Some((k, v)) = self.priv_remove_by_idx(i) {
+            if let Some((k, v)) = self.priv_remove_by_idx(i.usize()) {
                 drained_sgt
                     .try_insert(k, v)
                     .expect("Stack-storage capacity exceeded!");

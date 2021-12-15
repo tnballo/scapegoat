@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
-use scapegoat::{SgSet, SgError};
+use scapegoat::{SgError, SgSet};
 
 const DEFAULT_CAPACITY: usize = 10;
 

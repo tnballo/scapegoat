@@ -344,22 +344,16 @@ fn test_flatten() {
     }
 
     let root_idx = sgt.opt_root_idx.unwrap();
-    let sorted_idxs =  sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
+    let sorted_idxs = sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
 
-    assert_eq!(
-        sorted_idxs,
-        array_vec![[u16; CAPACITY] => 1, 0, 2]
-    );
+    assert_eq!(sorted_idxs, array_vec![[u16; CAPACITY] => 1, 0, 2]);
 
     sgt.remove(&2);
 
     let root_idx = sgt.opt_root_idx.unwrap();
-    let sorted_idxs =  sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
+    let sorted_idxs = sgt.flatten_subtree_to_sorted_idxs::<u16>(root_idx);
 
-    assert_eq!(
-        sorted_idxs,
-        array_vec![[u16; CAPACITY] => 1, 2]
-    );
+    assert_eq!(sorted_idxs, array_vec![[u16; CAPACITY] => 1, 2]);
 }
 
 #[test]

@@ -428,7 +428,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ) -> Result<Self, SgError> {
         match iter.len() <= SgTree::<K, V, N>::max_capacity() {
             true => Ok(SgMap::from_iter(iter)),
-            false => Err(SgError::MaximumCapacityExceeded)
+            false => Err(SgError::MaximumCapacityExceeded),
         }
     }
 

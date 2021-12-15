@@ -78,8 +78,10 @@ assert_eq!(please_tuple, (1, "Please"));
 example.retain(|_, v| !v.contains("a"));
 
 // Extension
-let iterable: ArrayVec<[(isize, &str); CAPACITY]> =
-    smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
+let iterable = array_vec![
+    [(isize, &str); CAPACITY] =>
+    (1337, "safety!"), (0, "Leverage"), (100, "for")
+];
 example.extend(iterable.into_iter());
 
 // Value mutation
@@ -114,8 +116,8 @@ let big_map: SgMap<u64, u64, 2_048> = SgMap::new(); // 2,048 item capacity
 #[cfg(not(feature = "low_mem_insert"))]
 #[cfg(not(feature = "fast_rebalance"))]
 {
-    assert_eq!(size_of_val(&small_map), 2_696); // 2.7 KB
-    assert_eq!(size_of_val(&big_map), 53_344);  // 53.3 KB
+    assert_eq!(size_of_val(&small_map), 2_680); // 2.7 KB
+    assert_eq!(size_of_val(&big_map), 53_328);  // 53.3 KB
 }
 ```
 
