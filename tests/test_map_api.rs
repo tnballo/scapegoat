@@ -119,15 +119,12 @@ fn test_map_from_iter() {
     );
 }
 
-/*
-TODO: re-enable for tinyvec
-
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_map_from_iter_panic() {
-    let _: SgMap<usize, usize, DEFAULT_CAPACITY> = SgMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
+    let _: SgMap<usize, usize, DEFAULT_CAPACITY> =
+        SgMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
 }
-*/
 
 #[test]
 fn test_map_iter() {

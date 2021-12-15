@@ -928,7 +928,7 @@ where
     #[doc(alias = "try_from")]
     #[doc(alias = "TryFrom")]
     fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        IntoIterator::into_iter(arr).collect()
     }
 }
 

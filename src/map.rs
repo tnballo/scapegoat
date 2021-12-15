@@ -913,7 +913,7 @@ where
     #[doc(alias = "try_from")]
     #[doc(alias = "TryFrom")]
     fn from(arr: [(K, V); N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        IntoIterator::into_iter(arr).collect()
     }
 }
 

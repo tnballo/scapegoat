@@ -38,8 +38,8 @@ jobs:
         command: run
         args: --example static_strs
 
-    - name: run --example ha_insert --all-features
+    - name: run --example try_insert
       uses: actions-rs/cargo@v1
       with:
         command: run
-        args: --example ha_insert --all-features
+        args: --example try_insert

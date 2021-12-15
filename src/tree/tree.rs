@@ -1289,7 +1289,7 @@ where
     V: Default,
 {
     fn from(arr: [(K, V); N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        IntoIterator::into_iter(arr).collect()
     }
 }
 
@@ -1315,7 +1315,7 @@ where
 
     fn try_from(arr: [(K, V); N]) -> Result<Self, Self::Error> {
         match arr.len() <= Idx::MAX {
-            true => Ok(core::array::IntoIter::new(arr).collect()),
+            true => Ok(IntoIterator::into_iter(arr).collect()),
             false => Err(SgError::StackCapacityExceeded)
         }
     }
