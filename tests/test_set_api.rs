@@ -288,7 +288,6 @@ fn test_map_append_fallible() {
 #[should_panic]
 #[test]
 fn test_map_insert_panic() {
-
     let mut a = SgSet::<_, 3>::new();
 
     assert!(a.try_insert(1).is_ok());

@@ -186,7 +186,7 @@ The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.m
 
 * [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
-* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8, 128>`: **1.3KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 
 ### License and Contributing
 
