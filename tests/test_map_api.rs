@@ -297,10 +297,6 @@ fn test_map_append_fallible() {
     );
 }
 
-/*
-
-CRITICAL TODO: re-enable post tinyvec
-
 #[should_panic]
 #[test]
 fn test_map_insert_panic() {
@@ -314,4 +310,3 @@ fn test_map_insert_panic() {
 
     a.insert(4, "4"); // panic
 }
-*/

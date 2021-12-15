@@ -97,15 +97,11 @@ fn test_set_from_iter() {
     assert_eq!(sgs.into_iter().collect::<Vec<usize>>(), vec![1, 10, 100]);
 }
 
-/*
-TODO: re-enable for tinyvec
-
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_set_from_iter_panic() {
     let _: SgSet<usize, DEFAULT_CAPACITY> = SgSet::from_iter(0..(DEFAULT_CAPACITY + 1));
 }
-*/
 
 #[test]
 fn test_set_iter() {
@@ -289,15 +285,11 @@ fn test_map_append_fallible() {
     );
 }
 
-/*
-
-CRITICAL TODO: re-enable post tinyvec
-
 #[should_panic]
 #[test]
 fn test_map_insert_panic() {
 
-    let mut a = SgSet::<_, _, 3>::new();
+    let mut a = SgSet::<_, 3>::new();
 
     assert!(a.try_insert(1).is_ok());
     assert!(a.try_insert(2).is_ok());
@@ -306,4 +298,3 @@ fn test_map_insert_panic() {
 
     a.insert(4); // panic
 }
-*/

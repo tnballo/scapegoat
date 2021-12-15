@@ -14,6 +14,7 @@ use crate::tree::{SgError, SgTree};
 /// * [`try_append`][crate::set::SgSet::try_append]
 /// * [`try_extend`][crate::set::SgSet::try_extend]
 /// * [`try_from_iter`][crate::set::SgSet::try_from_iter]
+/// * [`try_replace`][crate::set::SgSet::try_replace]
 ///
 /// [`TryFrom`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html) isn't implemented because it would collide with the blanket implementation.
 /// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
@@ -443,20 +444,21 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
         T: Ord,
     {
         let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
-
-        #[cfg(not(feature = "high_assurance"))]
-        {
-            self.insert(value);
-        }
-        #[cfg(feature = "high_assurance")]
-        {
-            assert!(self.insert(value).is_ok());
-        }
-
+        self.insert(value);
         removed
     }
 
-    // CRITICAL TODO: try_replace!
+    // TODO: add example
+    /// Attempts to add a value to the set, replacing the existing value, if any, that is equal to the given
+    /// one. Returns the replaced value.
+    pub fn try_replace(&mut self, value: T) -> Result<Option<T>, SgError>
+    where
+        T: Ord,
+    {
+        let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
+        self.try_insert(value)?;
+        Ok(removed)
+    }
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///

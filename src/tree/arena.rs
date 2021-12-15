@@ -152,6 +152,7 @@ impl<
                 self.vec.swap(curr_idx, sorted_idx);
                 swap_history.add(curr_idx, sorted_idx);
 
+                // TODO: move this out of loop body, should do once at end of func with `swap_history`
                 #[cfg(not(feature = "low_mem_insert"))]
                 {
                     let old_free_idx = U::checked_from(sorted_idx);

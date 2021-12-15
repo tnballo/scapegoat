@@ -70,8 +70,6 @@ impl<T: Ord + Default, const N: usize> ExactSizeIterator for IntoIter<T, N> {
     }
 }
 
-// CRITICAL TODO: for all below `usize` -> `Idx`
-
 /*
 Workaround Note:
 
