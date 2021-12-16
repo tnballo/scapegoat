@@ -9,7 +9,7 @@ Ordered set and map data structures via an arena-based [scapegoat tree](https://
 
 Two APIs:
 
-* Ordered Set API ([`SgSet`](crate::SgSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
+* Ordered Set API ([`SgSet`](crate::SgSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html) nightly.
 * Ordered Map API ([`SgMap`](crate::SgMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
 
 Strives for three properties:
@@ -24,14 +24,14 @@ Strives for three properties:
     * **Recursion-free:** all operations are iterative, so stack use is fixed and runtime is minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
 
-* **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code):
+* **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code).
     * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `extend`, etc.) is available.
-    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SgError>`](crate::SgError).
+    * **Out-Of-Memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SgError>`](crate::SgError).
     * Heap fragmentation doesn't impact **Worst Case Execution Time (WCET)**, this library doesn't use the heap.
 
 Other features:
 
-* **Generic:** map keys and set elements can be any type that implements the `Ord + Default` traits.
+* **Generic:** map keys and set elements can be any type that implements traits [`Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) and [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html).
 * **Arbitrarily mutable:** elements can be inserted and removed, map values can be mutated. Safely.
 
 ### Usage
@@ -140,7 +140,6 @@ This library has three dependencies, each of which have no dependencies of their
 * [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
 Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code is introduced into your project.
-Safety is proven at compile-time.
 
 ### Additional Considerations
 

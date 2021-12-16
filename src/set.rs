@@ -723,7 +723,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
     /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
     /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
-    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
+    /// An `N > 2048` may or may not panic, depending on the size of sets' intersection.
     pub fn symmetric_difference<'a>(&'a self, other: &'a SgSet<T, N>) -> SymmetricDifference<T, N>
     where
         T: Ord,
@@ -779,7 +779,7 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
     /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
     /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
-    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
+    /// An `N > 2048` may or may not panic, depending on the size of sets' intersection.
     pub fn union<'a>(&'a self, other: &'a SgSet<T, N>) -> Union<T, N>
     where
         T: Ord,

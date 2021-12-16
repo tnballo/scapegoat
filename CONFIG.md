@@ -41,7 +41,7 @@ assert!(map.set_rebal_param(2.0, 3.0).is_ok());
 If this feature is enabled, the internal arena doesn't maintain a free list.
 Removing this metadata saves stack space (lower memory footprint) but significantly slows down insertion (higher runtime).
 
-* **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
+* **Memory gain if enabled:** save up to `self.capacity() * core::mem::size_of<u16>()` per instance of set/map.
 
 * **Runtime penalty if enabled:** `insert` becomes `O(n)` instead of `O(log n)`. The larger the arena, the more that matters (algorithmic complexity downgrade). `get` and `remove` remain unchanged.
 
@@ -50,7 +50,7 @@ Removing this metadata saves stack space (lower memory footprint) but significan
 If this feature is enabled, every node stores an additional piece of internal metadata: subtree size.
 This metadata increases stack space usage (higher memory footprint) but significantly speeds up rebalancing operations (faster runtime).
 
-* **Memory penalty if enabled:** costs up to `self.capacity() * core::mem::size_of<usize>()` per instance of set/map.
+* **Memory penalty if enabled:** costs up to `self.capacity() * core::mem::size_of<u16>()` per instance of set/map.
 
 * **Runtime gain if enabled:** does not change algorithmic complexity, but `insert` becomes faster. `get` remains unchanged. Due to extra book keeping needed to keep subtree size caches updated following node removal, `remove` slows down for the average case but may improve for the worst case.
 
