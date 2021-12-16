@@ -32,7 +32,7 @@ Strives for three properties:
 Other features:
 
 * **Generic:** map keys and set elements can be any type that implements the `Ord + Default` traits.
-* **Arbitrarily mutable:** elements can be insert and removed, map values can be mutated. Safely.
+* **Arbitrarily mutable:** elements can be inserted and removed, map values can be mutated. Safely.
 
 ### Usage
 
@@ -135,11 +135,12 @@ For more advanced configuration options, see [the documentation here](https://gi
 
 This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
-* [`tinyvec`](https://crates.io/crates/tinyvec) - `!#[no_std]`, `#![forbid(unsafe_code)]` `Vec` alternative.
+* [`tinyvec`](https://crates.io/crates/tinyvec) - `!#[no_std]`, `#![forbid(unsafe_code)]` alternative to `Vec`.
 * [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
 * [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
-Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code will be introduced into your project.
+Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code is introduced into your project.
+Safety is proven at compile-time.
 
 ### Additional Considerations
 
@@ -176,7 +177,7 @@ The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.m
 
 **Memory Footprint Demos**
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize, 1024>` with `insert`, `get`, and `remove` called: **16.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
 * [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8, 128>`: **1.3KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 

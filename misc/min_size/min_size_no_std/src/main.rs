@@ -13,7 +13,7 @@ use scapegoat::SgMap;
 
 #[no_mangle]
 pub fn main(_argc: i32, _argv: *const *const u8) -> isize {
-    let mut map: SgMap<usize, usize> = SgMap::new();
+    let mut map: SgMap<usize, usize, 1024> = SgMap::new();
     map.insert(1, 2);
     assert_eq!(map.get(&1), Some(&2));
     assert_eq!(map.remove(&1), Some(2));
