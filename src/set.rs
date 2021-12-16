@@ -1,33 +1,46 @@
 use core::borrow::Borrow;
-use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use crate::tree::{
-    ElemRefIter, ElemRefVec, IntoIter as TreeIntoIter, Iter as TreeIter, SGErr, SGTree,
-};
+use crate::set_types::{Difference, Intersection, IntoIter, Iter, SymmetricDifference, Union};
+use crate::tree::{SgError, SgTree};
 
-/// Ordered set.
-/// API examples and descriptions are all adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
-#[allow(clippy::upper_case_acronyms)] // TODO: Removal == breaking change, e.g. v2.0
+/// Safe, fallible, embedded-friendly ordered set.
+///
+/// ### Fallible APIs
+///
+/// * [`try_insert`][crate::set::SgSet::try_insert]
+/// * [`try_append`][crate::set::SgSet::try_append]
+/// * [`try_extend`][crate::set::SgSet::try_extend]
+/// * [`try_from_iter`][crate::set::SgSet::try_from_iter]
+/// * [`try_replace`][crate::set::SgSet::try_replace]
+///
+/// [`TryFrom`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html) isn't implemented because it would collide with the blanket implementation.
+/// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
+/// this is a known Rust limitation that should be fixed via specialization in the future.
+///
+/// ### Attribution Note
+///
+/// The majority of API examples and descriptions are adapted or directly copied from the standard library's [`BTreeSet`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html).
+/// The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
 #[derive(Default, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct SGSet<T: Ord> {
-    bst: SGTree<T, ()>,
+pub struct SgSet<T: Ord + Default, const N: usize> {
+    pub(crate) bst: SgTree<T, (), N>,
 }
 
-impl<T: Ord> SGSet<T> {
-    /// Makes a new, empty `SGSet`.
+impl<T: Ord + Default, const N: usize> SgSet<T, N> {
+    /// Makes a new, empty `SgSet`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<i32> = SGSet::new();
+    /// let mut set: SgSet<i32, 10> = SgSet::new();
     /// ```
     pub fn new() -> Self {
-        SGSet { bst: SGTree::new() }
+        SgSet { bst: SgTree::new() }
     }
 
     /// The [original scapegoat tree paper's](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) alpha, `a`, can be chosen in the range `0.5 <= a < 1.0`.
@@ -45,26 +58,28 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<isize> = SGSet::new();
+    /// let mut set: SgSet<isize, 10> = SgSet::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
     /// ```
-    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SGErr> {
+    #[doc(alias = "rebalance")]
+    #[doc(alias = "alpha")]
+    pub fn set_rebal_param(&mut self, alpha_num: f32, alpha_denom: f32) -> Result<(), SgError> {
         self.bst.set_rebal_param(alpha_num, alpha_denom)
     }
 
     /// Get the current rebalance parameter, alpha, as a tuple of `(alpha_numerator, alpha_denominator)`.
-    /// See [the corresponding setter method][SGSet::set_rebal_param] for more details.
+    /// See [the corresponding setter method][SgSet::set_rebal_param] for more details.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<isize> = SGSet::new();
+    /// let mut set: SgSet<isize, 10> = SgSet::new();
     ///
     /// // Set 2/3, e.g. `a = 0.666...` (it's default value).
     /// assert!(set.set_rebal_param(2.0, 3.0).is_ok());
@@ -72,24 +87,22 @@ impl<T: Ord> SGSet<T> {
     /// // Get the currently set value
     /// assert_eq!(set.rebal_param(), (2.0, 3.0));
     /// ```
+    #[doc(alias = "rebalance")]
+    #[doc(alias = "alpha")]
     pub fn rebal_param(&self) -> (f32, f32) {
         self.bst.rebal_param()
     }
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of set elements.
-    /// Attempting to insert elements beyond capacity will panic, unless the `high_assurance` feature is enabled.
-    ///
-    /// If using `std`: fast capacity, e.g. number of set elements stored on the stack.
-    /// Elements inserted beyond capacity will be stored on the heap.
+    /// Total capacity, e.g. maximum number of set elements.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<i32> = SGSet::new();
+    /// let mut set: SgSet<i32, 10> = SgSet::new();
     ///
-    /// assert!(set.capacity() > 0)
+    /// assert!(set.capacity() == 10)
     /// ```
     pub fn capacity(&self) -> usize {
         self.bst.capacity()
@@ -100,14 +113,14 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
     ///
-    /// let mut b = SGSet::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(3);
     /// b.insert(4);
     /// b.insert(5);
@@ -123,8 +136,7 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
-    pub fn append(&mut self, other: &mut SGSet<T>)
+    pub fn append(&mut self, other: &mut SgSet<T, N>)
     where
         T: Ord,
     {
@@ -136,20 +148,23 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgSet, SgError};
     ///
-    /// let mut a = SGSet::new();
-    /// a.insert(1);
-    /// a.insert(2);
-    /// a.insert(3);
+    /// let mut a = SgSet::<_, 10>::new();
+    /// assert!(a.try_insert(1).is_ok());
+    /// assert!(a.try_insert(2).is_ok());
+    /// assert!(a.try_insert(3).is_ok());
     ///
-    /// let mut b = SGSet::new();
-    /// b.insert(3);
-    /// b.insert(4);
-    /// b.insert(5);
+    /// let mut b = SgSet::<_, 10>::new();
+    /// assert!(b.try_insert(3).is_ok()); // Overwrite previous
+    /// assert!(b.try_insert(4).is_ok());
+    /// assert!(b.try_insert(5).is_ok());
     ///
-    /// a.append(&mut b);
+    /// // Successful append
+    /// assert!(a.try_append(&mut b).is_ok());
     ///
+    /// // Elements moved
     /// assert_eq!(a.len(), 5);
     /// assert_eq!(b.len(), 0);
     ///
@@ -158,10 +173,29 @@ impl<T: Ord> SGSet<T> {
     /// assert!(a.contains(&3));
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
+    ///
+    /// // Fill remaining capacity
+    /// let mut key = 6;
+    /// while a.len() < a.capacity() {
+    ///     assert!(a.try_insert(key).is_ok());
+    ///     key += 1;
+    /// }
+    ///
+    /// // Full
+    /// assert!(a.is_full());
+    ///
+    /// // More data
+    /// let mut c = SgSet::<_, 10>::from_iter([11, 12]);
+    /// let mut d = SgSet::<_, 10>::from_iter([1, 2]);
+    ///
+    /// // Cannot append new pairs
+    /// assert_eq!(a.try_append(&mut c), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing pairs
+    /// assert!(a.try_append(&mut d).is_ok());
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn append(&mut self, other: &mut SGSet<T>) -> Result<(), SGErr> {
-        self.bst.append(&mut other.bst)
+    pub fn try_append(&mut self, other: &mut SgSet<T, N>) -> Result<(), SgError> {
+        self.bst.try_append(&mut other.bst)
     }
 
     /// Adds a value to the set.
@@ -171,15 +205,14 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// assert_eq!(set.insert(2), true);
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
-    #[cfg(not(feature = "high_assurance"))]
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,
@@ -188,52 +221,123 @@ impl<T: Ord> SGSet<T> {
     }
 
     /// Adds a value to the set.
-    /// Returns `Err` if sets's stack capacity is full, else the `Ok` contains:
+    /// Returns `Err` if the operation can't be completed, else the `Ok` contains:
     /// * `true` if the set did not have this value present.
     /// * `false` if the set did have this value present (and that old entry is overwritten).
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::{SGSet, SGErr};
+    /// use scapegoat::{SgSet, SgError};
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
-    /// assert_eq!(set.insert(2), Ok(true));
-    /// assert_eq!(set.insert(2), Ok(false));
+    /// // Add a new element
+    /// assert_eq!(set.try_insert(2), Ok(true));
+    ///
+    /// // Replace existing element
+    /// assert_eq!(set.try_insert(2), Ok(false));
     /// assert_eq!(set.len(), 1);
     ///
+    /// // Fill remaining capacity
     /// let mut elem = 3;
     /// while set.len() < set.capacity() {
-    ///     set.insert(elem);
+    ///     assert!(set.try_insert(elem).is_ok());
     ///     elem += 1;
     /// }
     ///
-    /// assert_eq!(set.first(), Some(&2));
-    /// assert_eq!(set.last(), Some(&(2 + (set.capacity() - 1))));
-    /// assert_eq!(set.len(), set.capacity());
+    /// // Full
+    /// assert!(set.is_full());
     ///
-    /// assert_eq!(set.insert(elem), Err(SGErr::StackCapacityExceeded));
+    /// // Cannot insert new element
+    /// assert_eq!(set.try_insert(elem), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Can still replace existing element
+    /// assert_eq!(set.try_insert(elem - 1), Ok(false));
     /// ```
-    #[cfg(feature = "high_assurance")]
-    pub fn insert(&mut self, value: T) -> Result<bool, SGErr>
+    pub fn try_insert(&mut self, value: T) -> Result<bool, SgError>
     where
         T: Ord,
     {
-        match self.bst.insert(value, ()) {
+        match self.bst.try_insert(value, ()) {
             Ok(opt_val) => Ok(opt_val.is_none()),
-            Err(_) => Err(SGErr::StackCapacityExceeded),
+            Err(_) => Err(SgError::StackCapacityExceeded),
         }
     }
 
-    /// Gets an iterator that visits the values in the `SGSet` in ascending order.
+    /// Attempt to extend a collection with the contents of an iterator.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use core::iter::FromIterator;
+    /// use scapegoat::{SgSet, SgError};
     ///
-    /// let set: SGSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut a = SgSet::<_, 2>::new();
+    /// let mut b = SgSet::<_, 3>::from_iter([1, 2, 3]);
+    /// let mut c = SgSet::<_, 2>::from_iter([1, 2]);
+    ///
+    /// // Too big
+    /// assert_eq!(a.try_extend(b.into_iter()), Err(SgError::StackCapacityExceeded));
+    ///
+    /// // Fits
+    /// assert!(a.try_extend(c.into_iter()).is_ok());
+    /// ```
+    ///
+    /// ### Note
+    ///
+    /// There is no `TryExtend` trait in `core`/`std`.
+    pub fn try_extend<I: ExactSizeIterator + IntoIterator<Item = T>>(
+        &mut self,
+        iter: I,
+    ) -> Result<(), SgError> {
+        // Derp :P
+        if iter.len() <= (self.capacity() - self.len()) {
+            let map: crate::SgMap<T, (), N> = iter.into_iter().map(|e| (e, ())).collect();
+            self.bst.try_extend(map.into_iter())
+        } else {
+            Err(SgError::StackCapacityExceeded)
+        }
+    }
+
+    /// Attempt conversion from an iterator.
+    /// Will fail if iterator length exceeds `u16::MAX`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::{SgSet, SgError};
+    ///
+    /// const CAPACITY_1: usize = 1_000;
+    /// assert!(SgSet::<_, CAPACITY_1>::try_from_iter((0..CAPACITY_1)).is_ok());
+    ///
+    /// const CAPACITY_2: usize = (u16::MAX as usize) + 1;
+    /// assert_eq!(
+    ///     SgSet::<_, CAPACITY_2>::try_from_iter((0..CAPACITY_2)),
+    ///     Err(SgError::MaximumCapacityExceeded)
+    /// );
+    /// ```
+    ///
+    /// ### Note
+    ///
+    /// There is no `TryFromIterator` trait in `core`/`std`.
+    pub fn try_from_iter<I: ExactSizeIterator + IntoIterator<Item = T>>(
+        iter: I,
+    ) -> Result<Self, SgError> {
+        match iter.len() <= SgTree::<T, (), N>::max_capacity() {
+            true => Ok(SgSet::from_iter(iter)),
+            false => Err(SgError::MaximumCapacityExceeded),
+        }
+    }
+
+    /// Gets an iterator that visits the values in the `SgSet` in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgSet;
+    ///
+    /// let set: SgSet<usize, 3> = [1, 2, 3].iter().cloned().collect();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -244,16 +348,16 @@ impl<T: Ord> SGSet<T> {
     /// Values returned by the iterator are returned in ascending order:
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<usize> = [3, 1, 2].iter().cloned().collect();
+    /// let set: SgSet<usize, 3> = [3, 1, 2].iter().cloned().collect();
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
     /// assert_eq!(set_iter.next(), Some(&3));
     /// assert_eq!(set_iter.next(), None);
     /// ```
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub fn iter(&self) -> Iter<'_, T, N> {
         Iter::new(self)
     }
 
@@ -267,9 +371,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(2);
     /// assert_eq!(set.remove(&2), true);
@@ -288,12 +392,10 @@ impl<T: Ord> SGSet<T> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 5>::new();
     /// a.insert(1);
     /// a.insert(2);
     /// a.insert(3);
@@ -312,12 +414,12 @@ impl<T: Ord> SGSet<T> {
     /// assert!(b.contains(&17));
     /// assert!(b.contains(&41));
     /// ```
-    pub fn split_off<Q>(&mut self, value: &Q) -> SGSet<T>
+    pub fn split_off<Q>(&mut self, value: &Q) -> SgSet<T, N>
     where
         T: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        SGSet {
+        SgSet {
             bst: self.bst.split_off(value),
         }
     }
@@ -328,9 +430,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     /// set.insert(Vec::<i32>::new());
     ///
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
@@ -342,20 +444,22 @@ impl<T: Ord> SGSet<T> {
         T: Ord,
     {
         let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
-
-        #[cfg(not(feature = "high_assurance"))]
-        {
-            self.insert(value);
-        }
-        #[cfg(feature = "high_assurance")]
-        {
-            assert!(self.insert(value).is_ok());
-        }
-
+        self.insert(value);
         removed
     }
 
-    // TODO v2.0: impl and add fuzz test
+    // TODO: add example
+    /// Attempts to add a value to the set, replacing the existing value, if any, that is equal to the given
+    /// one. Returns the replaced value.
+    pub fn try_replace(&mut self, value: T) -> Result<Option<T>, SgError>
+    where
+        T: Ord,
+    {
+        let removed = self.bst.remove_entry(&value).map(|(k, _)| k);
+        self.try_insert(value)?;
+        Ok(removed)
+    }
+
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
     /// The value may be any borrowed form of the set's value type,
@@ -365,9 +469,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set: SGSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
@@ -387,10 +491,10 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
     /// let xs = [1, 2, 3, 4, 5, 6];
-    /// let mut set: SGSet<i32> = xs.iter().cloned().collect();
+    /// let mut set: SgSet<i32, 10> = xs.iter().cloned().collect();
     /// // Keep only the even numbers.
     /// set.retain(|&k| k % 2 == 0);
     /// assert!(set.iter().eq([2, 4, 6].iter()));
@@ -412,9 +516,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
@@ -431,9 +535,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// v.insert(1);
     /// v.clear();
     /// assert!(v.is_empty());;
@@ -451,9 +555,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set: SGSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let set: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
@@ -470,14 +574,14 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut map = SGSet::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.first(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.first(), Some(&1));
+    /// let mut set = SgSet::<_, 2>::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.first(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.first(), Some(&1));
     /// ```
     pub fn first(&self) -> Option<&T>
     where
@@ -492,9 +596,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(1);
     /// while let Some(n) = set.pop_first() {
@@ -514,14 +618,14 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut map = SGSet::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.last(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.last(), Some(&2));
+    /// let mut set = SgSet::<_, 10>::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.last(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.last(), Some(&2));
     /// ```
     pub fn last(&self) -> Option<&T>
     where
@@ -536,9 +640,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut set = SGSet::new();
+    /// let mut set = SgSet::<_, 10>::new();
     ///
     /// set.insert(1);
     /// while let Some(n) = set.pop_last() {
@@ -558,9 +662,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// assert_eq!(v.len(), 0);
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
@@ -574,30 +678,24 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
-    pub fn difference(&self, other: &SGSet<T>) -> ElemRefIter<T>
+    pub fn difference(&self, other: &SgSet<T, N>) -> Difference<T, N>
     where
         T: Ord,
     {
-        let mut diff = ElemRefVec::new();
-        for val in self {
-            if !other.contains(val) {
-                diff.push(val);
-            }
-        }
-        diff.into_iter()
+        Difference::new(self, other)
     }
 
     /// Returns an iterator over values representing symmetric set difference, e.g., values in `self` or `other` but not both, in ascending order.
@@ -605,38 +703,32 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
-    pub fn symmetric_difference<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T>
+    ///
+    /// ### Warning
+    ///
+    /// At present, this function may panic if set capacity `N` exceeds `2048`.
+    /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
+    /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
+    /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
+    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
+    pub fn symmetric_difference<'a>(&'a self, other: &'a SgSet<T, N>) -> SymmetricDifference<T, N>
     where
         T: Ord,
     {
-        let mut sym_diff = ElemRefVec::new();
-        for val in self {
-            if !other.contains(val) {
-                sym_diff.push(val);
-            }
-        }
-
-        for val in other {
-            if !self.contains(val) {
-                sym_diff.push(val);
-            }
-        }
-
-        sym_diff.sort_unstable();
-        sym_diff.into_iter()
+        SymmetricDifference::new(self, other)
     }
 
     /// Returns an iterator over values representing set intersection, e.g., values in both `self` and `other`, in ascending order.
@@ -644,47 +736,24 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     /// a.insert(2);
     ///
-    /// let mut b = SGSet::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     /// b.insert(3);
     ///
     /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
-    pub fn intersection(&self, other: &SGSet<T>) -> ElemRefIter<T>
+    pub fn intersection(&self, other: &SgSet<T, N>) -> Intersection<T, N>
     where
         T: Ord,
     {
-        let mut self_iter = self.into_iter();
-        let mut other_iter = other.into_iter();
-        let mut opt_self_val = self_iter.next();
-        let mut opt_other_val = other_iter.next();
-        let mut intersect = ElemRefVec::new();
-
-        // Linear time
-        while let (Some(self_val), Some(other_val)) = (opt_self_val, opt_other_val) {
-            match self_val.cmp(other_val) {
-                Ordering::Less => {
-                    opt_self_val = self_iter.next();
-                }
-                Ordering::Equal => {
-                    intersect.push(self_val);
-                    opt_self_val = self_iter.next();
-                    opt_other_val = other_iter.next();
-                }
-                Ordering::Greater => {
-                    opt_other_val = other_iter.next();
-                }
-            }
-        }
-
-        intersect.into_iter()
+        Intersection::new(self, other)
     }
 
     /// Returns an iterator over values representing set union, e.g., values in `self` or `other`, in ascending order.
@@ -692,35 +761,30 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut a = SGSet::new();
+    /// let mut a = SgSet::<_, 10>::new();
     /// a.insert(1);
     ///
-    /// let mut b = SGSet::new();
+    /// let mut b = SgSet::<_, 10>::new();
     /// b.insert(2);
     ///
     /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
-    pub fn union<'a>(&'a self, other: &'a SGSet<T>) -> ElemRefIter<T>
+    ///
+    /// ### Warning
+    ///
+    /// At present, this function may panic if set capacity `N` exceeds `2048`.
+    /// The issue is that this function's returned iterator needs to be `2 * N` long to support disjoint sets,
+    /// but without unstable `feature(generic_const_exprs)` we can't compute `2 * N`.
+    /// So we use `4096` instead of `2 * N` as a workaround, hence `N` should be `<= 2048` to ensure no panic.
+    /// An `N > 2048` may or may not panic, depending on the size of set's intersection.
+    pub fn union<'a>(&'a self, other: &'a SgSet<T, N>) -> Union<T, N>
     where
         T: Ord,
     {
-        let mut union = ElemRefVec::new();
-
-        for val in self {
-            union.push(val);
-        }
-
-        for val in other {
-            if !union.contains(&val) {
-                union.push(val);
-            }
-        }
-
-        union.sort_unstable();
-        union.into_iter()
+        Union::new(self, other)
     }
 
     /// Returns `true` if the set contains no elements.
@@ -728,9 +792,9 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let mut v = SGSet::new();
+    /// let mut v = SgSet::<_, 10>::new();
     /// assert!(v.is_empty());
     /// v.insert(1);
     /// assert!(!v.is_empty());
@@ -739,14 +803,31 @@ impl<T: Ord> SGSet<T> {
         self.bst.is_empty()
     }
 
+    /// Returns `true` if the set's capacity is filled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgSet;
+    ///
+    /// let mut a = SgSet::<_, 2>::new();
+    /// a.insert(1);
+    /// assert!(!a.is_full());
+    /// a.insert(2);
+    /// assert!(a.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.bst.is_full()
+    }
+
     /// Returns `true` if `self` has no elements in common with other (empty intersection).
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
-    /// let a: SGSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// let mut b = SGSet::new();
+    /// use scapegoat::SgSet;
+    /// let a: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let mut b = SgSet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
     /// b.insert(4);
@@ -754,7 +835,7 @@ impl<T: Ord> SGSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    pub fn is_disjoint(&self, other: &SGSet<T>) -> bool
+    pub fn is_disjoint(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -766,10 +847,10 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let sup: SGSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// let mut set = SGSet::new();
+    /// let sup: SgSet<_, 10> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set = SgSet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
     /// set.insert(2);
@@ -777,7 +858,7 @@ impl<T: Ord> SGSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    pub fn is_subset(&self, other: &SGSet<T>) -> bool
+    pub fn is_subset(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -789,10 +870,10 @@ impl<T: Ord> SGSet<T> {
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let sub: SGSet<_> = [1, 2].iter().cloned().collect();
-    /// let mut set = SGSet::new();
+    /// let sub: SgSet<_, 3> = [1, 2].iter().cloned().collect();
+    /// let mut set = SgSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
     ///
@@ -803,7 +884,7 @@ impl<T: Ord> SGSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
-    pub fn is_superset(&self, other: &SGSet<T>) -> bool
+    pub fn is_superset(&self, other: &SgSet<T, N>) -> bool
     where
         T: Ord,
     {
@@ -814,9 +895,9 @@ impl<T: Ord> SGSet<T> {
 // Convenience Traits --------------------------------------------------------------------------------------------------
 
 // Debug
-impl<T> Debug for SGSet<T>
+impl<T, const N: usize> Debug for SgSet<T, N>
 where
-    T: Ord + Debug,
+    T: Ord + Default + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set()
@@ -826,38 +907,47 @@ where
 }
 
 // From array.
-impl<T, const N: usize> From<[T; N]> for SGSet<T>
+impl<T, const N: usize> From<[T; N]> for SgSet<T, N>
 where
-    T: Ord,
+    T: Ord + Default,
 {
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let set1 = SGSet::from([1, 2, 3, 4]);
-    /// let set2: SGSet<_> = [1, 2, 3, 4].into();
+    /// let set1 = SgSet::from([1, 2, 3, 4]);
+    /// let set2: SgSet<_, 4> = [1, 2, 3, 4].into();
     /// assert_eq!(set1, set2);
     /// ```
+    ///
+    /// ### Warning
+    ///
+    /// [`TryFrom`](https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html) isn't implemented because it would collide with the blanket implementation.
+    /// See [this open GitHub issue](https://github.com/rust-lang/rust/issues/50133#issuecomment-64690839) from 2018,
+    /// this is a known Rust limitation that should be fixed via specialization in the future.
+    #[doc(alias = "tryfrom")]
+    #[doc(alias = "try_from")]
+    #[doc(alias = "TryFrom")]
     fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        IntoIterator::into_iter(arr).collect()
     }
 }
 
 // Construct from iterator.
-impl<T> FromIterator<T> for SGSet<T>
+impl<T, const N: usize> FromIterator<T> for SgSet<T, N>
 where
-    T: Ord,
+    T: Ord + Default,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut sgs = SGSet::new();
-        sgs.bst = SGTree::from_iter(iter.into_iter().map(|e| (e, ())));
+        let mut sgs = SgSet::new();
+        sgs.bst = SgTree::from_iter(iter.into_iter().map(|e| (e, ())));
         sgs
     }
 }
 
 // Extension from iterator.
-impl<T> Extend<T> for SGSet<T>
+impl<T, const N: usize> Extend<T> for SgSet<T, N>
 where
-    T: Ord,
+    T: Ord + Default,
 {
     fn extend<TreeIter: IntoIterator<Item = T>>(&mut self, iter: TreeIter) {
         self.bst.extend(iter.into_iter().map(|e| (e, ())));
@@ -865,165 +955,123 @@ where
 }
 
 // Extension from reference iterator.
-impl<'a, T> Extend<&'a T> for SGSet<T>
+impl<'a, T, const N: usize> Extend<&'a T> for SgSet<T, N>
 where
-    T: 'a + Ord + Copy,
+    T: 'a + Ord + Default + Copy,
 {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 }
 
-// Iterators -----------------------------------------------------------------------------------------------------------
+// General Iterators ---------------------------------------------------------------------------------------------------
 
 // Reference iterator
-impl<'a, T: Ord> IntoIterator for &'a SGSet<T> {
+impl<'a, T: Ord + Default, const N: usize> IntoIterator for &'a SgSet<T, N> {
     type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-/// Reference iterator wrapper
-pub struct Iter<'a, T: Ord> {
-    ref_iter: TreeIter<'a, T, ()>,
-}
-
-impl<'a, T: Ord> Iter<'a, T> {
-    pub fn new(set: &'a SGSet<T>) -> Self {
-        Iter {
-            ref_iter: TreeIter::new(&set.bst),
-        }
-    }
-}
-
-impl<'a, T: Ord> Iterator for Iter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.ref_iter.next().map(|(k, _)| k)
-    }
-}
-
 // Consuming iterator
-impl<T: Ord> IntoIterator for SGSet<T> {
+impl<T: Ord + Default, const N: usize> IntoIterator for SgSet<T, N> {
     type Item = T;
-    type IntoIter = IntoIter<T>;
+    type IntoIter = IntoIter<T, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter::new(self)
     }
 }
 
-/// Consuming iterator wrapper
-pub struct IntoIter<T: Ord> {
-    cons_iter: TreeIntoIter<T, ()>,
-}
-
-impl<T: Ord> IntoIter<T> {
-    pub fn new(set: SGSet<T>) -> Self {
-        IntoIter {
-            cons_iter: TreeIntoIter::new(set.bst),
-        }
-    }
-}
-
-impl<T: Ord> Iterator for IntoIter<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.cons_iter.next().map(|(k, _)| k)
-    }
-}
-
 // Operator Overloading ------------------------------------------------------------------------------------------------
 
-impl<T: Ord + Clone> Sub<&SGSet<T>> for &SGSet<T> {
-    type Output = SGSet<T>;
+impl<T: Ord + Default + Clone, const N: usize> Sub<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the difference of `self` and `rhs` as a new `SGSet<T>`.
+    /// Returns the difference of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![3, 4, 5].into_iter().collect();
     ///
     /// let result = &a - &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2]);
     /// ```
-    fn sub(self, rhs: &SGSet<T>) -> SGSet<T> {
+    fn sub(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.difference(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Clone> BitAnd<&SGSet<T>> for &SGSet<T> {
-    type Output = SGSet<T>;
+impl<T: Ord + Default + Clone, const N: usize> BitAnd<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the intersection of `self` and `rhs` as a new `SGSet<T>`.
+    /// Returns the intersection of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![2, 3, 4].into_iter().collect();
     ///
     /// let result = &a & &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [2, 3]);
     /// ```
-    fn bitand(self, rhs: &SGSet<T>) -> SGSet<T> {
+    fn bitand(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.intersection(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Clone> BitOr<&SGSet<T>> for &SGSet<T> {
-    type Output = SGSet<T>;
+impl<T: Ord + Default + Clone, const N: usize> BitOr<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the union of `self` and `rhs` as a new `SGSet<T>`.
+    /// Returns the union of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_> = vec![3, 4, 5].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![3, 4, 5].into_iter().collect();
     ///
     /// let result = &a | &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
     /// ```
-    fn bitor(self, rhs: &SGSet<T>) -> SGSet<T> {
+    fn bitor(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.union(rhs).cloned().collect()
     }
 }
 
-impl<T: Ord + Clone> BitXor<&SGSet<T>> for &SGSet<T> {
-    type Output = SGSet<T>;
+impl<T: Ord + Default + Clone, const N: usize> BitXor<&SgSet<T, N>> for &SgSet<T, N> {
+    type Output = SgSet<T, N>;
 
-    /// Returns the symmetric difference of `self` and `rhs` as a new `SGSet<T>`.
+    /// Returns the symmetric difference of `self` and `rhs` as a new `SgSet<T, N>`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scapegoat::SGSet;
+    /// use scapegoat::SgSet;
     ///
-    /// let a: SGSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: SGSet<_> = vec![2, 3, 4].into_iter().collect();
+    /// let a: SgSet<_, 10> = vec![1, 2, 3].into_iter().collect();
+    /// let b: SgSet<_, 10> = vec![2, 3, 4].into_iter().collect();
     ///
     /// let result = &a ^ &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 4]);
     /// ```
-    fn bitxor(self, rhs: &SGSet<T>) -> SGSet<T> {
+    fn bitxor(self, rhs: &SgSet<T, N>) -> SgSet<T, N> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }

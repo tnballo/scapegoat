@@ -1,13 +1,17 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 
-use scapegoat::SGMap;
+use scapegoat::{SgError, SgMap};
 
 use rand::Rng;
 
+const DEFAULT_CAPACITY: usize = 10;
+
+// Normal APIs ---------------------------------------------------------------------------------------------------------
+
 #[test]
 fn test_debug() {
-    let sgm = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let sgm = SgMap::from([(3, 4), (1, 2), (5, 6)]);
     let btm = BTreeMap::from([(3, 4), (1, 2), (5, 6)]);
     assert!(sgm.iter().eq(btm.iter()));
 
@@ -20,34 +24,22 @@ fn test_debug() {
 
 #[test]
 fn test_clone() {
-    let sgm_1 = SGMap::from([(3, 4), (1, 2), (5, 6)]);
+    let sgm_1 = SgMap::from([(3, 4), (1, 2), (5, 6)]);
     let sgm_2 = sgm_1.clone();
     assert_eq!(sgm_1, sgm_2);
 }
 
 #[test]
 fn test_basic_map_functionality() {
-    let mut sgm = SGMap::new();
+    let mut sgm = SgMap::<_, _, DEFAULT_CAPACITY>::new();
 
     assert!(sgm.is_empty());
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgm.insert(1, "1");
-        sgm.insert(2, "2");
-        sgm.insert(3, "3");
-        sgm.insert(4, "4");
-        sgm.insert(5, "5");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgm.insert(1, "1").is_ok());
-        assert!(sgm.insert(2, "2").is_ok());
-        assert!(sgm.insert(3, "3").is_ok());
-        assert!(sgm.insert(4, "4").is_ok());
-        assert!(sgm.insert(5, "5").is_ok());
-    }
+    sgm.insert(1, "1");
+    sgm.insert(2, "2");
+    sgm.insert(3, "3");
+    sgm.insert(4, "4");
+    sgm.insert(5, "5");
 
     assert!(!sgm.is_empty());
     assert_eq!(sgm.len(), 5);
@@ -92,19 +84,9 @@ fn test_basic_map_functionality() {
 
     assert_eq!(sgm.len(), 2);
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        sgm.insert(0, "0");
-        sgm.insert(3, "3");
-        sgm.insert(10, "10");
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(sgm.insert(0, "0").is_ok());
-        assert!(sgm.insert(3, "3").is_ok());
-        assert!(sgm.insert(10, "10").is_ok());
-    }
+    sgm.insert(0, "0");
+    sgm.insert(3, "3");
+    sgm.insert(10, "10");
 
     assert_eq!(sgm.len(), 5);
 
@@ -128,7 +110,7 @@ fn test_basic_map_functionality() {
 #[test]
 fn test_map_from_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let sgm = SgMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
 
     assert!(sgm.len() == 3);
     assert_eq!(
@@ -137,19 +119,17 @@ fn test_map_from_iter() {
     );
 }
 
-#[cfg(feature = "high_assurance")]
 #[should_panic(expected = "Stack-storage capacity exceeded!")]
 #[test]
 fn test_map_from_iter_panic() {
-    let sgm_temp: SGMap<isize, isize> = SGMap::new();
-    let max_capacity = sgm_temp.capacity();
-    let _ = SGMap::from_iter((0..(max_capacity + 1)).map(|val| (val, val)));
+    let _: SgMap<usize, usize, DEFAULT_CAPACITY> =
+        SgMap::from_iter((0..(DEFAULT_CAPACITY + 1)).map(|val| (val, val)));
 }
 
 #[test]
 fn test_map_iter() {
     let key_val_tuples = vec![(1, "1"), (2, "2"), (3, "3")];
-    let sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let sgm = SgMap::<_, _, 3>::from_iter(key_val_tuples.into_iter());
     let mut sgm_iter = sgm.iter();
 
     assert_eq!(sgm_iter.next(), Some((&1, &"1")));
@@ -171,7 +151,7 @@ fn test_map_iter_mut() {
         ("c", 3),
     ];
 
-    let mut sgm = SGMap::from_iter(key_val_tuples.into_iter());
+    let mut sgm = SgMap::<_, _, 8>::from_iter(key_val_tuples.into_iter());
     assert_eq!(sgm.len(), 8);
     assert_eq!(sgm.first_key_value(), Some((&"a", &1)));
     assert_eq!(sgm.last_key_value(), Some((&"h", &8)));
@@ -203,17 +183,12 @@ fn test_map_iter_mut() {
 
 #[test]
 fn test_map_iter_mut_rand() {
-    let mut sgm = SGMap::<isize, isize>::new();
+    const CAPACITY: usize = 500;
+    let mut sgm = SgMap::<isize, isize, CAPACITY>::new();
     let mut rng = rand::thread_rng();
 
-    for _ in 0..500 {
-        #[cfg(not(feature = "high_assurance"))]
+    for _ in 0..CAPACITY {
         sgm.insert(rng.gen(), 0);
-
-        #[cfg(feature = "high_assurance")]
-        {
-            assert!(sgm.insert(rng.gen(), 0).is_ok());
-        }
     }
 
     let min_key = *sgm.first_key().unwrap();
@@ -238,39 +213,18 @@ fn test_map_iter_mut_rand() {
 
 #[test]
 fn test_map_append() {
-    let mut a = SGMap::new();
+    let mut a = SgMap::new();
 
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        a.insert(1, "1");
-        a.insert(2, "2");
-        a.insert(3, "3");
-    }
+    a.insert(1, "1");
+    a.insert(2, "2");
+    a.insert(3, "3");
 
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(a.insert(1, "1").is_ok());
-        assert!(a.insert(2, "2").is_ok());
-        assert!(a.insert(3, "3").is_ok());
-    }
+    let mut b = SgMap::<_, _, DEFAULT_CAPACITY>::new();
 
-    let mut b = SGMap::new();
-
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        b.insert(4, "4");
-        b.insert(5, "5");
-        b.insert(6, "6");
-        a.append(&mut b);
-    }
-
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(b.insert(4, "4").is_ok());
-        assert!(b.insert(5, "5").is_ok());
-        assert!(b.insert(6, "6").is_ok());
-        assert!(a.append(&mut b).is_ok());
-    }
+    b.insert(4, "4");
+    b.insert(5, "5");
+    b.insert(6, "6");
+    a.append(&mut b);
 
     assert!(b.is_empty());
     assert_eq!(a.len(), 6);
@@ -279,4 +233,76 @@ fn test_map_append() {
         a.into_iter().collect::<Vec<(usize, &str)>>(),
         vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
     );
+}
+
+// Fallible APIs -------------------------------------------------------------------------------------------------------
+
+#[test]
+fn test_map_insert_fallible() {
+    let mut a = SgMap::<_, _, 3>::new();
+
+    assert!(a.try_insert(1, "1A").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+
+    assert_eq!(a.try_insert(3, "3"), Ok(None));
+    assert_eq!(a.try_insert(1, "1B"), Ok(Some("1A")));
+    assert_eq!(a.try_insert(4, "4"), Err(SgError::StackCapacityExceeded));
+}
+
+#[test]
+fn test_map_append_fallible() {
+    let mut a = SgMap::<_, _, 6>::new();
+
+    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+    assert!(a.try_insert(3, "3").is_ok());
+
+    let mut b = SgMap::<_, _, 6>::new();
+
+    assert!(b.try_insert(4, "4").is_ok());
+    assert!(b.try_insert(5, "5").is_ok());
+    assert!(b.try_insert(6, "6").is_ok());
+    assert!(a.try_append(&mut b).is_ok());
+
+    assert!(b.is_empty());
+    assert_eq!(b.try_insert(7, "7"), Ok(None));
+
+    assert_eq!(a.len(), 6);
+    assert_eq!(a.len(), a.capacity());
+    assert_eq!(a.try_insert(7, "7"), Err(SgError::StackCapacityExceeded));
+
+    assert_eq!(a.pop_last(), Some((6, "6")));
+
+    b.clear();
+    assert!(b.try_insert(4, "4").is_ok());
+    assert!(b.try_insert(5, "5").is_ok());
+    assert!(b.try_insert(6, "6").is_ok());
+
+    println!(
+        "a_len: {} of {}, b_len: {}, common_len: {}",
+        a.len(),
+        a.capacity(),
+        b.len(),
+        a.iter().filter(|(k, _)| b.contains_key(&k)).count()
+    );
+
+    assert!(a.try_append(&mut b).is_ok());
+
+    assert_eq!(
+        a.into_iter().collect::<Vec<(usize, &str)>>(),
+        vec![(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5"), (6, "6")]
+    );
+}
+
+#[should_panic]
+#[test]
+fn test_map_insert_panic() {
+    let mut a = SgMap::<_, _, 3>::new();
+
+    assert!(a.try_insert(1, "1").is_ok());
+    assert!(a.try_insert(2, "2").is_ok());
+    assert!(a.try_insert(3, "3").is_ok());
+    assert_eq!(a.try_insert(4, "4"), Err(SgError::StackCapacityExceeded));
+
+    a.insert(4, "4"); // panic
 }

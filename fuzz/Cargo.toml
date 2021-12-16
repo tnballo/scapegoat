@@ -10,9 +10,9 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-#libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] } // TODO: why doesn't this work?
-libfuzzer-sys = { version = "0.4" }
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 arbitrary = { version = "1", features = ["derive"] }
+smallnum = "^0.4"
 
 [dependencies.scapegoat]
 path = ".."

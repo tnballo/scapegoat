@@ -1,17 +1,16 @@
-// TODO: update case to "SgErr" in v2.0.0
 /// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum SGErr {
+pub enum SgError {
+    /// Cannot construct instance, maximum supported capacity exceeded.
+    MaximumCapacityExceeded,
+
     /// Requested operation cannot complete, stack storage is full.
-    /// This error is unique to the `high_assurance` feature.
     StackCapacityExceeded,
 
-    /// Invalid rebalance factor requested, cannot set.
-    RebalanceFactorOutOfRange,
-
-    /// Reserved for future use
-    Reserved2,
-
+    /*
+    /// Requested operation cannot complete, heap storage is full.
+    HeapCapacityExceeded,
+    */
     /// Reserved for future use
     Reserved3,
 
@@ -26,4 +25,23 @@ pub enum SGErr {
 
     /// Reserved for future use
     Reserved7,
+
+    /// Invalid rebalance factor requested, cannot set.
+    RebalanceFactorOutOfRange,
 }
+
+/*
+
+Requires nightly feature:
+
+#[cfg(test)]
+mod tests {
+    use crate::SgError;
+    use std::mem::variant_count;
+
+    #[test]
+    fn test_err_var_cnt() {
+        assert_eq!(variant_count::<SgError>(), 8);
+    }
+}
+*/

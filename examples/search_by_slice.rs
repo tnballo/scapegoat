@@ -1,7 +1,7 @@
 use core::mem::size_of_val;
 
-use scapegoat::SGSet;
-use smallvec::{smallvec, SmallVec};
+use scapegoat::SgSet;
+use tinyvec::array_vec;
 
 const U8_BUF_LEN: usize = 32;
 
@@ -18,28 +18,25 @@ fn main() {
     assert_eq!(size_of_val(&bad_food), 8);
 
     // Store the two words in our set
-    let mut set = SGSet::new();
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        set.insert(bad_code);
-        set.insert(bad_food);
-    }
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(set.insert(bad_code).is_ok());
-        assert!(set.insert(bad_food).is_ok());
-    }
+    let mut set = SgSet::<_, U8_BUF_LEN>::new();
+    set.insert(bad_code);
+    set.insert(bad_food);
 
     // Vec<u8> is sized, it's actually a fat pointer to a heap buffer.
-    // SmallVec<[u8; U8_BUF_LEN]> is sized, it's actually a stack buffer.
+    // ArrayVec<[u8; U8_BUF_LEN]> is sized, it's actually a stack buffer.
     // But slices of the vec are unsized! For example:
     //     &my_vec[0..5] is the first 5 elements
     //     &my_vec[1..] is all but the first element
     //     &my_vec[..] is all elements
-    let bad_food_vec: SmallVec<[u8; U8_BUF_LEN]> =
-        smallvec![0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD];
-    let bad_dude_vec: SmallVec<[u8; U8_BUF_LEN]> =
-        smallvec![0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD];
+    let bad_food_vec = array_vec![
+        [u8; U8_BUF_LEN] =>
+        0xB, 0xA, 0xA, 0xD, 0xF, 0x0, 0x0, 0xD
+    ];
+
+    let bad_dude_vec = array_vec![
+        [u8; U8_BUF_LEN] =>
+        0xB, 0xA, 0xA, 0xD, 0xD, 0x0, 0x0, 0xD
+    ];
 
     // We're effectively searching for a [u8; 8] present
     assert_eq!(

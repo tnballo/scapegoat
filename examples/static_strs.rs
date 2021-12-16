@@ -1,50 +1,48 @@
-use scapegoat::SGMap;
-use smallvec::{smallvec, SmallVec};
+use scapegoat::SgMap;
+use tinyvec::{array_vec, ArrayVec};
 
-const REF_BUF_LEN: usize = 5;
+// This const is an argument to each generic constructor below.
+// So we'll use *only the bare minimum* memory for 5 elements.
+// - Stack RAM usage can be precisely controlled: per map instance (constructor call-site).
+// - To save executable RAM/ROM (monomorphization!), stick to a global capacity like this.
+const CAPACITY: usize = 5;
 
-// !#[no_std] demo mutable manipulation of SGMap<isize, &str>
+// !#[no_std] demo mutable manipulation of SgMap<isize, &str, 5>
 fn main() {
-    let mut example = SGMap::new();
+    let mut example = SgMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
     let mut stack_str = "your friend the";
 
     // Insert "dynamically" (as if heap)
-    #[cfg(not(feature = "high_assurance"))]
-    {
-        example.insert(3, "the");
-        example.insert(2, "don't blame");
-        example.insert(1, "Please");
-        example.insert(4, "borrow checker");
-    }
-    #[cfg(feature = "high_assurance")]
-    {
-        assert!(example.insert(3, "the").is_ok());
-        assert!(example.insert(2, "don't blame").is_ok());
-        assert!(example.insert(1, "Please").is_ok());
-        assert!(example.insert(4, "borrow checker").is_ok());
-    }
+    example.insert(3, "the");
+    example.insert(2, "don't blame");
+    example.insert(1, "Please");
+
+    // Fallible insert variant
+    assert!(example.try_insert(4, "borrow checker").is_ok());
 
     // Ordered reference iterator
     assert!(example
         .iter()
         .map(|(_, v)| *v)
-        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+        .collect::<ArrayVec<[&str; CAPACITY]>>()
         .iter()
         .eq(["Please", "don't blame", "the", "borrow checker"].iter()));
 
     // Container indexing
     assert_eq!(example[&3], "the");
 
-    // Fast (no search) head removal
+    // Head removal
     let please_tuple = example.pop_first().unwrap();
     assert_eq!(please_tuple, (1, "Please"));
 
-    // By-predicate removal (iterates all entries)
+    // By-predicate removal
     example.retain(|_, v| !v.contains("a"));
 
     // Extension
-    let iterable: SmallVec<[(isize, &str); REF_BUF_LEN]> =
-        smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
+    let iterable = array_vec![
+        [(isize, &str); CAPACITY] =>
+        (1337, "safety!"), (0, "Leverage"), (100, "for")
+    ];
     example.extend(iterable.into_iter());
 
     // Value mutation
@@ -55,7 +53,7 @@ fn main() {
     // New message :)
     assert!(example
         .into_values()
-        .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+        .collect::<ArrayVec<[&str; CAPACITY]>>()
         .iter()
         .eq([
             "Leverage",

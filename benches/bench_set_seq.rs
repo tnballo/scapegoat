@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::iter::FromIterator;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use scapegoat::SGSet;
+use scapegoat::SgSet;
 
 mod test_data;
 use test_data::{
@@ -17,7 +17,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("sgs_insert_100_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::new();
+            let mut sgs = SgSet::<_, 100>::new();
             for k in &SEQ_100.keys {
                 sgs.insert(*k);
             }
@@ -26,7 +26,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("std_insert_100_seq", |b| {
         b.iter(|| {
-            let mut std = SGSet::new();
+            let mut std = BTreeSet::new();
             for k in &SEQ_100.keys {
                 std.insert(*k);
             }
@@ -37,7 +37,7 @@ fn bench_insert(c: &mut Criterion) {
 
     c.bench_function("sgs_insert_1_000_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::new();
+            let mut sgs = SgSet::<_, 1_000>::new();
             for k in &SEQ_1_000.keys {
                 sgs.insert(*k);
             }
@@ -55,17 +55,15 @@ fn bench_insert(c: &mut Criterion) {
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_insert_10_000_seq", |b| {
         b.iter(|| {
-            let mut sgs = SGSet::new();
+            let mut sgs = SgSet::<_, 10_000>::new();
             for k in &SEQ_10_000.keys {
                 sgs.insert(*k);
             }
         })
     });
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_insert_10_000_seq", |b| {
         b.iter(|| {
             let mut std = BTreeSet::new();
@@ -115,7 +113,6 @@ fn bench_get(c: &mut Criterion) {
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_get_10_000_seq", |b| {
         b.iter(|| {
             for k in &SEQ_10_000.get_idxs {
@@ -124,7 +121,6 @@ fn bench_get(c: &mut Criterion) {
         })
     });
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_get_10_000_seq", |b| {
         b.iter(|| {
             for k in &SEQ_10_000.get_idxs {
@@ -135,16 +131,12 @@ fn bench_get(c: &mut Criterion) {
 }
 
 fn bench_remove(c: &mut Criterion) {
-    let mut sgs_100: SGSet<usize> = SGSet::from_iter(SEQ_100.keys.clone());
-    let mut sgs_1_000: SGSet<usize> = SGSet::from_iter(SEQ_1_000.keys.clone());
-
-    #[cfg(not(feature = "high_assurance"))]
-    let mut sgs_10_000: SGSet<usize> = SGSet::from_iter(SEQ_10_000.keys.clone());
+    let mut sgs_100: SgSet<usize, 100> = SgSet::from_iter(SEQ_100.keys.clone());
+    let mut sgs_1_000: SgSet<usize, 1_000> = SgSet::from_iter(SEQ_1_000.keys.clone());
+    let mut sgs_10_000: SgSet<usize, 10_000> = SgSet::from_iter(SEQ_10_000.keys.clone());
 
     let mut std_100: BTreeSet<usize> = BTreeSet::from_iter(SEQ_100.keys.clone());
     let mut std_1_000: BTreeSet<usize> = BTreeSet::from_iter(SEQ_1_000.keys.clone());
-
-    #[cfg(not(feature = "high_assurance"))]
     let mut std_10_000: BTreeSet<usize> = BTreeSet::from_iter(SEQ_10_000.keys.clone());
 
     // SGS vs STD 100 --------------------------------------------------------------------------------------------------
@@ -185,7 +177,6 @@ fn bench_remove(c: &mut Criterion) {
 
     // SGS vs STD 10_000 -----------------------------------------------------------------------------------------------
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("sgs_remove_10_000_seq", |b| {
         b.iter(|| {
             for k in &SEQ_10_000.remove_idxs {
@@ -194,7 +185,6 @@ fn bench_remove(c: &mut Criterion) {
         })
     });
 
-    #[cfg(not(feature = "high_assurance"))]
     c.bench_function("std_remove_10_000_seq", |b| {
         b.iter(|| {
             for k in &SEQ_10_000.remove_idxs {

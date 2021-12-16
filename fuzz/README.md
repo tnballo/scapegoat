@@ -17,7 +17,7 @@ For structure-aware fuzzing:
 cargo fuzz run sg_arena
 ```
 
-### `SGSet` APIs
+### `SgSet` APIs
 
 The goal of fuzzing is to ensure "lock step" with `std::collections::BTreeSet`.
 For structure-aware, differential fuzzing:
@@ -26,7 +26,7 @@ For structure-aware, differential fuzzing:
 cargo fuzz run sg_set
 ```
 
-### `SGMap` APIs
+### `SgMap` APIs
 
 The goal of fuzzing is to ensure "lock step" with `std::collections::BTreeMap`.
 For structure-aware, differential fuzzing:
@@ -35,6 +35,6 @@ For structure-aware, differential fuzzing:
 cargo fuzz run sg_map
 ```
 
-### `SGTree` APIs
+### `SgTree` APIs
 
-Both the `SGSet` and `SGMap` APIs are build atop `SGSet`, so their respective targets already provide `SGTree` coverage.
+Both the `SgSet` and `SgMap` APIs are build atop `SgSet`, so their respective targets already provide `SgTree` coverage.

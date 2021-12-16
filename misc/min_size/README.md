@@ -1,19 +1,19 @@
-## Minimum Executable Size Comparison: `SGMap` vs `BTreeMap`
+## Minimum Executable Size Comparison: `SgMap` vs `BTreeMap`
 
-This directory contains a repeatable experiment: how small can we possibly make binaries that use `SGMap` and it's API-compatible counterpart, `BTreeMap`?
+This directory contains a repeatable experiment: how small can we possibly make binaries that use `SgMap` and it's API-compatible counterpart, `BTreeMap`?
 In terms of executable code bytes stored in the `.text` section.
 
-[`min_size_no_std`](./min_size_no_std/src/main.rs) is a `scapegoat::SGMap` test binary that calls only the most basic functions of the data structure: `insert`, `get`, and `remove`.
-It doesn't need a global allocator, since `SGMap` uses a stack arena.
+[`min_size_no_std`](./min_size_no_std/src/main.rs) is a `scapegoat::SgMap` test binary that calls only the most basic functions of the data structure: `insert`, `get`, and `remove`.
+It doesn't need a global allocator, since `SgMap` uses a stack arena.
 
 ```rust
 #![no_std]
 #![no_main]
-use scapegoat::SGMap;
+use scapegoat::SgMap;
 
 #[no_mangle]
 pub fn main(_argc: i32, _argv: *const *const u8) -> isize {
-    let mut map: SGMap<usize, usize> = SGMap::new();
+    let mut map: SgMap<usize, usize, 1024> = SgMap::new();
     map.insert(1, 2);
     assert_eq!(map.get(&1), Some(&2));
     assert_eq!(map.remove(&1), Some(2));
@@ -106,7 +106,7 @@ error: could not find native static library `c`, perhaps an -L flag is missing?
 
 Now we're ready to build some static binaries, fully from source!
 
-### Results for `scapegoat::SGMap`
+### Results for `scapegoat::SgMap`
 
 Determine executable byte count:
 
@@ -118,8 +118,8 @@ cargo size --release
 Sample output from an x86-64 machine (note your milage may vary, depending on your host architecture and compiler version):
 
 ```
-  text	   data	    bss	    dec	    hex	filename
-  17014	   3592	    728	  21334	   5356	min_size_no_std
+   text	   data	    bss	    dec	    hex	filename
+  16084	   3528	    728	  20340	   4f74	min_size_no_std
 ```
 
 **This demonstrates a `.text` section under 20KB in size is possible!**
@@ -132,22 +132,22 @@ To check sources of bloat:
 cargo bloat --release -n 10
 ```
 
-Sample output (oddly the reported `.text` size of 14.7KB is smaller than `cargo size`'s 17.0KB):
+Sample output (oddly the reported `.text` size of 13.9KB is smaller than `cargo size`'s 16.0KB):
 
 ```
  File  .text    Size     Crate Name
- 4.1%  19.6%  2.9KiB [Unknown] main
- 3.4%  16.6%  2.4KiB       std core::slice::sort::recurse
- 0.9%   4.3%    651B       std core::fmt::Formatter::pad_integral
- 0.9%   4.1%    625B       std <core::fmt::builders::PadAdapter as core::fmt::Write>::write_str
- 0.8%   3.8%    568B       std core::fmt::write
- 0.6%   2.7%    410B  smallvec smallvec::SmallVec<A>::push
- 0.6%   2.7%    403B  smallvec smallvec::SmallVec<A>::push
- 0.5%   2.6%    393B  smallvec smallvec::SmallVec<A>::push
- 0.5%   2.6%    391B [Unknown] static_init_tls
- 0.5%   2.6%    386B  smallvec smallvec::SmallVec<A>::push
- 7.5%  36.2%  5.3KiB           And 73 smaller methods. Use -n N to show more.
-20.7% 100.0% 14.7KiB           .text section size, the file size is 71.1KiB
+ 3.1%  17.7%  2.5KiB       std core::slice::sort::recurse
+ 2.4%  13.9%  1.9KiB [Unknown] main
+ 1.6%   9.1%  1.3KiB scapegoat scapegoat::tree::tree::SgTree<K,V,_>::rebuild
+ 0.8%   4.6%    651B       std core::fmt::Formatter::pad_integral
+ 0.8%   4.4%    625B       std <core::fmt::builders::PadAdapter as core::fmt::Write>::write_str
+ 0.7%   4.0%    568B       std core::fmt::write
+ 0.5%   2.8%    391B [Unknown] static_init_tls
+ 0.5%   2.7%    385B [Unknown] __init_libc
+ 0.4%   2.4%    346B [Unknown] _start_c
+ 0.4%   2.4%    335B       std core::fmt::builders::DebugTuple::field
+ 6.0%  34.1%  4.7KiB           And 69 smaller methods. Use -n N to show more.
+17.6% 100.0% 13.9KiB           .text section size, the file size is 78.8KiB
 ```
 
 Unclear why we need `core::fmt::write`, but regardless we're definitely in that **20KB ballpark**.
@@ -208,8 +208,8 @@ Sample output (oddly the reported `.text` size of 16.4KB is smaller than `cargo 
 
 ### Conclusion
 
-Both `scapegoat::SGMap` and `std::collections::BTreeMap` can produce working dynamic collections in binaries under 20KB.
-Much to my surprise, both produce 17KB binaries despite the latter including `musl` libc's memory allocator.
+Both `scapegoat::SgMap` and `std::collections::BTreeMap` can produce working dynamic collections in binaries under 20KB.
+Perhaps surprisingly, both produce 16-17KB binaries despite the latter including `musl` libc's memory allocator.
 
 * Thanks to everyone that made suggestions on [this reddit thread](https://www.reddit.com/r/rust/comments/qu3k38/1012x_smaller_executable_footprint_than/).
 

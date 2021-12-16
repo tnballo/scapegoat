@@ -2,6 +2,7 @@
 # scapegoat
 
 [![crates.io](https://img.shields.io/crates/v/scapegoat.svg)](https://crates.io/crates/scapegoat)
+![MSRV 1.55+](https://img.shields.io/badge/rustc-1.55+-yellow.svg)
 [![docs.rs](https://docs.rs/scapegoat/badge.svg)](https://docs.rs/scapegoat/)
 [![GitHub Actions](https://github.com/tnballo/scapegoat/workflows/test/badge.svg)](https://github.com/tnballo/scapegoat/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/LICENSE)
@@ -9,19 +10,18 @@
 
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-* Safe: `#![forbid(unsafe_code)]`.
 * Embedded-friendly: `!#[no_std]` by default.
+* Safe: `#![forbid(unsafe_code)]`, including all dependencies.
 * Validated via differential fuzzing, against the standard library's `BTreeSet` and `BTreeMap`.
 
 ### About
 
-Three APIs:
+Two APIs:
 
-* Ordered Set API ([`SGSet`](crate::SGSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
-* Ordered Map API ([`SGMap`](crate::SGMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
-* Binary Tree API ([`SGTree`](crate::SGTree)) - backend for the previous two.
+* Ordered Set API ([`SgSet`](crate::SgSet)) - subset of [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html) nightly.
+* Ordered Map API ([`SgMap`](crate::SgMap)) - subset of [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html) nightly.
 
-Strives for two properties:
+Strives for three properties:
 
 * **Maximal safety:** strong [memory safety](https://tiemoko.com/blog/blue-team-rust/) guarantees, hence `#![forbid(unsafe_code)]`.
     * **Compile-time safety:** no `unsafe` (no raw pointer dereference, etc.).
@@ -33,51 +33,64 @@ Strives for two properties:
     * **Recursion-free:** all operations are iterative, so stack use is fixed and runtime is minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
 
+* **Fallibility**: for embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code):
+    * A `try_*` variant of each fallible API (e.g. `insert`, `append`, `extend`, etc.) is available.
+    * **Out-of-memory (OOM)** `panic!` becomes avoidable: `try_*` variants return [`Result<_, SgError>`](crate::SgError).
+    * Heap fragmentation doesn't impact **Worst Case Execution Time (WCET)**, this library doesn't use the heap.
+
 Other features:
 
-* **Generic:** map keys and set elements can be any type that implements the `Ord` trait.
-* **Arbitrarily mutable:** elements can be insert and removed, map values can be mutated.
+* **Generic:** map keys and set elements can be any type that implements the `Ord + Default` traits.
+* **Arbitrarily mutable:** elements can be insert and removed, map values can be mutated. Safely.
 
 ### Usage
 
-`SGMap` non-exhaustive, `!#[no_std]` API example (would work identically for `std::collections::BTreeMap`):
+`SgMap` non-exhaustive, `!#[no_std]` API example (would work almost identically for `std::collections::BTreeMap`):
 
 ```rust
-use scapegoat::SGMap;
-use smallvec::{smallvec, SmallVec};
+use scapegoat::SgMap;
+use tinyvec::{array_vec, ArrayVec};
 
-const REF_BUF_LEN: usize = 5;
+// This const is an argument to each generic constructor below.
+// So we'll use *only the bare minimum* memory for 5 elements.
+// - Stack RAM usage can be precisely controlled: per map instance (constructor call-site).
+// - To save executable RAM/ROM (monomorphization!), stick to a global capacity like this.
+const CAPACITY: usize = 5;
 
-let mut example = SGMap::new();
+let mut example = SgMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
 let mut stack_str = "your friend the";
 
 // Insert "dynamically" (as if heap)
 example.insert(3, "the");
 example.insert(2, "don't blame");
 example.insert(1, "Please");
-example.insert(4, "borrow checker");
+
+// Fallible insert variant
+assert!(example.try_insert(4, "borrow checker").is_ok());
 
 // Ordered reference iterator
 assert!(example
     .iter()
     .map(|(_, v)| *v)
-    .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Please","don't blame","the","borrow checker"].iter()));
 
 // Container indexing
 assert_eq!(example[&3], "the");
 
-// Fast (no search) head removal
+// Head removal
 let please_tuple = example.pop_first().unwrap();
 assert_eq!(please_tuple, (1, "Please"));
 
-// By-predicate removal (iterates all entries)
+// By-predicate removal
 example.retain(|_, v| !v.contains("a"));
 
 // Extension
-let iterable: SmallVec<[(isize, &str); REF_BUF_LEN]> =
-    smallvec![(1337, "safety!"), (0, "Leverage"), (100, "for")];
+let iterable = array_vec![
+    [(isize, &str); CAPACITY] =>
+    (1337, "safety!"), (0, "Leverage"), (100, "for")
+];
 example.extend(iterable.into_iter());
 
 // Value mutation
@@ -88,97 +101,58 @@ if let Some(three_val) = example.get_mut(&3) {
 // New message :)
 assert!(example
     .into_values()
-    .collect::<SmallVec<[&str; REF_BUF_LEN]>>()
+    .collect::<ArrayVec<[&str; CAPACITY]>>()
     .iter()
     .eq(["Leverage","your friend the","borrow checker","for","safety!"].iter()));
 ```
 
 Additional [examples here](https://github.com/tnballo/scapegoat/blob/master/examples/README.md).
 
-### Configuring a Stack Storage Limit
+### Stack Capacity: Important Context
 
-The maximum number of stack-stored elements (set) or key-value pairs (map/tree) is determined at compile-time, via the environment variable `SG_MAX_STACK_ELEMS`.
-[Valid values](https://docs.rs/smallvec/1.7.0/smallvec/trait.Array.html#foreign-impls) include the range `[0, 32]` and powers of 2 up to `1,048,576`.
-For example, to store up to `2048` items on the stack:
+Per the above, const generic type parameters decide collection capacity.
+And thus also stack usage.
+That usage is fixed:
 
-```bash
-export SG_MAX_STACK_ELEMS=2048
-cargo build --release
+```rust
+use core::mem::size_of_val;
+use scapegoat::SgMap;
+
+let small_map: SgMap<u64, u64, 100> = SgMap::new(); // 100 item capacity
+let big_map: SgMap<u64, u64, 2_048> = SgMap::new(); // 2,048 item capacity
+
+#[cfg(target_pointer_width = "64")]
+#[cfg(not(feature = "low_mem_insert"))]
+#[cfg(not(feature = "fast_rebalance"))]
+{
+    assert_eq!(size_of_val(&small_map), 2_680); // 2.7 KB
+    assert_eq!(size_of_val(&big_map), 53_328);  // 53.3 KB
+}
 ```
 
-Please note:
+The maximum supported capacity is `65_535` (e.g. `0xffff` or [`u16::MAX`](https://doc.rust-lang.org/std/primitive.u16.html#associatedconstant.MAX)) items.
 
-* If the `SG_MAX_STACK_ELEMS` environment variable is not set, it will default to `1024`.
-
-* For any system with heap memory: the first `SG_MAX_STACK_ELEMS` elements are stack-allocated and the remainder will be automatically heap-allocated.
-
-* For embedded systems with only stack memory: `SG_MAX_STACK_ELEMS` is a hard maximum - attempting to insert beyond this limit will cause a panic.
-    * Use feature `high_assurance` to ensure error handling and avoid panic (see below).
-
-> **Warning:**
-> Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `SG_MAX_STACK_ELEMS` (configurable) and/or the stored item type (generic) is too large.
+> **WARNING:**
+> Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `N` (const generic capacity) and/or the stored item type (generic) is too large.
 > Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
 > Regardless, you must test to ensure you don't exceed the stack frame(s) size limit of your target platform.
 > Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
 For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
 
-### The `high_assurance` Feature
+### Trusted Dependencies
 
-For embedded use cases prioritizing robustness (or [kernelspace](https://lkml.org/lkml/2021/4/14/1099) code), the `high_assurance` feature can be enabled with the standard `Cargo.toml` declaration:
+This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
-```rust
-[dependencies]
-scapegoat = { version = "^1.7", features = ["high_assurance"] }
-```
+* [`tinyvec`](https://crates.io/crates/tinyvec) - `!#[no_std]`, `#![forbid(unsafe_code)]` `Vec` alternative.
+* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
+* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
-Enabling this feature makes two changes:
+Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code will be introduced into your project.
 
-1. **Front-end, API Tweak:** `insert` and `append` APIs now return `Result`. `Err` indicates stack storage is already at maximum capacity, so caller must handle. No heap use, no panic potential on insert.
+### Additional Considerations
 
-2. **Back-end, Integer Packing:** Because the fixed/max size of the stack arena is known, indexing integers (metadata stored at every node!) can be size-optimized. This memory micro-optimization honors the original design goals of the scapegoat data structure.
-
-That second change is a subtle but interesting one.
-Example of packing saving 53% (31 KB) of RAM usage:
-
-```rust
-use core::mem::size_of;
-use scapegoat::SGMap;
-
-// If you're on a 64-bit system, you can compile-time check the below numbers yourself!
-// Just do:
-//
-// $ cargo test --doc
-// $ cargo test --doc --features="high_assurance"
-//
-// One command per set of `cfg` macros below.
-// Internally, this compile-time struct packing is done with the `smallnum` crate:
-// https://crates.io/crates/smallnum
-
-// This code assumes `SG_MAX_STACK_ELEMS == 1024` (default)
-let temp: SGMap<u64, u64> = SGMap::new();
-let other_features_enabled = cfg!(any(feature = "fast_rebalance", feature = "low_mem_insert"));
-if temp.capacity() == 1024 && (!other_features_enabled) {
-
-    // Without packing
-    #[cfg(target_pointer_width = "64")]
-    #[cfg(not(feature = "high_assurance"))] // Disabled
-    {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 57_440);
-    }
-
-    // With packing
-    #[cfg(target_pointer_width = "64")]
-    #[cfg(feature = "high_assurance")]  // Enabled
-    {
-        assert_eq!(size_of::<SGMap<u64, u64>>(), 26_688);
-    }
-}
-```
-
-### Considerations
-
-#### General Goals
+**General Goals**
 
 This project is an exercise in safe, portable data structure design.
 The goal is to offer embedded developers familiar, ergonomic APIs on resource constrained systems that otherwise don't get the luxury of dynamic collections.
@@ -189,37 +163,31 @@ The standard library has been heavily optimized for cache performance.
 This library is optimized for low, stack-only memory footprint.
 It offers:
 
-* **Best-effort Compatibility:** APIs are a subset of `BTreeMap`'s/`BTreeSet`'s, making it a somewhat "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
+* **Best-effort Compatibility:** APIs are mostly a subset of `BTreeMap`'s/`BTreeSet`'s, making it a mostly "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
 
 * **Tunable Performance:** A [single floating point value](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#tuning-the-the-trees-a-factor) optimizes relative performance of `insert`, `get`, and `remove` operation classes. And it can be changed at runtime.
 
-#### Algorithmic Complexity
+**Algorithmic Complexity**
 
-Space complexity is always `O(n)`.
+Space complexity is always `O(n)`. Time complexity:
 
 | Operation | Average Case | Worst Case |
 | --- | --- | --- |
 | `get` | `O(log n)` | `O(log n)` |
 | `insert` | `O(log n)` | Amortized `O(log n)` |
 | `remove` | `O(log n)` | Amortized `O(log n)` |
+| `first` | `O(1)` | `O(1)` |
+| `last` | `O(1)` | `O(1)` |
 
 The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
 
-#### Memory Footprint Demos
+**Memory Footprint Demos**
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SGMap<usize, usize>` with `insert`, `get`, and `remove` called: **17.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize, 1024>` with `insert`, `get`, and `remove` called: **16.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
-* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SGMap<u8, u8>` with a 256 pair capacity: **2.6KB** storage cost. Caveat: 2-3x more stack space is required for runtime book keeping (e.g. rebalancing).
-
-#### Trusted Dependencies
-
-This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
-
-* [`smallvec`](https://crates.io/crates/smallvec) - `!#[no_std]` compatible `Vec` alternative. Used in Mozilla's Servo browser engine.
-* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
-* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer packing.
+* [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8, 128>`: **1.3KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 
 ### License and Contributing
 

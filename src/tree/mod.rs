@@ -1,12 +1,11 @@
-mod types;
-pub(crate) use types::{ElemRefIter, ElemRefVec};
+mod node_dispatch;
 
 #[cfg(test)]
 mod test;
 
 mod arena;
 #[cfg(fuzzing)]
-pub use arena::NodeArena;
+pub use arena::Arena;
 
 mod node;
 #[cfg(fuzzing)]
@@ -16,8 +15,8 @@ mod iter;
 pub use iter::{IntoIter, Iter, IterMut};
 
 mod error;
-pub use error::SGErr;
+pub use error::SgError;
 
 #[allow(clippy::module_inception)]
 mod tree;
-pub use tree::SGTree;
+pub use tree::{Idx, SgTree};

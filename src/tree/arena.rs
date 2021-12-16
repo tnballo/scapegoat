@@ -1,60 +1,78 @@
+use core::ops::{Index, IndexMut};
 use core::slice::{Iter, IterMut};
 
-use super::node::{Node, NodeSwapHistHelper};
-
-#[cfg(not(feature = "low_mem_insert"))]
-use super::types::{ArenaVec, Idx, IdxVec, SortMetaVec};
-
-#[cfg(feature = "low_mem_insert")]
-use super::types::{ArenaVec, Idx, SortMetaVec};
-
-use crate::MAX_ELEMS;
+use super::node::{Node, NodeGetHelper, NodeSwapHistHelper};
+use super::node_dispatch::SmallNode;
 
 use smallnum::SmallUnsigned;
+use tinyvec::ArrayVec;
 
-/// A simple arena allocator.
-#[derive(Clone)]
-pub struct NodeArena<K, V> {
-    arena: ArenaVec<K, V>,
+/*
+Note:
+
+Structures in this file generic for `U` in a *subset* of the set `(u8, u16, u32, u64, u128)`.
+All members in subset are <= host pointer width in size.
+If caller obeys contract, `U` will be smallest unsigned capable of representing const `N` (e.g. static capacity).
+*/
+
+/// An arena allocator, meta programmable for low memory footprint.
+#[derive(Clone, Debug)]
+pub struct Arena<K: Default, V: Default, U: Default, const N: usize> {
+    vec: ArrayVec<[Option<Node<K, V, U>>; N]>,
 
     #[cfg(not(feature = "low_mem_insert"))]
-    free_list: IdxVec,
+    free_list: ArrayVec<[U; N]>,
 }
 
-impl<K, V> NodeArena<K, V> {
-    // Public API ------------------------------------------------------------------------------------------------------
+impl<
+        K: Default,
+        V: Default,
+        U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd,
+        const N: usize,
+    > Arena<K, V, U, N>
+{
+    // TODO: is this function necessary?
+    /// Const associated constructor for index scratch vector.
+    pub fn new_idx_vec() -> ArrayVec<[U; N]> {
+        ArrayVec::<[U; N]>::default()
+    }
 
     /// Constructor.
     pub fn new() -> Self {
-        NodeArena {
-            arena: ArenaVec::new(),
+        let a = Arena {
+            vec: ArrayVec::<[Option<Node<K, V, U>>; N]>::new(),
 
             #[cfg(not(feature = "low_mem_insert"))]
-            free_list: IdxVec::new(),
-        }
-    }
+            free_list: ArrayVec::<[U; N]>::new(),
+        };
 
-    /// `#![no_std]`: total capacity, e.g. maximum number of items.
-    /// Attempting to insert items beyond capacity will panic.
-    ///
-    /// If using `std`: fast capacity, e.g. number of map items stored on the stack.
-    /// Items inserted beyond capacity will be stored on the heap.
-    pub fn capacity(&self) -> usize {
-        MAX_ELEMS
-    }
+        #[cfg(not(feature = "low_mem_insert"))]
+        debug_assert_eq!(0, a.free_list.len());
+        debug_assert_eq!(0, a.vec.len());
 
+        #[cfg(not(feature = "low_mem_insert"))]
+        debug_assert_eq!(N, a.free_list.capacity());
+        debug_assert_eq!(N, a.vec.capacity());
+
+        a
+    }
     /// Returns an iterator over immutable arena elements.
-    pub fn iter(&self) -> Iter<'_, Option<Node<K, V>>> {
-        self.arena.iter()
+    pub fn iter(&self) -> Iter<'_, Option<Node<K, V, U>>> {
+        self.vec.iter()
     }
 
     /// Returns an iterator over arena elements that allows modifying each value.
-    pub fn iter_mut(&mut self) -> IterMut<'_, Option<Node<K, V>>> {
-        self.arena.iter_mut()
+    pub fn iter_mut(&mut self) -> IterMut<'_, Option<Node<K, V, U>>> {
+        self.vec.iter_mut()
+    }
+
+    /// Total capacity, e.g. maximum number of items.
+    pub fn capacity(&self) -> usize {
+        N
     }
 
     /// Add node to area, growing if necessary, and return addition index.
-    pub fn add(&mut self, node: Node<K, V>) -> Idx {
+    pub fn add(&mut self, key: K, val: V) -> usize {
         // O(1) find, constant time
         #[cfg(not(feature = "low_mem_insert"))]
         let opt_free_idx = self.free_list.pop();
@@ -62,103 +80,52 @@ impl<K, V> NodeArena<K, V> {
         // O(n) find, linear search
         #[cfg(feature = "low_mem_insert")]
         let opt_free_idx = self
-            .arena
+            .vec
             .iter()
             .position(|x| x.is_none())
-            .map(|i| i as Idx);
+            .map(|i| U::checked_from(i));
 
+        let node = Node::new(key, val);
         match opt_free_idx {
             Some(free_idx) => {
                 debug_assert!(
-                    self.arena[free_idx.usize()].is_none(),
+                    self.vec[free_idx.usize()].is_none(),
                     "Internal invariant failed: overwrite of allocated node!"
                 );
-                self.arena[free_idx.usize()] = Some(node);
-                free_idx
+                self.vec[free_idx.usize()] = Some(node);
+                free_idx.usize()
             }
             None => {
-                self.arena.push(Some(node));
-                (self.arena.len() - 1) as Idx
+                self.vec.push(Some(node));
+                self.vec.len() - 1
             }
         }
     }
 
     /// Remove node at a given index from area, return it.
-    pub fn remove(&mut self, idx: Idx) -> Option<Node<K, V>> {
+    pub fn remove(&mut self, idx: usize) -> Option<Node<K, V, U>> {
         debug_assert!(
-            idx < self.arena.len() as Idx,
+            idx < self.vec.len(),
             "API misuse: requested removal past last index!"
         );
-        if idx < self.arena.len() as Idx {
-            // Move node to back, replacing with None, preserving order
-            self.arena.push(None);
-            let len = self.arena.len();
-            self.arena.swap(idx.usize(), len - 1);
+
+        if self.is_occupied(idx) {
+            // Extract node
+            let node = core::mem::replace(&mut self.vec[idx], None);
 
             // Append removed index to free list
             #[cfg(not(feature = "low_mem_insert"))]
-            self.free_list.push(idx);
+            self.free_list.push(U::checked_from(idx));
 
-            // Retrieve node
-            return match self.arena.pop() {
-                Some(opt_node) => match opt_node {
-                    Some(node) => Some(node),
-                    None => {
-                        debug_assert!(
-                            false,
-                            "Internal invariant failed: removal popped an empty node!"
-                        );
-                        None
-                    }
-                },
-                None => None,
-            };
+            return node;
         }
 
         None
     }
 
-    /// Sort the arena in caller-requested order and update all tree metadata accordingly
-    /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
-    pub fn sort(&mut self, root_idx: Idx, sort_metadata: SortMetaVec) -> Idx {
-        debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx.is_some()));
-
-        let mut swap_history = NodeSwapHistHelper::new();
-
-        // Sort as requested
-        for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
-            let curr_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
-            let sorted_idx = sorted_idx as Idx;
-            if curr_idx != sorted_idx {
-                self.arena.swap(curr_idx.usize(), sorted_idx.usize());
-                swap_history.add(curr_idx, sorted_idx);
-
-                #[cfg(not(feature = "low_mem_insert"))]
-                self.free_list.retain(|i| *i != sorted_idx);
-            }
-        }
-
-        // Update all parent-child relationships
-        for ngh in sort_metadata {
-            if let Some(parent_idx) = ngh.parent_idx {
-                let curr_parent_idx = swap_history.curr_idx(parent_idx);
-                let curr_child_idx = swap_history.curr_idx(ngh.node_idx.unwrap());
-                let parent_node = self.hard_get_mut(curr_parent_idx);
-                if ngh.is_right_child {
-                    parent_node.right_idx = Some(curr_child_idx);
-                } else {
-                    parent_node.left_idx = Some(curr_child_idx);
-                }
-            }
-        }
-
-        // Report new root
-        swap_history.curr_idx(root_idx)
-    }
-
     /// Remove node at a known-good index (simpler callsite and error handling) from area.
     /// This function can panic. If the index might be invalid, use `remove` instead.
-    pub fn hard_remove(&mut self, idx: Idx) -> Node<K, V> {
+    pub fn hard_remove(&mut self, idx: usize) -> Node<K, V, U> {
         match self.remove(idx) {
             Some(node) => node,
             None => {
@@ -167,128 +134,236 @@ impl<K, V> NodeArena<K, V> {
         }
     }
 
-    /// Get a reference to a node.
-    pub fn get(&self, idx: Idx) -> Option<&Node<K, V>> {
-        match self.arena.get(idx.usize()) {
-            Some(Some(node)) => Some(node),
-            _ => None,
-        }
-    }
+    /// Sort the arena in caller-requested order and update all tree metadata accordingly
+    /// `unwraps` will never panic if caller invariants upheld (checked via `debug_assert`)
+    pub fn sort(
+        &mut self,
+        root_idx: usize,
+        sort_metadata: ArrayVec<[NodeGetHelper<usize>; N]>, // `usize` here avoids `U` in tree iter signatures
+    ) -> usize {
+        debug_assert!(sort_metadata.iter().all(|ngh| ngh.node_idx().is_some()));
 
-    /// Get mutable reference to a node.
-    pub fn get_mut(&mut self, idx: Idx) -> Option<&mut Node<K, V>> {
-        match self.arena.get_mut(idx.usize()) {
-            Some(Some(node)) => Some(node),
-            _ => None,
-        }
-    }
+        let mut swap_history = NodeSwapHistHelper::<U, N>::new();
 
-    /// Get reference to a node at a known-good index (simpler callsite and error handling).
-    /// This function can panic. If the index might be invalid, use `get` instead.
-    pub fn hard_get(&self, idx: Idx) -> &Node<K, V> {
-        match self.get(idx) {
-            Some(node) => node,
-            None => {
-                panic!("Internal invariant failed: attempted retrieval of node from invalid index.")
+        // Sort as requested
+        for (sorted_idx, ngh) in sort_metadata.iter().enumerate() {
+            let curr_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
+            if curr_idx != sorted_idx {
+                self.vec.swap(curr_idx, sorted_idx);
+                swap_history.add(curr_idx, sorted_idx);
+
+                // TODO: move this out of loop body, should do once at end of func with `swap_history`
+                #[cfg(not(feature = "low_mem_insert"))]
+                {
+                    let old_free_idx = U::checked_from(sorted_idx);
+                    let new_free_idx = U::checked_from(curr_idx);
+                    self.free_list.iter_mut().for_each(|i| {
+                        if *i == old_free_idx {
+                            *i = new_free_idx;
+                        }
+                    });
+                }
             }
         }
-    }
 
-    /// Get mutable reference to a node at a known-good index (simpler callsite and error handling).
-    /// This function can panic. If the index might be invalid, use `get_mut` instead.
-    pub fn hard_get_mut(&mut self, idx: Idx) -> &mut Node<K, V> {
-        match self.get_mut(idx) {
-            Some(node) => node,
-            None => panic!("Internal invariant failed: attempted mutable retrieval of node from invalid index."),
+        // Update all parent-child relationships
+        for ngh in sort_metadata {
+            if let Some(parent_idx) = ngh.parent_idx() {
+                let curr_parent_idx = swap_history.curr_idx(parent_idx);
+                let curr_child_idx = swap_history.curr_idx(ngh.node_idx().unwrap());
+                let parent_node = &mut self[curr_parent_idx];
+                if ngh.is_right_child() {
+                    parent_node.set_right_idx(Some(curr_child_idx));
+                } else {
+                    parent_node.set_left_idx(Some(curr_child_idx));
+                }
+            }
         }
+
+        // Report new root
+        swap_history.curr_idx(root_idx)
     }
 
     /// Returns the number of entries in the arena, some of which may be `None`.
     pub fn len(&self) -> usize {
-        self.arena.len()
+        self.vec.len()
+    }
+
+    /// Returns true if the index is occupied, e.g. `Some(node)`.
+    pub fn is_occupied(&self, idx: usize) -> bool {
+        (idx < self.vec.len()) && (self.vec[idx].is_some())
+    }
+
+    /// Get the size of an individual arena node, in bytes.
+    pub fn node_size(&self) -> usize {
+        core::mem::size_of::<Node<K, V, U>>()
     }
 }
 
-impl<K: Ord, V> Default for NodeArena<K, V> {
+// Convenience Traits --------------------------------------------------------------------------------------------------
+
+/// Immutable indexing.
+/// Indexed location MUST be occupied.
+impl<K: Default, V: Default, U: Default, const N: usize> Index<usize> for Arena<K, V, U, N> {
+    type Output = Node<K, V, U>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match &self.vec[index] {
+            Some(node) => node,
+            None => unreachable!(),
+        }
+    }
+}
+
+/// Mutable indexing
+/// Indexed location MUST be occupied.
+impl<K: Default, V: Default, U: Default, const N: usize> IndexMut<usize> for Arena<K, V, U, N> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match self.vec.index_mut(index) {
+            Some(node) => node,
+            None => unreachable!(),
+        }
+    }
+}
+
+impl<
+        K: Ord + Default,
+        V: Default,
+        U: Default + Copy + SmallUnsigned + Ord + PartialEq + PartialOrd,
+        const N: usize,
+    > Default for Arena<K, V, U, N>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
+/*
+NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
+// Wrapper Iterators ---------------------------------------------------------------------------------------------------
+
+pub struct ArenaIter<'a, K: Default, V: Default, U, const N: usize> {
+    arena_iter: core::slice::Iter<'a, Option<Node<K, V, U>>>,
+}
+
+impl<'a, K: Default, V: Default, U, const N: usize> ArenaIter<'a, K, V, U, N> {
+    pub fn new(arena: &'a Arena<K, V, U, N>) -> Self {
+        ArenaIter {
+            arena_iter: arena.vec.iter(),
+        }
+    }
+}
+
+impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterator for ArenaIter<'a, K, V, U, N> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.arena_iter.next() {
+            Some(Some(node)) => Some((node.key(), node.val())),
+            _ => None,
+        }
+    }
+}
+
+pub struct ArenaIterMut<'a, K: Default, V: Default, U, const N: usize> {
+    arena_iter_mut: core::slice::IterMut<'a, Option<Node<K, V, U>>>,
+}
+
+impl<'a, K: Default, V: Default, U, const N: usize> ArenaIterMut<'a, K, V, U, N> {
+    pub fn new(arena: &'a mut Arena<K, V, U, N>) -> Self {
+        ArenaIterMut {
+            arena_iter_mut: arena.vec.iter_mut(),
+        }
+    }
+}
+
+impl<'a, K: Default, V: Default, U: SmallUnsigned + Copy, const N: usize> Iterator for ArenaIterMut<'a, K, V, U, N> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.arena_iter_mut.next() {
+            Some(Some(node)) => Some(node.get_mut()),
+            _ => None,
+        }
+    }
+}
+*/
+
+// Test ----------------------------------------------------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
-    use super::{Node, NodeArena};
-    use crate::tree::arena::MAX_ELEMS;
+    use super::Arena;
     use crate::tree::node::NodeGetHelper;
-    use smallvec::smallvec;
+    use crate::tree::node_dispatch::SmallNode;
+    use core::mem::size_of_val;
+    use smallnum::small_unsigned;
+    use tinyvec::array_vec;
+
+    const CAPACITY: usize = 1024;
 
     #[test]
     fn test_add_and_remove() {
-        let n_1 = Node::new(1, "n/a");
-        let n_2 = Node::new(2, "n/a");
-        let n_3 = Node::new(3, "n/a");
+        let mut arena: Arena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
 
-        let mut arena = NodeArena::new();
-
-        let n_1_idx = arena.add(n_1);
-        let n_2_idx = arena.add(n_2);
-        let n_3_idx = arena.add(n_3);
+        let n_1_idx = arena.add(1, "n/a");
+        let n_2_idx = arena.add(2, "n/a");
+        let n_3_idx = arena.add(3, "n/a");
 
         assert_eq!(n_1_idx, 0);
         assert_eq!(n_2_idx, 1);
         assert_eq!(n_3_idx, 2);
 
         let n_2_removed = arena.remove(n_2_idx).unwrap();
-        assert_eq!(n_2_removed.key, 2);
-        assert!(arena.arena[1].is_none());
+        assert_eq!(n_2_removed.key(), &2);
+        assert!(arena.vec[1].is_none());
 
-        let n_4 = Node::new(4, "n/a");
-        let n_4_idx = arena.add(n_4);
+        let n_4_idx = arena.add(4, "n/a");
         assert_eq!(n_4_idx, 1);
 
-        let n_5 = Node::new(5, "n/a");
-        let n_5_idx = arena.add(n_5);
+        let n_5_idx = arena.add(5, "n/a");
         assert_eq!(n_5_idx, 3);
     }
 
     #[test]
-    fn test_get_mut() {
-        let n_1 = Node::new(1, "n/a");
-        let mut arena = NodeArena::new();
-        let n_1_idx = arena.add(n_1);
-        assert_eq!(arena.get(n_1_idx).unwrap().val, "n/a");
-        let n_1_mut_ref = arena.get_mut(n_1_idx).unwrap();
-        n_1_mut_ref.val = "This is a value. There are many like it but this one is mine.";
-        assert_ne!(arena.get(n_1_idx).unwrap().val, "n/a");
+    fn test_index_mut() {
+        let mut arena: Arena<isize, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
+        let n_1_idx = arena.add(1, "n/a");
+        assert_eq!(arena[n_1_idx].val(), &"n/a");
+        let n_1_mut_ref = &mut arena[n_1_idx];
+        n_1_mut_ref.set_val("This is a value. There are many like it but this one is mine.");
+        assert_ne!(arena[n_1_idx].val(), &"n/a");
     }
 
     #[test]
-    fn test_hard_get_1() {
-        let n_1 = Node::new(0xD00DFEED_u64, "n/a");
-        let mut arena = NodeArena::new();
-        let n_1_idx = arena.add(n_1);
-        let n_1_ref = arena.hard_get(n_1_idx);
-        assert_eq!(n_1_ref.key, 0xD00DFEED_u64);
+    fn test_index_1() {
+        let mut arena: Arena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
+        let n_1_idx = arena.add(0xD00DFEED_u64, "n/a");
+        let n_1_ref = &arena[n_1_idx];
+        assert_eq!(n_1_ref.key(), &0xD00DFEED_u64);
     }
 
     #[test]
     #[should_panic]
-    fn test_hard_get_2() {
-        let n_1 = Node::new(0xD00DFEED_u64, "n/a");
-        let mut arena = NodeArena::new();
-        arena.add(n_1);
-        arena.hard_get(1); // OOB
+    fn test_index_2() {
+        let mut arena: Arena<u64, &str, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
+        arena.add(0xD00DFEED_u64, "n/a");
+        let _ = &arena[1]; // OOB
     }
 
     #[test]
     fn test_capacity() {
-        let arena = NodeArena::<i32, &str>::new();
-        assert_eq!(arena.capacity(), MAX_ELEMS);
+        let arena = Arena::<i8, u128, small_unsigned!(CAPACITY), CAPACITY>::new();
+        assert_eq!(arena.capacity(), CAPACITY);
+
+        let arena = Arena::<i32, &str, small_unsigned!(1337), 1337>::new();
+        assert_eq!(arena.capacity(), 1337);
     }
 
     #[test]
     fn test_sort() {
-        let mut arena = NodeArena::<usize, &str>::new();
+        let mut arena = Arena::<usize, &str, small_unsigned!(CAPACITY), CAPACITY>::new();
 
         // Simple 3-node tree:
         //
@@ -298,46 +373,62 @@ mod tests {
         // |       |
         // 1       3
         //
-        let n_1 = Node::new(1, "n/a");
-        let mut n_2 = Node::new(2, "n/a");
-        let n_3 = Node::new(3, "n/a");
+        arena.add(3, "n/a");
+        let n_2_idx = arena.add(2, "n/a");
+        arena.add(1, "n/a");
 
-        n_2.left_idx = Some(2);
-        n_2.right_idx = Some(0);
-
-        arena.add(n_3);
-        arena.add(n_2);
-        arena.add(n_1);
+        let n_2 = &mut arena[n_2_idx];
+        n_2.set_left_idx(Some(2));
+        n_2.set_right_idx(Some(0));
 
         // Unsorted (insertion/"physical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key, 3);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key, 1);
+        assert_eq!(arena.vec[0].as_ref().unwrap().key(), &3);
+        assert_eq!(arena.vec[1].as_ref().unwrap().key(), &2);
+        assert_eq!(arena.vec[2].as_ref().unwrap().key(), &1);
 
         // Would be supplied for the above tree
-        let sort_metadata = smallvec! {
-            NodeGetHelper {
-                node_idx: Some(2),
-                parent_idx: Some(1),
-                is_right_child: false,
-            },
-            NodeGetHelper {
-                node_idx: Some(1),
-                parent_idx: None,
-                is_right_child: false,
-            },
-            NodeGetHelper {
-                node_idx: Some(0),
-                parent_idx: Some(1),
-                is_right_child: true,
-            },
+        let sort_metadata = array_vec! { [NodeGetHelper<usize>; CAPACITY] =>
+            NodeGetHelper::new(Some(2), Some(1), false),
+            NodeGetHelper::new(Some(1), None, false),
+            NodeGetHelper::new(Some(0), Some(1), false),
         };
 
         arena.sort(1, sort_metadata);
 
         // Sorted ("logical" order)
-        assert_eq!(arena.arena[0].as_ref().unwrap().key, 1);
-        assert_eq!(arena.arena[1].as_ref().unwrap().key, 2);
-        assert_eq!(arena.arena[2].as_ref().unwrap().key, 3);
+        assert_eq!(arena.vec[0].as_ref().unwrap().key(), &1);
+        assert_eq!(arena.vec[1].as_ref().unwrap().key(), &2);
+        assert_eq!(arena.vec[2].as_ref().unwrap().key(), &3);
+    }
+
+    #[test]
+    fn test_node_packing() {
+        const SMALL_CAPACITY: usize = 100;
+        const LARGE_CAPACITY: usize = 1_000;
+
+        let small_arena = Arena::<u64, u64, small_unsigned!(SMALL_CAPACITY), SMALL_CAPACITY>::new();
+        let large_arena = Arena::<u64, u64, small_unsigned!(LARGE_CAPACITY), LARGE_CAPACITY>::new();
+
+        let small_arena_size = size_of_val(&small_arena);
+        let large_arena_size = size_of_val(&large_arena);
+
+        println!("\nArena sizes:");
+        println!("\tSmall: {} bytes", small_arena_size);
+        println!("\tBig: {} bytes", large_arena_size);
+
+        assert!(small_arena_size < large_arena_size);
+
+        /*
+        NOTE: This is draft code for upgrades when `feature(generic_const_exprs)` stabilizes.
+
+        let small_node_size = small_arena.node_size();
+        let large_node_size = large_arena.node_size();
+
+        println!("\nNode sizes:");
+        println!("\tSmall: {} bytes", small_node_size);
+        println!("\tBig: {} bytes", large_node_size);
+
+        assert!(small_node_size < large_node_size);
+        */
     }
 }
