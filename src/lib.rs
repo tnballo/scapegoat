@@ -122,14 +122,20 @@ let big_map: SgMap<u64, u64, 2_048> = SgMap::new(); // 2,048 item capacity
 ```
 
 The maximum supported capacity is `65_535` (e.g. `0xffff` or [`u16::MAX`](https://doc.rust-lang.org/std/primitive.u16.html#associatedconstant.MAX)) items.
+Please note:
+
+* For embedded platforms, stack size limit (bound by available RAM) is indicated in the manufacturer's datasheet.
+* On Linux, the default stack limit is 8MB for the main thread and 2MB for spawned threads (unless [overwritten](https://doc.rust-lang.org/std/thread/struct.Builder.html#method.stack_size)).
+* Running `cargo test` on any OS, 2MB is the limit unless the environment variable [`RUST_MIN_STACK`](https://doc.rust-lang.org/std/thread/index.html#stack-size) is set.
+
 
 > **WARNING:**
 > Although stack usage is constant (no recursion), a stack overflow can happen at runtime if `N` (const generic capacity) and/or the stored item type (generic) is too large.
 > Note *stack* overflow is distinct from *buffer* overflow (which safe Rust prevents).
-> Regardless, you must test to ensure you don't exceed the stack frame(s) size limit of your target platform.
+> Regardless, you must test to ensure you don't exceed the stack size limit of your target platform.
 > Rust only supports stack probes on x86/x64, although [creative linking solutions](https://blog.japaric.io/stack-overflow-protection/) have been suggested for other architectures.
 
-For more advanced configuration options, see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
+For advanced configuration options, please see [the documentation here](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md).
 
 ### Trusted Dependencies
 
@@ -171,8 +177,6 @@ Space complexity is always `O(n)`. Time complexity:
 | `remove` | `O(log n)` | Amortized `O(log n)` |
 | `first` | `O(1)` | `O(1)` |
 | `last` | `O(1)` | `O(1)` |
-
-The [`low_mem_insert`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-low_mem_insert-feature) and [`fast_rebalance`](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#the-fast_rebalance-feature) features can be used to fine-tune tradeoffs of memory usage and speed.
 
 **Memory Footprint Demos**
 

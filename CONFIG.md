@@ -2,7 +2,7 @@
 
 This doc tackles advanced configuration options, it assumed you've read the main [README.md](https://github.com/tnballo/scapegoat/blob/master/README.md).
 
-## Additional Configuration
+## Runtime Configuration
 
 ### Tuning the the tree's `a` factor
 
@@ -34,9 +34,13 @@ let mut map: SgMap<isize, isize, 10> = SgMap::new();
 assert!(map.set_rebal_param(2.0, 3.0).is_ok());
 ```
 
-## Optional Features
+## Features for Compile-time Configuration
 
-### The `low_mem_insert` feature
+> **WARNING:** Please do *NOT* enable any of the below optional or experimental features if publishing your project on [crates.io](https://crates.io/).
+> Features are additive. Suppose an upstream project that uses your project as a dependency also uses another downstream dependency that uses this library (e.g. 2+ transitive dependencies on `scapegoat` in a single build).
+> If you enabled a feature: all code would compile, *but* would not have the runtime performance characteristic expected!
+
+### The `low_mem_insert` feature (Optional)
 
 If this feature is enabled, the internal arena doesn't maintain a free list.
 Removing this metadata saves stack space (lower memory footprint) but significantly slows down insertion (higher runtime).
@@ -45,7 +49,7 @@ Removing this metadata saves stack space (lower memory footprint) but significan
 
 * **Runtime penalty if enabled:** `insert` becomes `O(n)` instead of `O(log n)`. The larger the arena, the more that matters (algorithmic complexity downgrade). `get` and `remove` remain unchanged.
 
-### The `fast_rebalance` feature
+### The `fast_rebalance` feature (Optional)
 
 If this feature is enabled, every node stores an additional piece of internal metadata: subtree size.
 This metadata increases stack space usage (higher memory footprint) but significantly speeds up rebalancing operations (faster runtime).
@@ -54,9 +58,7 @@ This metadata increases stack space usage (higher memory footprint) but signific
 
 * **Runtime gain if enabled:** does not change algorithmic complexity, but `insert` becomes faster. `get` remains unchanged. Due to extra book keeping needed to keep subtree size caches updated following node removal, `remove` slows down for the average case but may improve for the worst case.
 
-## Experimental Features
-
-### The `alt_impl` feature
+### The `alt_impl` feature (Experimental)
 
 By default, this library uses the algorithms proposed in the original paper ([Galperin and Rivest, 1993](https://people.csail.mit.edu/rivest/pubs/GR93.pdf)).
 The `alt_impl` feature enables optimizations proposed in the subsequent PhD thesis ([Galperin, 1996](https://dspace.mit.edu/handle/1721.1/10639)).

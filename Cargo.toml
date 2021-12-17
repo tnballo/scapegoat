@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Tiemoko Ballo"]
 edition = "2018"
 license = "MIT"
@@ -8,7 +8,7 @@ readme = "README.md"
 homepage = "https://github.com/tnballo/scapegoat"
 repository = "https://github.com/tnballo/scapegoat"
 documentation = "https://docs.rs/scapegoat"
-keywords = ["tree", "set", "map", "no_std", "fallible"]
+keywords = ["stack", "set", "map", "no_std", "fallible"]
 categories = ["algorithms", "data-structures", "no-std", "embedded"]
 description = "Safe, fallible, embedded-friendly ordered set/map via a scapegoat tree. Validated against BTreeSet/BTreeMap."
 include = [
