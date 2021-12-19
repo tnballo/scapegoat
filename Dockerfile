@@ -11,8 +11,8 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     musl-tools
 
 # Rust tooling
+RUN rustup install 1.56.0-x86_64-unknown-linux-gnu
 RUN rustup toolchain install nightly
-RUN rustup default nightly
 RUN rustup component add rust-src --toolchain nightly
 RUN rustup component add llvm-tools-preview
 RUN rustup target add x86_64-unknown-linux-musl
@@ -25,5 +25,10 @@ RUN mkdir /scapegoat
 WORKDIR /scapegoat
 COPY . /scapegoat/
 
-# MSRV Test
+# Test (uses 1.56 BTree{Set,Map} feature in tests)
+RUN rustup default 1.56.0-x86_64-unknown-linux-gnu
 RUN cargo test
+
+# MSRV (1.55) Build
+RUN rustup default 1.55.0-x86_64-unknown-linux-gnu
+RUN cargo build

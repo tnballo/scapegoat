@@ -7,7 +7,7 @@ use tinyvec::{array_vec, ArrayVec};
 // - To save executable RAM/ROM (monomorphization!), stick to a global capacity like this.
 const CAPACITY: usize = 5;
 
-// !#[no_std] demo mutable manipulation of SgMap<isize, &str, 5>
+// #![no_std] demo mutable manipulation of SgMap<isize, &str, 5>
 fn main() {
     let mut example = SgMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
     let mut stack_str = "your friend the";

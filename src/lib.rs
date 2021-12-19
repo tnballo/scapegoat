@@ -1,7 +1,7 @@
 /*!
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
-* Embedded-friendly: `!#[no_std]` by default.
+* Embedded-friendly: `#![no_std]` by default.
 * Safe: `#![forbid(unsafe_code)]`, including all dependencies.
 * Validated via differential fuzzing, against the standard library's `BTreeSet` and `BTreeMap`.
 
@@ -19,7 +19,7 @@ Strives for three properties:
     * **Debug-time safety:** `debug_assert!` for logical invariants exercised in testing.
     * **Runtime safety:** no interior mutability (e.g. no need for `Rc<RefCell<T>>`'s runtime check).
 
-* **Minimal footprint:** low resource use, hence `!#[no_std]`.
+* **Minimal footprint:** low resource use, hence `#![no_std]`.
     * **Memory-efficient:** nodes have only child index metadata, node memory is re-used.
     * **Recursion-free:** all operations are iterative, so stack use is fixed and runtime is minimized.
     * **Zero-copy:** rebuild/removal re-point in-place, nodes are never copied or cloned.
@@ -36,7 +36,7 @@ Other features:
 
 ### Usage
 
-`SgMap` non-exhaustive, `!#[no_std]` API example (would work almost identically for `std::collections::BTreeMap`):
+`SgMap` non-exhaustive, `#![no_std]` API example (would work almost identically for `std::collections::BTreeMap`):
 
 ```rust
 use scapegoat::SgMap;
@@ -141,9 +141,9 @@ For advanced configuration options, please see [the documentation here](https://
 
 This library has three dependencies, each of which have no dependencies of their own (e.g. exactly three total dependencies).
 
-* [`tinyvec`](https://crates.io/crates/tinyvec) - `!#[no_std]`, `#![forbid(unsafe_code)]` alternative to `Vec`.
-* [`micromath`](https://crates.io/crates/micromath) - `!#[no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
-* [`smallnum`](https://crates.io/crates/smallnum) - `!#[no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
+* [`tinyvec`](https://crates.io/crates/tinyvec) - `#![no_std]`, `#![forbid(unsafe_code)]` alternative to `Vec`.
+* [`micromath`](https://crates.io/crates/micromath) - `#![no_std]`, `#![forbid(unsafe_code)]` floating point approximations.
+* [`smallnum`](https://crates.io/crates/smallnum) - `#![no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
 Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code is introduced into your project.
 
@@ -160,7 +160,7 @@ The standard library has been heavily optimized for cache performance.
 This library is optimized for low, stack-only memory footprint.
 It offers:
 
-* **Best-effort Compatibility:** APIs are mostly a subset of `BTreeMap`'s/`BTreeSet`'s, making it a mostly "drop-in" replacement for `!#[no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
+* **Best-effort Compatibility:** APIs are mostly a subset of `BTreeMap`'s/`BTreeSet`'s, making it a mostly "drop-in" replacement for `#![no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
 
 * **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
 

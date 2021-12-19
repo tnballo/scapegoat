@@ -13,5 +13,5 @@ Alphabetical enumeration:
 * [`tiny_map`](./tiny_map.rs) - `SgMap<u8, u8, 128>` using 1.3 KB of stack space.
 * [`try_insert`](./try_insert.rs) - fallible insertion semantics.
 
-Have another `!#[no_std]` example?
+Have another `#![no_std]` example?
 Consider [contributing](https://github.com/tnballo/scapegoat/pulls) it!
