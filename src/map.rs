@@ -3,7 +3,9 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::map_types::{IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
+use crate::map_types::{
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut,
+};
 use crate::tree::{SgError, SgTree};
 
 /// Safe, fallible, embedded-friendly ordered map.
@@ -875,6 +877,28 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// ```
     pub fn len(&self) -> usize {
         self.bst.len()
+    }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut count = SgMap::<&str, usize, 10>::new();
+    ///
+    /// // count the number of occurrences of letters in the vec
+    /// for x in vec!["a", "b", "a", "c", "a", "b"] {
+    ///     *count.entry(x).or_insert(0) += 1;
+    /// }
+    ///
+    /// assert_eq!(count["a"], 3);
+    /// ```
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, N> {
+        todo!()
     }
 }
 

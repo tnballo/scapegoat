@@ -1,3 +1,4 @@
+use crate::entry::{OccupiedEntry, VacantEntry};
 use crate::map::SgMap;
 use crate::tree::{IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut};
 
@@ -214,5 +215,131 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator
 {
     fn len(&self) -> usize {
         self.inner.len()
+    }
+}
+
+// Entry API -----------------------------------------------------------------------------------------------------
+
+/// A view into a single entry in a map, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry`] method on [`SgMap`].
+pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
+    /// A vacant entry.
+    Vacant(VacantEntry<'a, K, V, N>),
+    /// An occupied entry.
+    Occupied(OccupiedEntry<'a, K, V, N>),
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
+    /// Ensures a value is in the entry by inserting the default if empty, and returns a mutable
+    /// reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, usize, 10>::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// ```
+    pub fn or_insert(self, default: V) -> &'a mut V {
+        todo!()
+    }
+
+    /// Ensures a value is in the entry by inserting the result of the default function if empty, and returns a mutable
+    /// reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, usize, 10>::new();
+    /// let x = 42;
+    /// map.entry("poneyland").or_insert_with(|| x);
+    ///
+    /// assert_eq!(map["poneyland"], 42);
+    /// ```
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+        todo!()
+    }
+
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `.entry(key)` method call.
+    ///
+    /// The reference to the moved key is provided so that cloning or copying the key is
+    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, usize, 10>::new();
+    ///
+    /// map.entry("poneyland").or_insert_with_key(|key| key.chars().count());
+    ///
+    /// assert_eq!(map["poneyland"], 9);
+    /// ```
+    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
+        todo!()
+    }
+
+    /// Returns a reference to this entry's key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, usize, 10>::new();
+    /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    /// ```
+    pub fn key(&self) -> &K {
+        todo!()
+    }
+
+    /// Provides in-place mutable access to an occupied entry before any
+    /// potential inserts into the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, usize, 10>::new();
+    ///
+    /// map.entry("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 42);
+    ///
+    /// map.entry("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 43);
+    /// ```
+    pub fn and_modify<F: FnOnce(&mut V)>(self, f: F) -> Self {
+        todo!()
+    }
+
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<&str, Option<usize>, 10>::new();
+    /// map.entry("poneyland").or_default();
+    ///
+    /// assert_eq!(map["poneyland"], None);
+    /// ```
+    pub fn or_default(self) -> &'a mut V {
+        todo!()
     }
 }
