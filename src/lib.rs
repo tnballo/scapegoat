@@ -208,6 +208,7 @@ pub use crate::tree::{Arena, Node, NodeGetHelper, NodeRebuildHelper};
 mod tree;
 pub use crate::tree::SgError;
 
+mod entry;
 mod map;
 pub use crate::map::SgMap;
 
