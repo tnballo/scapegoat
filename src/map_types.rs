@@ -230,6 +230,8 @@ pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
     Occupied(OccupiedEntry<'a, K, V, N>),
 }
 
+use Entry::*;
+
 impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns a mutable
     /// reference to the value in the entry.
@@ -245,7 +247,10 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map["poneyland"], 12);
     /// ```
     pub fn or_insert(self, default: V) -> &'a mut V {
-        todo!()
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(default),
+        }
     }
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty, and returns a mutable
@@ -263,7 +268,10 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map["poneyland"], 42);
     /// ```
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-        todo!()
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(default()),
+        }
     }
 
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
@@ -285,7 +293,13 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
-        todo!()
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => {
+                let value = default(entry.key());
+                entry.insert(value)
+            }
+        }
     }
 
     /// Returns a reference to this entry's key.
@@ -299,7 +313,10 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     pub fn key(&self) -> &K {
-        todo!()
+        match self {
+            Occupied(entry) => entry.key(),
+            Vacant(entry) => entry.key(),
+        }
     }
 
     /// Provides in-place mutable access to an occupied entry before any
@@ -323,7 +340,13 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map["poneyland"], 43);
     /// ```
     pub fn and_modify<F: FnOnce(&mut V)>(self, f: F) -> Self {
-        todo!()
+        match self {
+            Occupied(mut entry) => {
+                f(entry.get_mut());
+                Occupied(entry)
+            }
+            Vacant(entry) => Vacant(entry),
+        }
     }
 
     /// Ensures a value is in the entry by inserting the default value if empty,
@@ -340,6 +363,9 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// assert_eq!(map["poneyland"], None);
     /// ```
     pub fn or_default(self) -> &'a mut V {
-        todo!()
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(Default::default()),
+        }
     }
 }
