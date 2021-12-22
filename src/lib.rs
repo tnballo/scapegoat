@@ -209,6 +209,8 @@ mod tree;
 pub use crate::tree::SgError;
 
 mod entry;
+pub use crate::entry::{OccupiedEntry, VacantEntry};
+
 mod map;
 pub use crate::map::SgMap;
 

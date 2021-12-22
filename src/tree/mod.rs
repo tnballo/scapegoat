@@ -1,4 +1,5 @@
 mod node_dispatch;
+pub use node_dispatch::SmallNode;
 
 #[cfg(test)]
 mod test;
