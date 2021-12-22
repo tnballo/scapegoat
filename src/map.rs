@@ -3,6 +3,7 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
+use crate::entry::{OccupiedEntry, VacantEntry};
 use crate::map_types::{
     Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut,
 };

@@ -533,7 +533,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
+    pub(crate) fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
         &self,
         mut opt_path: Option<&mut ArrayVec<[U; N]>>,
         key: &Q,

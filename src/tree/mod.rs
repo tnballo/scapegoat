@@ -7,7 +7,7 @@ mod arena;
 #[cfg(fuzzing)]
 pub use arena::Arena;
 
-mod node;
+pub(super) mod node;
 #[cfg(fuzzing)]
 pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
