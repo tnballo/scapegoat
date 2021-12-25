@@ -632,13 +632,15 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
+    // Returns a tuple of the old value, if any, and the `NodeGetHelper` of the new node.
+    //
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert<U: SmallUnsigned + Default + Copy>(
         &mut self,
         path: &mut ArrayVec<[U; N]>,
         key: K,
         val: V,
-    ) -> Option<V> {
+    ) -> (Option<V>, NodeGetHelper<U>) {
         match self.opt_root_idx {
             // Sorted insert
             Some(idx) => {
@@ -688,7 +690,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                             curr_node.set_val(val);
 
                             // Key/val updated "in-place": no need to update `curr_node`'s parent or children
-                            ngh = NodeGetHelper::new(None, None, false);
+                            ngh = NodeGetHelper::new(Some(curr_idx), None, false);
                             break;
                         }
                         Ordering::Greater => {
@@ -736,7 +738,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 }
 
                 // Return old value if overwritten
-                opt_val
+                (opt_val, ngh)
             }
 
             // Empty tree
@@ -750,7 +752,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;
 
-                None
+                let ngh = NodeGetHelper::new(Some(root_idx), None, false);
+                (None, ngh)
             }
         }
     }
