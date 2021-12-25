@@ -1,4 +1,4 @@
-use crate::tree::SmallNode;
+use crate::tree::{Idx, SmallNode};
 use crate::SgMap;
 
 /// A view into an occupied entry in a `SgMap`.
@@ -66,7 +66,9 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> VacantEntry<'a, K, V, N> 
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     pub fn insert(self, value: V) -> &'a mut V {
-        todo!()
+        let (_, new_node_idx) = self.table.bst.priv_balancing_insert::<Idx>(self.key, value);
+
+        self.table.bst.arena[new_node_idx].get_mut().1
     }
 }
 
