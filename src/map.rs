@@ -899,17 +899,16 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// assert_eq!(count["a"], 3);
     /// ```
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, N> {
-        use crate::tree::Idx;
         use crate::tree::node::NodeGetHelper;
+        use crate::tree::Idx;
 
         let ngh: NodeGetHelper<Idx> = self.bst.priv_get(None, &key);
-        if let Some(node_idx) = ngh.node_idx() {
-            Entry::Occupied(OccupiedEntry {
+        match ngh.node_idx() {
+            Some(node_idx) => Entry::Occupied(OccupiedEntry {
                 node_idx,
                 table: self,
-            })
-        } else {
-            Entry::Vacant(VacantEntry { key, table: self })
+            }),
+            None => Entry::Vacant(VacantEntry { key, table: self }),
         }
     }
 }
