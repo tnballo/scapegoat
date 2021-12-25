@@ -167,7 +167,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     where
         K: Ord,
     {
-        self.priv_balancing_insert::<Idx>(key, val)
+        self.priv_balancing_insert::<Idx>(key, val).0
     }
 
     /// Insert a key-value pair into the tree.
@@ -181,7 +181,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     {
         // Replace current slot or safely fill a new one
         match self.contains_key(&key) || (self.capacity() > self.len()) {
-            true => Ok(self.priv_balancing_insert::<Idx>(key, val)),
+            true => Ok(self.priv_balancing_insert::<Idx>(key, val).0),
             false => Err(SgError::StackCapacityExceeded),
         }
     }
@@ -603,13 +603,15 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
+    //
+    // Returns the old value, if any, and the index of the new node in the arena.
+    pub(crate) fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
         &mut self,
         key: K,
         val: V,
-    ) -> Option<V> {
+    ) -> (Option<V>, usize) {
         let mut path: ArrayVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
-        let opt_val = self.priv_insert(&mut path, key, val);
+        let (opt_val, ngh) = self.priv_insert(&mut path, key, val);
 
         #[cfg(feature = "fast_rebalance")]
         {
@@ -627,7 +629,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
             }
         }
 
-        opt_val
+        let new_node_idx = ngh.node_idx().expect("Must be `Some`");
+        (opt_val, new_node_idx)
     }
 
     // Sorted insert of node into the tree (inner).
