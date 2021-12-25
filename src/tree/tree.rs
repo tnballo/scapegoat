@@ -32,8 +32,8 @@ pub struct SgTree<K: Default, V: Default, const N: usize> {
     pub(crate) opt_root_idx: Option<usize>,
 
     // Query cache
-    max_idx: usize,
-    min_idx: usize,
+    pub(crate) max_idx: usize,
+    pub(crate) min_idx: usize,
     curr_size: usize,
 
     // Balance control

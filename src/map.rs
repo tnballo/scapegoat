@@ -911,6 +911,68 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
             None => Entry::Vacant(VacantEntry { key, table: self }),
         }
     }
+
+    /// Returns the first entry in the map for in-place manipulation.
+    /// The key of this entry is the minimum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<_, _, 10>::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// if let Some(mut entry) = map.first_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("first");
+    ///     }
+    /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "first");
+    /// assert_eq!(*map.get(&2).unwrap(), "b");
+    /// ```
+    pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, N>> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let node_idx = self.bst.min_idx;
+        Some(OccupiedEntry {
+            node_idx,
+            table: self,
+        })
+    }
+
+    /// Returns the last entry in the map for in-place manipulation.
+    /// The key of this entry is the maximum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<_, _, 10>::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// if let Some(mut entry) = map.last_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("last");
+    ///     }
+    /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "a");
+    /// assert_eq!(*map.get(&2).unwrap(), "last");
+    /// ```
+    pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, N>> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let node_idx = self.bst.max_idx;
+        Some(OccupiedEntry {
+            node_idx,
+            table: self,
+        })
+    }
 }
 
 // Convenience Traits --------------------------------------------------------------------------------------------------
