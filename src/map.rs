@@ -3,7 +3,10 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::map_types::{IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut};
+use crate::entry::{OccupiedEntry, VacantEntry};
+use crate::map_types::{
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut,
+};
 use crate::tree::{SgError, SgTree};
 
 /// Safe, fallible, embedded-friendly ordered map.
@@ -875,6 +878,100 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// ```
     pub fn len(&self) -> usize {
         self.bst.len()
+    }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut count = SgMap::<&str, usize, 10>::new();
+    ///
+    /// // count the number of occurrences of letters in the vec
+    /// for x in vec!["a", "b", "a", "c", "a", "b"] {
+    ///     *count.entry(x).or_insert(0) += 1;
+    /// }
+    ///
+    /// assert_eq!(count["a"], 3);
+    /// ```
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, N> {
+        use crate::tree::node::NodeGetHelper;
+        use crate::tree::Idx;
+
+        let ngh: NodeGetHelper<Idx> = self.bst.priv_get(None, &key);
+        match ngh.node_idx() {
+            Some(node_idx) => Entry::Occupied(OccupiedEntry {
+                node_idx,
+                table: self,
+            }),
+            None => Entry::Vacant(VacantEntry { key, table: self }),
+        }
+    }
+
+    /// Returns the first entry in the map for in-place manipulation.
+    /// The key of this entry is the minimum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<_, _, 10>::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// if let Some(mut entry) = map.first_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("first");
+    ///     }
+    /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "first");
+    /// assert_eq!(*map.get(&2).unwrap(), "b");
+    /// ```
+    pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, N>> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let node_idx = self.bst.min_idx;
+        Some(OccupiedEntry {
+            node_idx,
+            table: self,
+        })
+    }
+
+    /// Returns the last entry in the map for in-place manipulation.
+    /// The key of this entry is the maximum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<_, _, 10>::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// if let Some(mut entry) = map.last_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("last");
+    ///     }
+    /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "a");
+    /// assert_eq!(*map.get(&2).unwrap(), "last");
+    /// ```
+    pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, N>> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let node_idx = self.bst.max_idx;
+        Some(OccupiedEntry {
+            node_idx,
+            table: self,
+        })
     }
 }
 

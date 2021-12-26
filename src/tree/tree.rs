@@ -32,8 +32,8 @@ pub struct SgTree<K: Default, V: Default, const N: usize> {
     pub(crate) opt_root_idx: Option<usize>,
 
     // Query cache
-    max_idx: usize,
-    min_idx: usize,
+    pub(crate) max_idx: usize,
+    pub(crate) min_idx: usize,
     curr_size: usize,
 
     // Balance control
@@ -167,7 +167,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     where
         K: Ord,
     {
-        self.priv_balancing_insert::<Idx>(key, val)
+        self.priv_balancing_insert::<Idx>(key, val).0
     }
 
     /// Insert a key-value pair into the tree.
@@ -181,7 +181,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     {
         // Replace current slot or safely fill a new one
         match self.contains_key(&key) || (self.capacity() > self.len()) {
-            true => Ok(self.priv_balancing_insert::<Idx>(key, val)),
+            true => Ok(self.priv_balancing_insert::<Idx>(key, val).0),
             false => Err(SgError::StackCapacityExceeded),
         }
     }
@@ -533,7 +533,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
+    pub(crate) fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
         &self,
         mut opt_path: Option<&mut ArrayVec<[U; N]>>,
         key: &Q,
@@ -603,13 +603,15 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     // Sorted insert of node into the tree (outer).
     // Re-balances the tree if necessary.
-    fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
+    //
+    // Returns the old value, if any, and the index of the new node in the arena.
+    pub(crate) fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
         &mut self,
         key: K,
         val: V,
-    ) -> Option<V> {
+    ) -> (Option<V>, usize) {
         let mut path: ArrayVec<[U; N]> = Arena::<K, V, U, N>::new_idx_vec();
-        let opt_val = self.priv_insert(&mut path, key, val);
+        let (opt_val, ngh) = self.priv_insert(&mut path, key, val);
 
         #[cfg(feature = "fast_rebalance")]
         {
@@ -627,18 +629,21 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
             }
         }
 
-        opt_val
+        let new_node_idx = ngh.node_idx().expect("Must be `Some`");
+        (opt_val, new_node_idx)
     }
 
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
+    // Returns a tuple of the old value, if any, and the `NodeGetHelper` of the new node.
+    //
     // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
     fn priv_insert<U: SmallUnsigned + Default + Copy>(
         &mut self,
         path: &mut ArrayVec<[U; N]>,
         key: K,
         val: V,
-    ) -> Option<V> {
+    ) -> (Option<V>, NodeGetHelper<U>) {
         match self.opt_root_idx {
             // Sorted insert
             Some(idx) => {
@@ -688,7 +693,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                             curr_node.set_val(val);
 
                             // Key/val updated "in-place": no need to update `curr_node`'s parent or children
-                            ngh = NodeGetHelper::new(None, None, false);
+                            ngh = NodeGetHelper::new(Some(curr_idx), None, false);
                             break;
                         }
                         Ordering::Greater => {
@@ -736,7 +741,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 }
 
                 // Return old value if overwritten
-                opt_val
+                (opt_val, ngh)
             }
 
             // Empty tree
@@ -750,7 +755,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 self.max_idx = root_idx;
                 self.min_idx = root_idx;
 
-                None
+                let ngh = NodeGetHelper::new(Some(root_idx), None, false);
+                (None, ngh)
             }
         }
     }

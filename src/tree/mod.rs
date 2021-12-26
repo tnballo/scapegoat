@@ -1,4 +1,5 @@
 mod node_dispatch;
+pub use node_dispatch::SmallNode;
 
 #[cfg(test)]
 mod test;
@@ -7,7 +8,7 @@ mod arena;
 #[cfg(fuzzing)]
 pub use arena::Arena;
 
-mod node;
+pub(super) mod node;
 #[cfg(fuzzing)]
 pub use node::{Node, NodeGetHelper, NodeRebuildHelper};
 
