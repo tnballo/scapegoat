@@ -1049,7 +1049,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Traverse upward, using path information, to find first unbalanced parent.
     // Uses an alternate algorithm proposed in Galperin's PhD thesis (1996).
     #[cfg(feature = "alt_impl")]
-    fn find_scapegoat<U: SmallUnsigned>(&self, path: &[U]) -> Option<usize> {
+    fn find_scapegoat<U: SmallUnsigned + Default>(&self, path: &[U]) -> Option<usize> {
         if path.len() <= 1 {
             return None;
         }
