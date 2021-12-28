@@ -1,5 +1,6 @@
 /// Errors for fallible operations.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[non_exhaustive]
 pub enum SgError {
     /// Cannot construct instance, maximum supported capacity exceeded.
     MaximumCapacityExceeded,
@@ -12,18 +13,23 @@ pub enum SgError {
     HeapCapacityExceeded,
     */
     /// Reserved for future use
+    #[doc(hidden)]
     Reserved3,
 
     /// Reserved for future use
+    #[doc(hidden)]
     Reserved4,
 
     /// Reserved for future use
+    #[doc(hidden)]
     Reserved5,
 
     /// Reserved for future use
+    #[doc(hidden)]
     Reserved6,
 
     /// Reserved for future use
+    #[doc(hidden)]
     Reserved7,
 
     /// Invalid rebalance factor requested, cannot set.
