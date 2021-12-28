@@ -146,6 +146,8 @@ This library has three dependencies, each of which have no dependencies of their
 * [`smallnum`](https://crates.io/crates/smallnum) - `#![no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
 Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code is introduced into your project.
+This maximizes **static guarantees** for memory safety (enforced via Rust's type system).
+Robustness and correctness properties beyond memory safety are **validated dynamically**, via differential fuzzing.
 
 ### Additional Considerations
 
@@ -208,13 +210,10 @@ pub use crate::tree::{Arena, Node, NodeGetHelper, NodeRebuildHelper};
 mod tree;
 pub use crate::tree::SgError;
 
-mod entry;
-pub use crate::entry::{OccupiedEntry, VacantEntry};
-
 mod map;
 pub use crate::map::SgMap;
 
-/// [`SgMap`][crate::map::SgMap]'s iterator return types.
+/// [`SgMap`][crate::map::SgMap]'s iterator return types and [`Entry`](crate::map_types::Entry) enum.
 pub mod map_types;
 
 mod set;
