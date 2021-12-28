@@ -107,14 +107,17 @@ fn assert_len_unchanged<K: Ord + Default, V: Default, const N: usize>(
     bt_map: &BTreeMap<K, V>,
     old_len: usize,
 ) {
-    assert_eq!(checked_get_len(&sg_map, &bt_map), old_len);
+    assert_eq!(checked_get_len(sg_map, bt_map), old_len);
 }
 
-fn assert_eq_entry_key<K: Ord + Default + Debug, V: Default + Debug, const N: usize>(
+fn assert_eq_entry<K: Ord + Default + Debug, V: Default + Debug, const N: usize>(
     sg_entry: &SgEntry<K, V, N>,
     bt_entry: &BtEntry<K, V>,
 ) {
+    // Check top-level key equivalence
     assert_eq!(sg_entry.key(), bt_entry.key());
+
+    // Check variant equivalence && variant key equivalence
     match bt_entry {
         BtEntry::Vacant(btv) => match sg_entry {
             SgEntry::Occupied(_) => {
@@ -182,7 +185,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 let sg_entry = sg_map.entry(key);
                 let bt_entry = bt_map.entry(key);
 
-                assert_eq_entry_key(&sg_entry, &bt_entry);
+                assert_eq_entry(&sg_entry, &bt_entry);
 
                 match entry {
                     MapEntry::Key => {
@@ -195,6 +198,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                         assert_eq!(sg_entry.or_insert(default), bt_entry.or_insert(default));
                     }
                     MapEntry::Occupied { inner } => {
+                        // Variant equivalence already checked by `assert_eq_entry`
                         if let (SgEntry::Occupied(mut sgo), BtEntry::Occupied(mut bto)) =
                             (sg_entry, bt_entry)
                         {
@@ -224,6 +228,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                         }
                     }
                     MapEntry::Vacant { inner } => {
+                        // Variant equivalence already checked by `assert_eq_entry`
                         if let (SgEntry::Vacant(sgv), BtEntry::Vacant(btv)) = (sg_entry, bt_entry) {
                             match inner {
                                 MapVacantEntry::Insert { val } => {

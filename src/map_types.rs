@@ -1,5 +1,7 @@
 use crate::map::SgMap;
-use crate::tree::{Idx, SmallNode, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut};
+use crate::tree::{
+    Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, SmallNode,
+};
 
 // General Iterators ---------------------------------------------------------------------------------------------------
 
@@ -338,7 +340,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
-    pub fn and_modify<F: FnOnce(&mut V)>(self, f: F) -> Self {
+    pub fn and_modify<F: FnOnce(&mut V)>(self, f: F) -> Entry<'a, K, V, N> {
         match self {
             Occupied(mut entry) => {
                 f(entry.get_mut());
@@ -369,14 +371,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     }
 }
 
-/// A view into an occupied entry in a `SgMap`.
-/// It is part of the [`Entry`] enum.
-pub struct OccupiedEntry<'a, K: Ord + Default, V: Default, const N: usize> {
-    pub(super) node_idx: usize,
-    pub(super) table: &'a mut SgMap<K, V, N>,
-}
-
-/// A view into a vacant entry in a `SgMap`.
+/// A view into a vacant entry in a [`SgMap`][crate::map::SgMap].
 /// It is part of the [`Entry`] enum.
 pub struct VacantEntry<'a, K: Ord + Default, V: Default, const N: usize> {
     pub(super) key: K,
@@ -385,7 +380,7 @@ pub struct VacantEntry<'a, K: Ord + Default, V: Default, const N: usize> {
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> VacantEntry<'a, K, V, N> {
     /// Gets a reference to the key that would be used when inserting a value
-    /// through the VacantEntry.
+    /// through the [`VacantEntry`][crate::map_types::VacantEntry].
     ///
     /// # Examples
     ///
@@ -417,7 +412,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> VacantEntry<'a, K, V, N> 
         self.key
     }
 
-    /// Sets the value of the entry with the `VacantEntry`'s key,
+    /// Sets the value of the entry with the [`VacantEntry`][crate::map_types::VacantEntry]'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples
@@ -438,6 +433,13 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> VacantEntry<'a, K, V, N> 
 
         self.table.bst.arena[new_node_idx].get_mut().1
     }
+}
+
+/// A view into an occupied entry in a [`SgMap`][crate::map::SgMap].
+/// It is part of the [`Entry`] enum.
+pub struct OccupiedEntry<'a, K: Ord + Default, V: Default, const N: usize> {
+    pub(super) node_idx: usize,
+    pub(super) table: &'a mut SgMap<K, V, N>,
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N> {

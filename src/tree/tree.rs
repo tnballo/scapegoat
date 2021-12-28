@@ -629,7 +629,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
             }
         }
 
-        let new_node_idx = ngh.node_idx().expect("Must be `Some`");
+        debug_assert!(ngh.node_idx().is_some());
+        let new_node_idx = ngh.node_idx().expect("Inserted node index must be `Some`");
         (opt_val, new_node_idx)
     }
 

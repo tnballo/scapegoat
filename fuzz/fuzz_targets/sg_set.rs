@@ -64,7 +64,7 @@ fn assert_len_unchanged<T: Ord + Default, const N: usize>(
     bt_set: &BTreeSet<T>,
     old_len: usize,
 ) {
-    assert_eq!(checked_get_len(&sg_set, &bt_set), old_len);
+    assert_eq!(checked_get_len(sg_set, bt_set), old_len);
 }
 
 // Harness -------------------------------------------------------------------------------------------------------------

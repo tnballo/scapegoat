@@ -6,7 +6,7 @@
 [![docs.rs](https://docs.rs/scapegoat/badge.svg)](https://docs.rs/scapegoat/)
 [![GitHub Actions](https://github.com/tnballo/scapegoat/workflows/test/badge.svg)](https://github.com/tnballo/scapegoat/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/LICENSE)
-[![Unsafe-Zero-Percent](https://img.shields.io/badge/Unsafety-0%25-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/src/lib.rs#L197)
+[![Unsafe-Zero-Percent](https://img.shields.io/badge/Unsafety-0%25-brightgreen.svg)](https://github.com/tnballo/scapegoat/blob/master/src/lib.rs#L199)
 
 Ordered set and map data structures via an arena-based [scapegoat tree](https://people.csail.mit.edu/rivest/pubs/GR93.pdf) (memory-efficient, self-balancing binary search tree).
 
@@ -155,6 +155,8 @@ This library has three dependencies, each of which have no dependencies of their
 * [`smallnum`](https://crates.io/crates/smallnum) - `#![no_std]`, `#![forbid(unsafe_code)]` integer abstraction.
 
 Because this library and all dependencies are `#![forbid(unsafe_code)]`, no 3rd-party `unsafe` code is introduced into your project.
+This maximizes **static guarantees** for memory safety (enforced via Rust's type system).
+Robustness and correctness properties beyond memory safety are **validated dynamically**, via differential fuzzing.
 
 ### Additional Considerations
 
@@ -171,7 +173,7 @@ It offers:
 
 * **Best-effort Compatibility:** APIs are mostly a subset of `BTreeMap`'s/`BTreeSet`'s, making it a mostly "drop-in" replacement for `#![no_std]` systems. Please [open an issue](https://github.com/tnballo/scapegoat/issues) if an API you need isn't yet supported.
 
-* **Dynamic Validation:** [Coverage-guided differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
+* **Dynamic Validation:** [Coverage-guided, structure-aware, differential fuzzing](https://github.com/tnballo/scapegoat/blob/master/fuzz/README.md) is used to demonstrate that this implementation is logically equivalent and equally reliable.
 
 * **Tunable Performance:** A [single floating point value](https://github.com/tnballo/scapegoat/blob/master/CONFIG.md#tuning-the-the-trees-a-factor) optimizes relative performance of `insert`, `get`, and `remove` operation classes. And it can be changed at runtime.
 

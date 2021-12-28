@@ -3,9 +3,9 @@ use core::fmt::{self, Debug};
 use core::iter::FromIterator;
 use core::ops::Index;
 
-use crate::entry::{OccupiedEntry, VacantEntry};
 use crate::map_types::{
-    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, Values, ValuesMut,
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, VacantEntry, Values,
+    ValuesMut,
 };
 use crate::tree::{SgError, SgTree};
 
@@ -367,6 +367,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// // Can still replace existing pair
     /// assert_eq!(map.try_insert(key - 1, "overwrite filler"), Ok(Some("filler")));
     /// ```
+    ///
+    /// ### Warning
+    ///
+    /// Unlike other APIs in this crate, the semantics and return type of this API are NOT the same as `BTreeMap`'s nightly [`try_insert`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.try_insert).
     pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SgError>
     where
         K: Ord,
