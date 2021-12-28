@@ -8,8 +8,55 @@ use std::iter::FromIterator;
 use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
 
 use scapegoat::SgMap;
+use scapegoat::map_types::Entry as SgEntry;
+use std::collections::btree_map::Entry as BtEntry;
 
 const CAPACITY: usize = 2048;
+
+/*
+
+TODO: implement "nested" API fuzzing logic for entry APIs
+
+// Map's Entry ---------------------------------------------------------------------------------------------------------
+
+// Top-level
+#[derive(Arbitrary, Debug)]
+enum MapEntry<K: Ord + Debug, V: Debug> {
+    // Methods
+    // TODO: impl AndModify
+    Key,
+    OrDefault,
+    OrInsert { default: V },
+    // TODO: impl OrInsertWith
+    // TODO: impl OrInsertWithKey
+
+    // Subtype dispatch
+    OccupiedEntry<K, V>,
+    VacantEntry<K, V>,
+}
+
+// Occupied
+#[derive(Arbitrary, Debug)]
+enum MapOccupiedEntry<K: Ord + Debug, V: Debug> {
+    Get,
+    GetMut,
+    Insert { val: V },
+    IntoMut,
+    Key,
+    Remove,
+    RemoveEntry,
+}
+
+// Vacant
+#[derive(Arbitrary, Debug)]
+enum MapVacantEntry<K: Ord + Debug, V: Debug> {
+    Insert { val: V },
+    IntoKey,
+    Key
+}
+*/
+
+// Map -----------------------------------------------------------------------------------------------------------------
 
 #[derive(Arbitrary, Debug)]
 enum MapMethod<K: Ord + Debug, V: Debug> {
@@ -18,6 +65,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     // capacity() returns a constant. Omitted, irrelevant coverage.
     Clear,
     ContainsKey { key: K },
+    Entry { key: K },
     FirstKey,
     FirstKeyValue,
     Get { key: K },
@@ -56,6 +104,35 @@ fn checked_get_len<K: Ord + Default, V: Default, const N: usize>(sg_map: &SgMap<
 
 fn assert_len_unchanged<K: Ord + Default, V: Default, const N: usize>(sg_map: &SgMap<K, V, N>, bt_map: &BTreeMap<K, V>, old_len: usize) {
     assert_eq!(checked_get_len(&sg_map, &bt_map), old_len);
+}
+
+fn assert_eq_entry_key<K: Ord + Default + Debug, V: Default + Debug, const N: usize>(
+    sg_entry: SgEntry<K, V, N>,
+    bt_entry: BtEntry<K, V>,
+) {
+    assert_eq!(sg_entry.key(), bt_entry.key());
+    match bt_entry {
+        BtEntry::Vacant(btv) => {
+            match sg_entry {
+                SgEntry::Occupied(_) => {
+                    panic!("Entry mismatch: BtEntry::Vacant vs. SgEntry::Occupied");
+                },
+                SgEntry::Vacant(sgv) => {
+                    assert_eq!(btv.key(), sgv.key());
+                }
+            }
+        },
+        BtEntry::Occupied(bto) => {
+            match sg_entry {
+                SgEntry::Vacant(_) => {
+                    panic!("Entry mismatch: BtEntry::Occupied vs. SgEntry::Vacant");
+                },
+                SgEntry::Occupied(sgo) => {
+                    assert_eq!(bto.key(), sgo.key());
+                }
+            }
+        }
+    }
 }
 
 // Differential fuzzing harness
@@ -98,6 +175,9 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             }
             MapMethod::ContainsKey { key } => {
                 assert_eq!(sg_map.contains_key(&key), bt_map.contains_key(&key));
+            }
+            MapMethod::Entry { key } => {
+                assert_eq_entry_key(sg_map.entry(key), bt_map.entry(key));
             }
             MapMethod::FirstKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
