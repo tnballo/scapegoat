@@ -7,21 +7,17 @@ use std::iter::FromIterator;
 
 use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
 
-use scapegoat::SgMap;
 use scapegoat::map_types::Entry as SgEntry;
+use scapegoat::SgMap;
 use std::collections::btree_map::Entry as BtEntry;
 
 const CAPACITY: usize = 2048;
 
-/*
-
-TODO: implement "nested" API fuzzing logic for entry APIs
-
 // Map's Entry ---------------------------------------------------------------------------------------------------------
 
-// Top-level
+// Top-level Entry
 #[derive(Arbitrary, Debug)]
-enum MapEntry<K: Ord + Debug, V: Debug> {
+enum MapEntry<V: Debug> {
     // Methods
     // TODO: impl AndModify
     Key,
@@ -29,15 +25,13 @@ enum MapEntry<K: Ord + Debug, V: Debug> {
     OrInsert { default: V },
     // TODO: impl OrInsertWith
     // TODO: impl OrInsertWithKey
-
-    // Subtype dispatch
-    OccupiedEntry<K, V>,
-    VacantEntry<K, V>,
+    Occupied { inner: MapOccupiedEntry<V> },
+    Vacant { inner: MapVacantEntry<V> },
 }
 
 // Occupied
 #[derive(Arbitrary, Debug)]
-enum MapOccupiedEntry<K: Ord + Debug, V: Debug> {
+enum MapOccupiedEntry<V: Debug> {
     Get,
     GetMut,
     Insert { val: V },
@@ -49,12 +43,11 @@ enum MapOccupiedEntry<K: Ord + Debug, V: Debug> {
 
 // Vacant
 #[derive(Arbitrary, Debug)]
-enum MapVacantEntry<K: Ord + Debug, V: Debug> {
+enum MapVacantEntry<V: Debug> {
     Insert { val: V },
     IntoKey,
-    Key
+    Key,
 }
-*/
 
 // Map -----------------------------------------------------------------------------------------------------------------
 
@@ -65,7 +58,8 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     // capacity() returns a constant. Omitted, irrelevant coverage.
     Clear,
     ContainsKey { key: K },
-    Entry { key: K },
+    Entry { key: K, entry: MapEntry<V> },
+    FirstEntry,
     FirstKey,
     FirstKeyValue,
     Get { key: K },
@@ -76,6 +70,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Iter,
     IterMut,
     Keys,
+    LastEntry,
     LastKey,
     LastKeyValue,
     Len,
@@ -95,45 +90,52 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     Ord { other: Vec<(K, V)> },
 }
 
-fn checked_get_len<K: Ord + Default, V: Default, const N: usize>(sg_map: &SgMap<K, V, N>, bt_map: &BTreeMap<K, V>) -> usize {
+// Harness Helpers -----------------------------------------------------------------------------------------------------
+
+fn checked_get_len<K: Ord + Default, V: Default, const N: usize>(
+    sg_map: &SgMap<K, V, N>,
+    bt_map: &BTreeMap<K, V>,
+) -> usize {
     let len = sg_map.len();
     assert_eq!(len, bt_map.len());
 
     len
 }
 
-fn assert_len_unchanged<K: Ord + Default, V: Default, const N: usize>(sg_map: &SgMap<K, V, N>, bt_map: &BTreeMap<K, V>, old_len: usize) {
+fn assert_len_unchanged<K: Ord + Default, V: Default, const N: usize>(
+    sg_map: &SgMap<K, V, N>,
+    bt_map: &BTreeMap<K, V>,
+    old_len: usize,
+) {
     assert_eq!(checked_get_len(&sg_map, &bt_map), old_len);
 }
 
 fn assert_eq_entry_key<K: Ord + Default + Debug, V: Default + Debug, const N: usize>(
-    sg_entry: SgEntry<K, V, N>,
-    bt_entry: BtEntry<K, V>,
+    sg_entry: &SgEntry<K, V, N>,
+    bt_entry: &BtEntry<K, V>,
 ) {
     assert_eq!(sg_entry.key(), bt_entry.key());
     match bt_entry {
-        BtEntry::Vacant(btv) => {
-            match sg_entry {
-                SgEntry::Occupied(_) => {
-                    panic!("Entry mismatch: BtEntry::Vacant vs. SgEntry::Occupied");
-                },
-                SgEntry::Vacant(sgv) => {
-                    assert_eq!(btv.key(), sgv.key());
-                }
+        BtEntry::Vacant(btv) => match sg_entry {
+            SgEntry::Occupied(_) => {
+                panic!("Entry mismatch: BtEntry::Vacant vs. SgEntry::Occupied");
+            }
+            SgEntry::Vacant(sgv) => {
+                assert_eq!(btv.key(), sgv.key());
             }
         },
-        BtEntry::Occupied(bto) => {
-            match sg_entry {
-                SgEntry::Vacant(_) => {
-                    panic!("Entry mismatch: BtEntry::Occupied vs. SgEntry::Vacant");
-                },
-                SgEntry::Occupied(sgo) => {
-                    assert_eq!(bto.key(), sgo.key());
-                }
+        BtEntry::Occupied(bto) => match sg_entry {
+            SgEntry::Vacant(_) => {
+                panic!("Entry mismatch: BtEntry::Occupied vs. SgEntry::Vacant");
             }
-        }
+            SgEntry::Occupied(sgo) => {
+                assert_eq!(bto.key(), sgo.key());
+            }
+        },
     }
 }
+
+// Harness -------------------------------------------------------------------------------------------------------------
 
 // Differential fuzzing harness
 fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
@@ -145,7 +147,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             // API Equivalence -----------------------------------------------------------------------------------------
             MapMethod::Append { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let mut sg_other = SgMap::from_iter(other.clone());
@@ -176,9 +178,73 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             MapMethod::ContainsKey { key } => {
                 assert_eq!(sg_map.contains_key(&key), bt_map.contains_key(&key));
             }
-            MapMethod::Entry { key } => {
-                assert_eq_entry_key(sg_map.entry(key), bt_map.entry(key));
+            MapMethod::Entry { key, entry } => {
+                let sg_entry = sg_map.entry(key);
+                let bt_entry = bt_map.entry(key);
+
+                assert_eq_entry_key(&sg_entry, &bt_entry);
+
+                match entry {
+                    MapEntry::Key => {
+                        assert_eq!(sg_entry.key(), bt_entry.key());
+                    }
+                    MapEntry::OrDefault => {
+                        assert_eq!(sg_entry.or_default(), bt_entry.or_default());
+                    }
+                    MapEntry::OrInsert { default } => {
+                        assert_eq!(sg_entry.or_insert(default), bt_entry.or_insert(default));
+                    }
+                    MapEntry::Occupied { inner } => {
+                        if let (SgEntry::Occupied(mut sgo), BtEntry::Occupied(mut bto)) =
+                            (sg_entry, bt_entry)
+                        {
+                            match inner {
+                                MapOccupiedEntry::Get => {
+                                    assert_eq!(sgo.get(), bto.get());
+                                }
+                                MapOccupiedEntry::GetMut => {
+                                    assert_eq!(sgo.get_mut(), bto.get_mut());
+                                }
+                                MapOccupiedEntry::Insert { val } => {
+                                    assert_eq!(sgo.insert(val), bto.insert(val));
+                                }
+                                MapOccupiedEntry::IntoMut => {
+                                    assert_eq!(sgo.into_mut(), bto.into_mut());
+                                }
+                                MapOccupiedEntry::Key => {
+                                    assert_eq!(sgo.key(), bto.key());
+                                }
+                                MapOccupiedEntry::Remove => {
+                                    assert_eq!(sgo.remove(), bto.remove());
+                                }
+                                MapOccupiedEntry::RemoveEntry => {
+                                    assert_eq!(sgo.remove_entry(), bto.remove_entry());
+                                }
+                            }
+                        }
+                    }
+                    MapEntry::Vacant { inner } => {
+                        if let (SgEntry::Vacant(sgv), BtEntry::Vacant(btv)) = (sg_entry, bt_entry) {
+                            match inner {
+                                MapVacantEntry::Insert { val } => {
+                                    assert_eq!(sgv.insert(val), btv.insert(val));
+                                }
+                                MapVacantEntry::IntoKey => {
+                                    assert_eq!(sgv.into_key(), btv.into_key());
+                                }
+                                MapVacantEntry::Key => {
+                                    assert_eq!(sgv.key(), btv.key());
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            MapMethod::FirstEntry => match (sg_map.first_entry(), bt_map.first_entry()) {
+                (Some(sgo), Some(bto)) => assert_eq!(sgo.key(), bto.key()),
+                (None, None) => continue,
+                _ => panic!("Last entry Some-None mismatch!"),
+            },
             MapMethod::FirstKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -241,6 +307,11 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             MapMethod::Keys => {
                 assert!(sg_map.keys().eq(bt_map.keys()));
             }
+            MapMethod::LastEntry => match (sg_map.last_entry(), bt_map.last_entry()) {
+                (Some(sgo), Some(bto)) => assert_eq!(sgo.key(), bto.key()),
+                (None, None) => continue,
+                _ => panic!("Last entry Some-None mismatch!"),
+            },
             MapMethod::LastKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
@@ -336,7 +407,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             }
             MapMethod::Ord { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_map_new = SgMap::from_iter(other.clone().into_iter());

@@ -47,16 +47,27 @@ enum SetMethod<T: Ord + Debug> {
     Ord { other: Vec<T> },
 }
 
-fn checked_get_len<T: Ord + Default, const N: usize>(sg_set: &SgSet<T, N>, bt_set: &BTreeSet<T>) -> usize {
+// Harness Helpers -----------------------------------------------------------------------------------------------------
+
+fn checked_get_len<T: Ord + Default, const N: usize>(
+    sg_set: &SgSet<T, N>,
+    bt_set: &BTreeSet<T>,
+) -> usize {
     let len = sg_set.len();
     assert_eq!(len, bt_set.len());
 
     len
 }
 
-fn assert_len_unchanged<T: Ord + Default, const N: usize>(sg_set: &SgSet<T, N>, bt_set: &BTreeSet<T>, old_len: usize) {
+fn assert_len_unchanged<T: Ord + Default, const N: usize>(
+    sg_set: &SgSet<T, N>,
+    bt_set: &BTreeSet<T>,
+    old_len: usize,
+) {
     assert_eq!(checked_get_len(&sg_set, &bt_set), old_len);
 }
+
+// Harness -------------------------------------------------------------------------------------------------------------
 
 // Differential fuzzing harness
 fuzz_target!(|methods: Vec<SetMethod<usize>>| {
@@ -68,7 +79,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             // API Equivalence -----------------------------------------------------------------------------------------
             SetMethod::Append { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let mut sg_other = SgSet::from_iter(other.clone());
@@ -101,7 +112,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Difference { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_diff: Vec<_> = sg_set
@@ -141,7 +152,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Intersection { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_inter: Vec<_> = sg_set
@@ -159,7 +170,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::IsDisjoint { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 assert_eq!(
@@ -172,7 +183,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::IsSubset { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 assert_eq!(
@@ -185,7 +196,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::IsSuperset { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 assert_eq!(
@@ -258,7 +269,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::SymmetricDifference { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_sym_diff: Vec<_> = sg_set
@@ -282,7 +293,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Union { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_union: Vec<_> = sg_set
@@ -315,7 +326,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Ord { other } => {
                 if other.len() > CAPACITY {
-                    continue
+                    continue;
                 }
 
                 let sg_set_new = SgSet::<_, CAPACITY>::from_iter(other.clone().into_iter());

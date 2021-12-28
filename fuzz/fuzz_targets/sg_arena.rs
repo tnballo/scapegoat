@@ -55,14 +55,14 @@ fuzz_target!(|methods: Vec<ArenaMethod<usize, usize>>| {
                 true => {
                     let _ = arena.hard_remove(idx);
                 }
-            }
+            },
             ArenaMethod::Len => {
                 let _ = arena.len();
             }
             ArenaMethod::IsOccupied { idx } => match idx_set.contains(&idx) {
                 false => continue,
                 true => assert!(arena.is_occupied(idx)),
-            }
+            },
         }
     }
 });
