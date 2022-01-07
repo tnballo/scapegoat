@@ -164,3 +164,18 @@ impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoIte
         self.sorted_idxs.len()
     }
 }
+
+pub struct Range<'a, K: Ord + Default, V: Default, const N: usize> {
+    pub(super) bst: &'a SgTree<K, V, N>,
+    pub(super) node_idxs: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Range<'a, K, V, N> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idxs.next()?;
+        let node = &self.bst.arena[node_idx];
+        Some((node.key(), node.val()))
+    }
+}

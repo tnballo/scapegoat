@@ -1,11 +1,11 @@
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::iter::FromIterator;
-use core::ops::Index;
+use core::ops::{Index, RangeBounds};
 
 use crate::map_types::{
-    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, VacantEntry, Values,
-    ValuesMut,
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, Range, VacantEntry,
+    Values, ValuesMut,
 };
 use crate::tree::{SgError, SgTree};
 
@@ -976,6 +976,46 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
             node_idx,
             table: self,
         })
+    }
+
+    /// Constructs a double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound::Included;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(3, "a");
+    /// map.insert(5, "b");
+    /// map.insert(8, "c");
+    /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
+    /// ```
+    pub fn range<T, R>(&self, range: R) -> Range<'_, K, V, N>
+    where
+        T: Ord,
+        K: Borrow<T>,
+        R: RangeBounds<T>,
+    {
+        Range {
+            inner: self.bst.range_search(range),
+        }
     }
 }
 

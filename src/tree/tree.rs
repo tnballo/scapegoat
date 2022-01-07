@@ -4,11 +4,12 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
+use core::ops::RangeBounds;
 use core::ops::{Index, Sub};
 
 use super::arena::Arena;
 use super::error::SgError;
-use super::iter::{IntoIter, Iter, IterMut};
+use super::iter::{IntoIter, Iter, IterMut, Range};
 use super::node::{NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::SmallNode;
 
@@ -527,6 +528,45 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Maximum tree capacity (const N value).
     pub(crate) fn max_capacity() -> usize {
         Idx::MAX as usize
+    }
+
+    pub(crate) fn range_search<T, R>(&self, range: R) -> Range<K, V, N>
+    where
+        T: Ord,
+        R: RangeBounds<T>,
+        K: Borrow<T>,
+    {
+        let mut node_idxs = ArrayVec::<[usize; N]>::new();
+        /*
+        let idx_stack = ArrayVec::<[usize; N]>::new();
+
+        if let Some(root_idx) = self.opt_root_idx {
+            let mut curr_idx = root_idx;
+            loop {
+                let node = &self.arena[curr_idx];
+                if !range.contains(node) {
+                    break;
+                }
+            }
+            todo!();
+        }
+        */
+
+        for (idx, node) in self
+            .arena
+            .iter()
+            .enumerate()
+            .filter_map(|(i, node)| Some((i, node.as_ref()?)))
+        {
+            if range.contains(node.key().borrow()) {
+                node_idxs.push(idx);
+            }
+        }
+
+        Range {
+            bst: self,
+            node_idxs: node_idxs.into_iter(),
+        }
     }
 
     // Private API -----------------------------------------------------------------------------------------------------

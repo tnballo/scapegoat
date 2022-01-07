@@ -1,6 +1,7 @@
 use crate::map::SgMap;
 use crate::tree::{
-    Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, SmallNode,
+    Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, Range as TreeRange,
+    SmallNode,
 };
 
 // General Iterators ---------------------------------------------------------------------------------------------------
@@ -598,5 +599,21 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N
     /// ```
     pub fn remove(self) -> V {
         self.remove_entry().1
+    }
+}
+
+/// An iterator over a sub-range of entries in a `BTreeMap`.
+///
+/// This `struct` is created by the [`range`] method on [`BTreeMap`]. See its
+/// documentation for more.
+pub struct Range<'a, K: Ord + Default, V: Default, const N: usize> {
+    pub(crate) inner: TreeRange<'a, K, V, N>,
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Range<'a, K, V, N> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
     }
 }
