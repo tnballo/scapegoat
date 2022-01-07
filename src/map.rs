@@ -4,8 +4,8 @@ use core::iter::FromIterator;
 use core::ops::{Index, RangeBounds};
 
 use crate::map_types::{
-    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, Range, VacantEntry,
-    Values, ValuesMut,
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, Range, RangeMut,
+    VacantEntry, Values, ValuesMut,
 };
 use crate::tree::{SgError, SgTree};
 
@@ -1018,6 +1018,47 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
             node_idx_iter: self.bst.range_search(range).into_iter(),
         }
     }
+
+    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map: SgMap<_, _, 10> = ["Alice", "Bob", "Carol", "Cheryl"]
+    ///     .iter()
+    ///     .map(|&s| (s, 0))
+    ///     .collect();
+    /// for (_, balance) in map.range_mut("B".."Cheryl") {
+    ///     *balance += 100;
+    /// }
+    /// for (name, balance) in &map {
+    ///     println!("{} => {}", name, balance);
+    /// }
+    /// ```
+    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, K, V, N>
+    where
+        T: Ord,
+        K: Borrow<T>,
+        R: RangeBounds<T>,
+    {
+        let node_idx_iter = self.bst.range_search(range).into_iter();
+        RangeMut {
+            table: self,
+            node_idx_iter,
         }
     }
 }

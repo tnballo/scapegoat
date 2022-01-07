@@ -319,3 +319,20 @@ fn test_map_range() {
     assert!(keys.windows(2).all(|w| w[0] < w[1]));
     assert!(keys.iter().all(|(x, _)| range.contains(*x)));
 }
+
+#[test]
+fn test_map_range_mut() {
+    let map: SgMap<_, _, DEFAULT_CAPACITY> = ["a", "b", "c", "d", "e"]
+        .into_iter()
+        .map(|s| (s, 0))
+        .collect();
+
+    for (_, val) in map.range_mut(d..) {
+        val += 10;
+    }
+
+    assert_eq!(map["a"], 0);
+    assert_eq!(map["c"], 0);
+    assert_eq!(map["d"], 10);
+    assert_eq!(map["e"], 10);
+}

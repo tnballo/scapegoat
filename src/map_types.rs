@@ -637,5 +637,23 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for R
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
+
+/// A mutable iterator over a sub-range of entries in a `BTreeMap`.
+///
+/// This `struct` is created by the [`range_mut`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`range_mut`]: BTreeMap::range_mut
+pub struct RangeMut<'a, K: Ord + Default, V: Default, const N: usize> {
+    pub(crate) table: &'a mut SgMap<K, V, N>,
+    pub(crate) node_idx_iter: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for RangeMut<'a, K, V, N> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let idx = self.node_idx_iter.next()?;
+        Some(self.table.bst.arena[idx].get_mut())
     }
 }
