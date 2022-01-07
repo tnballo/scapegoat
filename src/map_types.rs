@@ -1,7 +1,8 @@
+use core::iter::FusedIterator;
+
 use crate::map::SgMap;
 use crate::tree::{
-    Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, Range as TreeRange,
-    SmallNode,
+    Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, SmallNode,
 };
 
 // General Iterators ---------------------------------------------------------------------------------------------------
@@ -232,6 +233,7 @@ pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
     Occupied(OccupiedEntry<'a, K, V, N>),
 }
 
+use tinyvec::ArrayVec;
 use Entry::*;
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
@@ -607,13 +609,33 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N
 /// This `struct` is created by the [`range`] method on [`SgMap`][crate::map::SgMap]. See its
 /// documentation for more.
 pub struct Range<'a, K: Ord + Default, V: Default, const N: usize> {
-    pub(crate) inner: TreeRange<'a, K, V, N>,
+    pub(crate) table: &'a SgMap<K, V, N>,
+    pub(crate) node_idx_iter: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Range<'a, K, V, N> {
+    fn to_node_ref(&self, idx: usize) -> (&'a K, &'a V) {
+        let node = &self.table.bst.arena[idx];
+        (node.key(), node.val())
+    }
 }
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Range<'a, K, V, N> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
+        let node_idx = self.node_idx_iter.next()?;
+        Some(self.to_node_ref(node_idx))
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for Range<'a, K, V, N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idx_iter.next_back()?;
+        Some(self.to_node_ref(node_idx))
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
     }
 }

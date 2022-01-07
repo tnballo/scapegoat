@@ -1014,7 +1014,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         R: RangeBounds<T>,
     {
         Range {
-            inner: self.bst.range_search(range),
+            table: self,
+            node_idx_iter: self.bst.range_search(range).into_iter(),
+        }
+    }
         }
     }
 }

@@ -9,7 +9,7 @@ use core::ops::{Index, Sub};
 
 use super::arena::Arena;
 use super::error::SgError;
-use super::iter::{IntoIter, Iter, IterMut, Range};
+use super::iter::{IntoIter, Iter, IterMut};
 use super::node::{NodeGetHelper, NodeRebuildHelper};
 use super::node_dispatch::SmallNode;
 
@@ -530,27 +530,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         Idx::MAX as usize
     }
 
-    pub(crate) fn range_search<T, R>(&self, range: R) -> Range<K, V, N>
+    pub(crate) fn range_search<T, R>(&self, range: R) -> ArrayVec<[usize; N]>
     where
         T: Ord,
         R: RangeBounds<T>,
         K: Borrow<T>,
     {
         let mut node_idxs = ArrayVec::<[usize; N]>::new();
-        /*
-        let idx_stack = ArrayVec::<[usize; N]>::new();
-
-        if let Some(root_idx) = self.opt_root_idx {
-            let mut curr_idx = root_idx;
-            loop {
-                let node = &self.arena[curr_idx];
-                if !range.contains(node) {
-                    break;
-                }
-            }
-            todo!();
-        }
-        */
 
         for (idx, node) in self
             .arena
@@ -563,10 +549,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
             }
         }
 
-        Range {
-            bst: self,
-            node_idxs: node_idxs.into_iter(),
-        }
+        node_idxs
     }
 
     // Private API -----------------------------------------------------------------------------------------------------
