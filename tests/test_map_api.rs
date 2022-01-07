@@ -306,3 +306,16 @@ fn test_map_insert_panic() {
 
     a.insert(4, "4"); // panic
 }
+
+#[test]
+fn test_map_range() {
+    let array = [(1, "a"), (5, "e"), (3, "c"), (7, "g"), (9, "i")];
+    let map = SgMap::from(array);
+
+    let range = 5..8;
+
+    let keys: Vec<_> = map.range(range.clone()).collect();
+
+    assert!(keys.windows(2).all(|w| w[0] < w[1]));
+    assert!(keys.iter().all(|(x, _)| range.contains(*x)));
+}
