@@ -995,10 +995,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// Basic usage:
     ///
     /// ```
-    /// use std::collections::BTreeMap;
+    /// use scapegoat::SgMap;
     /// use std::ops::Bound::Included;
     ///
-    /// let mut map = BTreeMap::new();
+    /// let mut map = SgMap::<_, _, 10>::new();
     /// map.insert(3, "a");
     /// map.insert(5, "b");
     /// map.insert(8, "c");
