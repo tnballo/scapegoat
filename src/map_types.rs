@@ -1,4 +1,6 @@
+use core::borrow::Borrow;
 use core::iter::FusedIterator;
+use core::ops::RangeBounds;
 
 use crate::map::SgMap;
 use crate::tree::{

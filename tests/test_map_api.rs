@@ -283,7 +283,7 @@ fn test_map_append_fallible() {
         a.len(),
         a.capacity(),
         b.len(),
-        a.iter().filter(|(k, _)| b.contains_key(&k)).count()
+        a.iter().filter(|(k, _)| b.contains_key(k)).count()
     );
 
     assert!(a.try_append(&mut b).is_ok());
@@ -312,7 +312,7 @@ fn test_map_range() {
     let array = [(1, "a"), (5, "e"), (3, "c"), (7, "g"), (9, "i")];
     let map = SgMap::from(array);
 
-    let range = 5..8;
+    let range = 3..8;
 
     let keys: Vec<_> = map.range(range.clone()).collect();
 
@@ -322,13 +322,11 @@ fn test_map_range() {
 
 #[test]
 fn test_map_range_mut() {
-    let map: SgMap<_, _, DEFAULT_CAPACITY> = ["a", "b", "c", "d", "e"]
-        .into_iter()
-        .map(|s| (s, 0))
-        .collect();
+    let mut map: SgMap<_, _, DEFAULT_CAPACITY> =
+        ["a", "b", "c", "d", "e"].iter().map(|s| (*s, 0)).collect();
 
-    for (_, val) in map.range_mut(d..) {
-        val += 10;
+    for (_, val) in map.range_mut("d"..) {
+        *val += 10;
     }
 
     assert_eq!(map["a"], 0);

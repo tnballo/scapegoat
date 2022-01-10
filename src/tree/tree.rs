@@ -532,9 +532,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
     pub(crate) fn range_search<T, R>(&self, range: R) -> ArrayVec<[usize; N]>
     where
-        T: Ord,
+        T: Ord + ?Sized,
         R: RangeBounds<T>,
-        K: Borrow<T>,
+        K: Borrow<T> + Ord,
     {
         let mut node_idxs = ArrayVec::<[usize; N]>::new();
 
@@ -548,6 +548,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 node_idxs.push(idx);
             }
         }
+
+        node_idxs.sort_unstable_by_key(|idx| self.arena[*idx].key());
 
         node_idxs
     }

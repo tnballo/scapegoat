@@ -996,7 +996,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ///
     /// ```
     /// use scapegoat::SgMap;
-    /// use std::ops::Bound::Included;
+    /// use core::ops::Bound::Included;
     ///
     /// let mut map = SgMap::<_, _, 10>::new();
     /// map.insert(3, "a");
@@ -1009,8 +1009,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// ```
     pub fn range<T, R>(&self, range: R) -> Range<'_, K, V, N>
     where
-        T: Ord,
-        K: Borrow<T>,
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
         Range {
