@@ -1,5 +1,7 @@
 use core::borrow::Borrow;
 use core::iter::FusedIterator;
+use core::iter::Peekable;
+use core::marker::PhantomData;
 use core::ops::RangeBounds;
 
 use crate::map::SgMap;
@@ -640,22 +642,66 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for R
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
 
-/// A mutable iterator over a sub-range of entries in a `BTreeMap`.
+/// A mutable iterator over a sub-range of entries in a `SgMap`.
 ///
-/// This `struct` is created by the [`range_mut`] method on [`BTreeMap`]. See its
+/// This `struct` is created by the [`range_mut`] method on [`SgMap`]. See its
 /// documentation for more.
 ///
-/// [`range_mut`]: BTreeMap::range_mut
-pub struct RangeMut<'a, K: Ord + Default, V: Default, const N: usize> {
-    pub(crate) table: &'a mut SgMap<K, V, N>,
-    pub(crate) node_idx_iter: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+/// [`range_mut`]: SgMap::range_mut
+pub struct RangeMut<'a, T, R, K, V, const N: usize>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
+    inner: Peekable<TreeIterMut<'a, K, V, N>>,
+    range: R,
+    _marker: PhantomData<T>,
 }
 
-impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for RangeMut<'a, K, V, N> {
+impl<'a, T, R, K, V, const N: usize> RangeMut<'a, T, R, K, V, N>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
+    pub(crate) fn new(map: &'a mut SgMap<K, V, N>, range: R) -> Self {
+        let mut peekable = map.bst.iter_mut().peekable();
+
+        while let Some(node) = peekable.peek() {
+            if range.contains(node.0.borrow()) {
+                break;
+            }
+
+            peekable.next();
+        }
+
+        Self {
+            inner: peekable,
+            range,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T, R, K, V, const N: usize> Iterator for RangeMut<'a, T, R, K, V, N>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let idx = self.node_idx_iter.next()?;
-        Some(self.table.bst.arena[idx].get_mut())
+        let node = self.inner.next()?;
+
+        if !self.range.contains(node.0.borrow()) {
+            None
+        } else {
+            Some(node)
+        }
     }
 }

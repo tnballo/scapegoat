@@ -1049,17 +1049,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, K, V, N>
+    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, T, R, K, V, N>
     where
-        T: Ord,
-        K: Borrow<T>,
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
-        let node_idx_iter = self.bst.range_search(range).into_iter();
-        RangeMut {
-            table: self,
-            node_idx_iter,
-        }
+        RangeMut::new(self, range)
     }
 }
 
