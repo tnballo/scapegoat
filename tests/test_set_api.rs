@@ -226,6 +226,19 @@ fn test_set_is_disjoint() {
     assert!(!a.is_disjoint(&c));
 }
 
+#[test]
+fn test_set_range() {
+    let array = [1, 5, 3, 7, 9];
+    let map = SgSet::from(array);
+
+    let range = 3..8;
+
+    let keys: Vec<_> = map.range(range.clone()).collect();
+
+    assert!(keys.windows(2).all(|w| w[0] < w[1]));
+    assert!(keys.iter().all(|x| range.contains(*x)));
+}
+
 // Fallible APIs -------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -274,7 +287,7 @@ fn test_map_append_fallible() {
         a.len(),
         a.capacity(),
         b.len(),
-        a.iter().filter(|k| b.contains(&k)).count()
+        a.iter().filter(|k| b.contains(k)).count()
     );
 
     assert!(a.try_append(&mut b).is_ok());
