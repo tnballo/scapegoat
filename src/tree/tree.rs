@@ -4,6 +4,7 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
+use core::ops::RangeBounds;
 use core::ops::{Index, Sub};
 
 use super::arena::Arena;
@@ -527,6 +528,30 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Maximum tree capacity (const N value).
     pub(crate) fn max_capacity() -> usize {
         Idx::MAX as usize
+    }
+
+    pub(crate) fn range_search<T, R>(&self, range: R) -> ArrayVec<[usize; N]>
+    where
+        T: Ord + ?Sized,
+        R: RangeBounds<T>,
+        K: Borrow<T> + Ord,
+    {
+        let mut node_idxs = ArrayVec::<[usize; N]>::new();
+
+        for (idx, node) in self
+            .arena
+            .iter()
+            .enumerate()
+            .filter_map(|(i, node)| Some((i, node.as_ref()?)))
+        {
+            if range.contains(node.key().borrow()) {
+                node_idxs.push(idx);
+            }
+        }
+
+        node_idxs.sort_unstable_by_key(|idx| self.arena[*idx].key());
+
+        node_idxs
     }
 
     // Private API -----------------------------------------------------------------------------------------------------

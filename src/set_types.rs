@@ -1,7 +1,8 @@
 use core::cmp::Ordering;
+use core::iter::FusedIterator;
 
 use crate::set::SgSet;
-use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter};
+use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter, SmallNode};
 
 use smallnum::SmallUnsigned;
 use tinyvec::{ArrayVec, ArrayVecIterator};
@@ -398,3 +399,34 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N>
         self.total_cnt - self.spent_cnt
     }
 }
+
+/// An iterator over a sub-range of items in a `SgSet`.
+///
+/// This `struct` is created by the [`range`] method on [`SgSet`].
+/// See its documentation for more.
+///
+/// [`range`]: SgSet::range
+pub struct Range<'a, T: Ord + Default, const N: usize> {
+    pub(crate) table: &'a SgSet<T, N>,
+    pub(crate) node_idx_iter: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+}
+
+impl<'a, T: Ord + Default, const N: usize> Iterator for Range<'a, T, N> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idx_iter.next()?;
+        let node = &self.table.bst.arena[node_idx];
+        Some(node.key())
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> DoubleEndedIterator for Range<'a, T, N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idx_iter.next_back()?;
+        let node = &self.table.bst.arena[node_idx];
+        Some(node.key())
+    }
+}
+
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Range<'a, T, N> {}

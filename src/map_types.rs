@@ -1,3 +1,9 @@
+use core::borrow::Borrow;
+use core::iter::FusedIterator;
+use core::iter::Peekable;
+use core::marker::PhantomData;
+use core::ops::RangeBounds;
+
 use crate::map::SgMap;
 use crate::tree::{
     Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, SmallNode,
@@ -231,6 +237,7 @@ pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
     Occupied(OccupiedEntry<'a, K, V, N>),
 }
 
+use tinyvec::ArrayVec;
 use Entry::*;
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
@@ -598,5 +605,103 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N
     /// ```
     pub fn remove(self) -> V {
         self.remove_entry().1
+    }
+}
+
+/// An iterator over a sub-range of entries in a `SgMap`.
+///
+/// This `struct` is created by the [`range`] method on [`SgMap`][crate::map::SgMap]. See its
+/// documentation for more.
+pub struct Range<'a, K: Ord + Default, V: Default, const N: usize> {
+    pub(crate) table: &'a SgMap<K, V, N>,
+    pub(crate) node_idx_iter: <ArrayVec<[usize; N]> as IntoIterator>::IntoIter,
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Range<'a, K, V, N> {
+    fn to_node_ref(&self, idx: usize) -> (&'a K, &'a V) {
+        let node = &self.table.bst.arena[idx];
+        (node.key(), node.val())
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for Range<'a, K, V, N> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idx_iter.next()?;
+        Some(self.to_node_ref(node_idx))
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for Range<'a, K, V, N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let node_idx = self.node_idx_iter.next_back()?;
+        Some(self.to_node_ref(node_idx))
+    }
+}
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
+
+/// A mutable iterator over a sub-range of entries in a `SgMap`.
+///
+/// This `struct` is created by the [`range_mut`] method on [`SgMap`]. See its
+/// documentation for more.
+///
+/// [`range_mut`]: SgMap::range_mut
+pub struct RangeMut<'a, T, R, K, V, const N: usize>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
+    inner: Peekable<TreeIterMut<'a, K, V, N>>,
+    range: R,
+    _marker: PhantomData<T>,
+}
+
+impl<'a, T, R, K, V, const N: usize> RangeMut<'a, T, R, K, V, N>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
+    pub(crate) fn new(map: &'a mut SgMap<K, V, N>, range: R) -> Self {
+        let mut peekable = map.bst.iter_mut().peekable();
+
+        while let Some(node) = peekable.peek() {
+            if range.contains(node.0.borrow()) {
+                break;
+            }
+
+            peekable.next();
+        }
+
+        Self {
+            inner: peekable,
+            range,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T, R, K, V, const N: usize> Iterator for RangeMut<'a, T, R, K, V, N>
+where
+    T: Ord + ?Sized,
+    K: Borrow<T> + Ord + Default,
+    V: Default,
+    R: RangeBounds<T>,
+{
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.inner.next()?;
+
+        if !self.range.contains(node.0.borrow()) {
+            None
+        } else {
+            Some(node)
+        }
     }
 }

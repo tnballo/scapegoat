@@ -1,9 +1,12 @@
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::iter::FromIterator;
+use core::ops::RangeBounds;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use crate::set_types::{Difference, Intersection, IntoIter, Iter, SymmetricDifference, Union};
+use crate::set_types::{
+    Difference, Intersection, IntoIter, Iter, Range, SymmetricDifference, Union,
+};
 use crate::tree::{SgError, SgTree};
 
 /// Safe, fallible, embedded-friendly ordered set.
@@ -671,6 +674,40 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// ```
     pub fn len(&self) -> usize {
         self.bst.len()
+    }
+
+    /// Constructs a double-ended iterator over a sub-range of elements in the set.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use scapegoat::SgSet;
+    /// use core::ops::Bound::Included;
+    ///
+    /// let mut set = SgSet::<_, 5>::new();
+    /// set.insert(3);
+    /// set.insert(5);
+    /// set.insert(8);
+    /// for &elem in set.range((Included(&4), Included(&8))) {
+    ///     println!("{}", elem);
+    /// }
+    /// assert_eq!(Some(&5), set.range(4..).next());
+    /// ```
+    pub fn range<K, R>(&self, range: R) -> Range<'_, T, N>
+    where
+        K: Ord + ?Sized,
+        T: Borrow<K> + Ord,
+        R: RangeBounds<K>,
+    {
+        Range {
+            table: self,
+            node_idx_iter: self.bst.range_search(range).into_iter(),
+        }
     }
 
     /// Returns an iterator over values representing set difference, e.g., values in `self` but not in `other`, in ascending order.
