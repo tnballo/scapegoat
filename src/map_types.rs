@@ -610,7 +610,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N
 
 /// An iterator over a sub-range of entries in a `SgMap`.
 ///
-/// This `struct` is created by the [`range`] method on [`SgMap`][crate::map::SgMap]. See its
+/// This `struct` is created by the [`range`][`crate::map::SgMap::range`] method on [`SgMap`][crate::map::SgMap]. See its
 /// documentation for more.
 pub struct Range<'a, K: Ord + Default, V: Default, const N: usize> {
     pub(crate) table: &'a SgMap<K, V, N>,

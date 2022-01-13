@@ -17,14 +17,14 @@ const CAPACITY: usize = 2048;
 
 // Top-level Entry
 #[derive(Arbitrary, Debug)]
-enum MapEntry<V: Debug> {
+enum MapEntry<K: Ord + Debug, V: Debug> {
     // Methods
-    // TODO: impl AndModify
+    AndModify { rand_val: V },
     Key,
     OrDefault,
     OrInsert { default: V },
-    // TODO: impl OrInsertWith
-    // TODO: impl OrInsertWithKey
+    OrInsertWith { rand_val: V },
+    OrInsertWithKey { rand_key: K },
     Occupied { inner: MapOccupiedEntry<V> },
     Vacant { inner: MapVacantEntry<V> },
 }
@@ -58,7 +58,7 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     // capacity() returns a constant. Omitted, irrelevant coverage.
     Clear,
     ContainsKey { key: K },
-    Entry { key: K, entry: MapEntry<V> },
+    Entry { key: K, entry: MapEntry<K, V> },
     FirstEntry,
     FirstKey,
     FirstKeyValue,
@@ -188,6 +188,17 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert_eq_entry(&sg_entry, &bt_entry);
 
                 match entry {
+                    MapEntry::AndModify { rand_val } => {
+                        // Check only keys here, if values diverge, MapOccupiedEntry should catch
+                        assert_eq!(
+                            sg_entry
+                                .and_modify(|e| { *e = e.wrapping_add(rand_val) })
+                                .key(),
+                            bt_entry
+                                .and_modify(|e| { *e = e.wrapping_add(rand_val) })
+                                .key(),
+                        );
+                    }
                     MapEntry::Key => {
                         assert_eq!(sg_entry.key(), bt_entry.key());
                     }
@@ -196,6 +207,18 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                     }
                     MapEntry::OrInsert { default } => {
                         assert_eq!(sg_entry.or_insert(default), bt_entry.or_insert(default));
+                    }
+                    MapEntry::OrInsertWith { rand_val } => {
+                        assert_eq!(
+                            sg_entry.or_insert_with(|| rand_val),
+                            bt_entry.or_insert_with(|| rand_val)
+                        );
+                    }
+                    MapEntry::OrInsertWithKey { rand_key } => {
+                        assert_eq!(
+                            sg_entry.or_insert_with_key(|k| k.overflowing_add(rand_key).0),
+                            bt_entry.or_insert_with_key(|k| k.overflowing_add(rand_key).0)
+                        );
                     }
                     MapEntry::Occupied { inner } => {
                         // Variant equivalence already checked by `assert_eq_entry`

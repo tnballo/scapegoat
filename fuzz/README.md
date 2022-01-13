@@ -37,4 +37,4 @@ cargo fuzz run sg_map
 
 ### `SgTree` APIs
 
-Both the `SgSet` and `SgMap` APIs are build atop `SgSet`, so their respective targets already provide `SgTree` coverage.
+Both the `SgSet` and `SgMap` APIs are built atop `SgTree`, so their respective targets already provide `SgTree` coverage.
