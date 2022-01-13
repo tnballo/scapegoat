@@ -1,15 +1,21 @@
 #![no_main]
 #![feature(map_first_last)]
 
-use std::collections::BTreeMap;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::iter::FromIterator;
+use std::ops::Bound::Included;
+use std::ops::Range;
 
-use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
+use libfuzzer_sys::{
+    arbitrary::{unstructured::Int, Arbitrary, Unstructured},
+    fuzz_target,
+};
 
 use scapegoat::map_types::Entry as SgEntry;
 use scapegoat::SgMap;
 use std::collections::btree_map::Entry as BtEntry;
+use std::collections::BTreeMap;
 
 const CAPACITY: usize = 2048;
 
@@ -77,6 +83,8 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     New,
     PopFirst,
     PopLast,
+    Range { data: Vec<u8> },
+    RangeMut { data: Vec<u8> },
     Remove { key: K },
     RemoveEntry { key: K },
     Retain { rand_key: K },
@@ -100,6 +108,44 @@ fn checked_get_len<K: Ord + Default, V: Default, const N: usize>(
     assert_eq!(len, bt_map.len());
 
     len
+}
+
+// TODO: is this an ideal way to generate a valid range?
+fn gen_valid_range<K: Ord + Default + Debug + Int, V: Default, const N: usize>(
+    sg_map: &SgMap<K, V, N>,
+    bt_map: &BTreeMap<K, V>,
+    data: &[u8],
+) -> Option<Range<K>> {
+    let mut opt_range = None;
+
+    // Get valid range min
+    if let (Some(sg_min), Some(bt_min)) =
+        (sg_map.first_key(), bt_map.first_key_value().map(|(k, _)| k))
+    {
+        assert_eq!(sg_min, bt_min);
+
+        // Get valid range max
+        if let (Some(sg_max), Some(bt_max)) =
+            (sg_map.last_key(), bt_map.last_key_value().map(|(k, _)| k))
+        {
+            assert_eq!(sg_max, bt_max);
+
+            // Generate valid range
+            let mut u = Unstructured::new(&data);
+            if let (Ok(r1), Ok(r2)) = (
+                u.int_in_range(*sg_min..=*sg_max),
+                u.int_in_range(*sg_min..=*sg_max),
+            ) {
+                match r1.cmp(&r2) {
+                    Ordering::Less => opt_range = Some(Range { start: r1, end: r2 }),
+                    Ordering::Greater => opt_range = Some(Range { start: r2, end: r1 }),
+                    Ordering::Equal => opt_range = None,
+                }
+            }
+        }
+    }
+
+    opt_range
 }
 
 fn assert_len_unchanged<K: Ord + Default, V: Default, const N: usize>(
@@ -381,6 +427,20 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert_eq!(sg_map.pop_last(), bt_map.pop_last());
 
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
+            }
+            MapMethod::Range { data } => {
+                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &data) {
+                    let sg_range = sg_map.range((Included(range.start), Included(range.end)));
+                    let bt_range = bt_map.range((Included(range.start), Included(range.end)));
+                    assert!(sg_range.eq(bt_range));
+                }
+            }
+            MapMethod::RangeMut { data } => {
+                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &data) {
+                    let sg_range = sg_map.range_mut((Included(range.start), Included(range.end)));
+                    let bt_range = bt_map.range_mut((Included(range.start), Included(range.end)));
+                    assert!(sg_range.eq(bt_range));
+                }
             }
             MapMethod::Remove { key } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);

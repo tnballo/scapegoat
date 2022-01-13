@@ -1,13 +1,19 @@
 #![no_main]
 #![feature(map_first_last)]
 
-use std::collections::BTreeSet;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::iter::FromIterator;
+use std::ops::Bound::Included;
+use std::ops::Range;
 
-use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
+use libfuzzer_sys::{
+    arbitrary::{unstructured::Int, Arbitrary, Unstructured},
+    fuzz_target,
+};
 
 use scapegoat::SgSet;
+use std::collections::BTreeSet;
 
 const CAPACITY: usize = 2048;
 
@@ -33,6 +39,7 @@ enum SetMethod<T: Ord + Debug> {
     New,
     PopFirst,
     PopLast,
+    Range { data: Vec<u8> },
     Remove { value: T },
     Replace { value: T },
     Retain { rand_value: T },
@@ -65,6 +72,40 @@ fn assert_len_unchanged<T: Ord + Default, const N: usize>(
     old_len: usize,
 ) {
     assert_eq!(checked_get_len(sg_set, bt_set), old_len);
+}
+
+// TODO: is this an ideal way to generate a valid range?
+fn gen_valid_range<K: Ord + Default + Debug + Int, const N: usize>(
+    sg_set: &SgSet<K, N>,
+    bt_set: &BTreeSet<K>,
+    data: &[u8],
+) -> Option<Range<K>> {
+    let mut opt_range = None;
+
+    // Get valid range min
+    if let (Some(sg_min), Some(bt_min)) = (sg_set.first(), bt_set.first()) {
+        assert_eq!(sg_min, bt_min);
+
+        // Get valid range max
+        if let (Some(sg_max), Some(bt_max)) = (sg_set.last(), bt_set.last()) {
+            assert_eq!(sg_max, bt_max);
+
+            // Generate valid range
+            let mut u = Unstructured::new(&data);
+            if let (Ok(r1), Ok(r2)) = (
+                u.int_in_range(*sg_min..=*sg_max),
+                u.int_in_range(*sg_min..=*sg_max),
+            ) {
+                match r1.cmp(&r2) {
+                    Ordering::Less => opt_range = Some(Range { start: r1, end: r2 }),
+                    Ordering::Greater => opt_range = Some(Range { start: r2, end: r1 }),
+                    Ordering::Equal => opt_range = None,
+                }
+            }
+        }
+    }
+
+    opt_range
 }
 
 // Harness -------------------------------------------------------------------------------------------------------------
@@ -231,6 +272,13 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert_eq!(sg_set.pop_last(), bt_set.pop_last());
 
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
+            }
+            SetMethod::Range { data } => {
+                if let Some(range) = gen_valid_range(&sg_set, &bt_set, &data) {
+                    let sg_range = sg_set.range((Included(range.start), Included(range.end)));
+                    let bt_range = bt_set.range((Included(range.start), Included(range.end)));
+                    assert!(sg_range.eq(bt_range));
+                }
             }
             SetMethod::Remove { value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
