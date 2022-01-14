@@ -4,8 +4,8 @@ use core::iter::FromIterator;
 use core::ops::{Index, RangeBounds};
 
 use crate::map_types::{
-    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, Range, RangeMut,
-    VacantEntry, Values, ValuesMut,
+    Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, OccupiedError,
+    Range, RangeMut, VacantEntry, Values, ValuesMut,
 };
 use crate::tree::{SgError, SgTree};
 
@@ -335,6 +335,11 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// * The old value if the map did have this key present (both the value and key are updated,
     /// this accommodates types that can be `==` without being identical).
     ///
+    /// ### Warning
+    ///
+    /// Unlike other APIs in this crate, the semantics and return type of this API are *NOT* the same as `BTreeMap`'s nightly [`try_insert`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.try_insert).
+    /// For an equivalent, use [`try_insert_std`][`SgMap::try_insert_std`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -368,14 +373,47 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// assert_eq!(map.try_insert(key - 1, "overwrite filler"), Ok(Some("filler")));
     /// ```
     ///
-    /// ### Warning
-    ///
-    /// Unlike other APIs in this crate, the semantics and return type of this API are NOT the same as `BTreeMap`'s nightly [`try_insert`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.try_insert).
     pub fn try_insert(&mut self, key: K, val: V) -> Result<Option<V>, SgError>
     where
         K: Ord,
     {
         self.bst.try_insert(key, val)
+    }
+
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// If the map already had this key present, nothing is updated, and
+    /// an error containing the occupied entry and the value is returned.
+    ///
+    /// ### Warning
+    ///
+    /// The semantics and return type of this API match `BTreeMap`'s nightly [`try_insert`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.try_insert), *NOT* the other `try_*` APIs in this crate.
+    /// For a fallible insert, use [`try_insert`][`SgMap::try_insert`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use scapegoat::SgMap;
+    ///
+    /// let mut map = SgMap::<_, _, 10>::new();
+    /// assert_eq!(map.try_insert_std(37, "a").unwrap(), &"a");
+    ///
+    /// let err = map.try_insert_std(37, "b").unwrap_err();
+    /// assert_eq!(err.entry.key(), &37);
+    /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.value, "b");
+    /// ```
+    pub fn try_insert_std(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V, N>>
+    where
+        K: Ord,
+    {
+        match self.entry(key) {
+            Entry::Occupied(entry) => Err(OccupiedError { entry, value }),
+            Entry::Vacant(entry) => Ok(entry.insert(value)),
+        }
     }
 
     /// Attempt to extend a collection with the contents of an iterator.

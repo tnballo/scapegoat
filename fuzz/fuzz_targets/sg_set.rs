@@ -39,7 +39,7 @@ enum SetMethod<T: Ord + Debug> {
     New,
     PopFirst,
     PopLast,
-    Range { data: Vec<u8> },
+    Range { bitstream: Vec<u8> },
     Remove { value: T },
     Replace { value: T },
     Retain { rand_value: T },
@@ -51,6 +51,7 @@ enum SetMethod<T: Ord + Debug> {
     Clone,
     Debug,
     Extend { other: Vec<T> },
+    // FromIterator already tested in several of the below
     Ord { other: Vec<T> },
 }
 
@@ -78,7 +79,7 @@ fn assert_len_unchanged<T: Ord + Default, const N: usize>(
 fn gen_valid_range<K: Ord + Default + Debug + Int, const N: usize>(
     sg_set: &SgSet<K, N>,
     bt_set: &BTreeSet<K>,
-    data: &[u8],
+    bitstream: &[u8],
 ) -> Option<Range<K>> {
     let mut opt_range = None;
 
@@ -91,7 +92,7 @@ fn gen_valid_range<K: Ord + Default + Debug + Int, const N: usize>(
             assert_eq!(sg_max, bt_max);
 
             // Generate valid range
-            let mut u = Unstructured::new(&data);
+            let mut u = Unstructured::new(&bitstream);
             if let (Ok(r1), Ok(r2)) = (
                 u.int_in_range(*sg_min..=*sg_max),
                 u.int_in_range(*sg_min..=*sg_max),
@@ -112,14 +113,14 @@ fn gen_valid_range<K: Ord + Default + Debug + Int, const N: usize>(
 
 // Differential fuzzing harness
 fuzz_target!(|methods: Vec<SetMethod<usize>>| {
-    let mut sg_set = SgSet::new(); // Data structure under test
+    let mut sg_set = SgSet::<_, CAPACITY>::new(); // Data structure under test
     let mut bt_set = BTreeSet::new(); // Reference data structure
 
     for m in methods {
         match m {
             // API Equivalence -----------------------------------------------------------------------------------------
             SetMethod::Append { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -128,7 +129,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
                 assert_eq!(sg_other.len(), bt_other.len());
-                if (len_old + sg_other.len()) <= CAPACITY {
+                if (len_old + sg_other.len()) <= sg_set.capacity() {
                     sg_set.append(&mut sg_other);
                     bt_set.append(&mut bt_other);
 
@@ -152,7 +153,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert_eq!(sg_set.contains(&value), bt_set.contains(&value));
             }
             SetMethod::Difference { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -185,14 +186,14 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Insert { value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
-                if len_old < CAPACITY {
+                if len_old < sg_set.capacity() {
                     assert_eq!(sg_set.insert(value), bt_set.insert(value));
 
                     assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
                 }
             }
             SetMethod::Intersection { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -210,7 +211,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(sg_inter.len() <= sg_set.len());
             }
             SetMethod::IsDisjoint { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -223,7 +224,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert_eq!(sg_set.is_empty(), bt_set.is_empty(),);
             }
             SetMethod::IsSubset { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -236,7 +237,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(sg_set.iter().eq(bt_set.iter()));
             }
             SetMethod::IsSuperset { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -273,8 +274,8 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
 
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             }
-            SetMethod::Range { data } => {
-                if let Some(range) = gen_valid_range(&sg_set, &bt_set, &data) {
+            SetMethod::Range { bitstream } => {
+                if let Some(range) = gen_valid_range(&sg_set, &bt_set, &bitstream) {
                     let sg_range = sg_set.range((Included(range.start), Included(range.end)));
                     let bt_range = bt_set.range((Included(range.start), Included(range.end)));
                     assert!(sg_range.eq(bt_range));
@@ -289,7 +290,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             }
             SetMethod::Replace { value } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
-                if len_old < CAPACITY {
+                if len_old < sg_set.capacity() {
                     assert_eq!(sg_set.replace(value), bt_set.replace(value));
 
                     assert!(checked_get_len(&sg_set, &bt_set) >= len_old);
@@ -316,7 +317,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             }
             SetMethod::SymmetricDifference { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -340,7 +341,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 assert!(checked_get_len(&sg_set, &bt_set) <= len_old);
             }
             SetMethod::Union { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 
@@ -364,7 +365,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
             SetMethod::Extend { other } => {
                 let len_old = checked_get_len(&sg_set, &bt_set);
 
-                if (len_old + other.len()) <= CAPACITY {
+                if (len_old + other.len()) <= sg_set.capacity() {
                     sg_set.extend(other.clone().into_iter());
                     bt_set.extend(other.into_iter());
 
@@ -373,7 +374,7 @@ fuzz_target!(|methods: Vec<SetMethod<usize>>| {
                 }
             }
             SetMethod::Ord { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_set.capacity() {
                     continue;
                 }
 

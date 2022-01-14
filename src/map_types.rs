@@ -1,4 +1,5 @@
 use core::borrow::Borrow;
+use core::fmt;
 use core::iter::FusedIterator;
 use core::iter::Peekable;
 use core::marker::PhantomData;
@@ -607,6 +608,44 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> OccupiedEntry<'a, K, V, N
         self.remove_entry().1
     }
 }
+
+/// The error returned by [`try_insert_std`](SgMap::try_insert_std) when the key already exists.
+///
+/// Contains the occupied entry, and the value that was not inserted.
+pub struct OccupiedError<'a, K: 'a + Ord + Default, V: 'a + Default, const N: usize> {
+    /// The entry in the map that was already occupied.
+    pub entry: OccupiedEntry<'a, K, V, N>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+impl<K: fmt::Debug + Ord + Default, V: fmt::Debug + Default, const N: usize> fmt::Debug
+    for OccupiedError<'_, K, V, N>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedError")
+            .field("key", self.entry.key())
+            .field("old_value", self.entry.get())
+            .field("new_value", &self.value)
+            .finish()
+    }
+}
+
+impl<'a, K: fmt::Debug + Ord + Default, V: fmt::Debug + Default, const N: usize> fmt::Display
+    for OccupiedError<'a, K, V, N>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "failed to insert {:?}, key {:?} already exists with value {:?}",
+            self.value,
+            self.entry.key(),
+            self.entry.get(),
+        )
+    }
+}
+
+// Range APIs ----------------------------------------------------------------------------------------------------------
 
 /// An iterator over a sub-range of entries in a `SgMap`.
 ///

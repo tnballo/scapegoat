@@ -1,5 +1,6 @@
 #![no_main]
 #![feature(map_first_last)]
+#![feature(map_try_insert)]
 
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -83,18 +84,20 @@ enum MapMethod<K: Ord + Debug, V: Debug> {
     New,
     PopFirst,
     PopLast,
-    Range { data: Vec<u8> },
-    RangeMut { data: Vec<u8> },
+    Range { bitstream: Vec<u8> },
+    RangeMut { bitstream: Vec<u8> },
     Remove { key: K },
     RemoveEntry { key: K },
     Retain { rand_key: K },
     SplitOff { key: K },
+    TryInsertStd { key: K, val: V },
     Values,
     ValuesMut,
     // Trait Equivalence -----------------------------------------------------------------------------------------------
     Clone,
     Debug,
     Extend { other: Vec<(K, V)> },
+    // FromIterator already tested in several of the below
     Ord { other: Vec<(K, V)> },
 }
 
@@ -114,7 +117,7 @@ fn checked_get_len<K: Ord + Default, V: Default, const N: usize>(
 fn gen_valid_range<K: Ord + Default + Debug + Int, V: Default, const N: usize>(
     sg_map: &SgMap<K, V, N>,
     bt_map: &BTreeMap<K, V>,
-    data: &[u8],
+    bitstream: &[u8],
 ) -> Option<Range<K>> {
     let mut opt_range = None;
 
@@ -131,7 +134,7 @@ fn gen_valid_range<K: Ord + Default + Debug + Int, V: Default, const N: usize>(
             assert_eq!(sg_max, bt_max);
 
             // Generate valid range
-            let mut u = Unstructured::new(&data);
+            let mut u = Unstructured::new(&bitstream);
             if let (Ok(r1), Ok(r2)) = (
                 u.int_in_range(*sg_min..=*sg_max),
                 u.int_in_range(*sg_min..=*sg_max),
@@ -195,7 +198,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
         match m {
             // API Equivalence -----------------------------------------------------------------------------------------
             MapMethod::Append { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_map.capacity() {
                     continue;
                 }
 
@@ -204,7 +207,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 let len_old = checked_get_len(&sg_map, &bt_map);
 
                 assert_eq!(sg_other.len(), bt_other.len());
-                if (len_old + sg_other.len()) <= CAPACITY {
+                if (len_old + sg_other.len()) <= sg_map.capacity() {
                     sg_map.append(&mut sg_other);
                     bt_map.append(&mut bt_other);
 
@@ -317,7 +320,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             MapMethod::FirstEntry => match (sg_map.first_entry(), bt_map.first_entry()) {
                 (Some(sgo), Some(bto)) => assert_eq!(sgo.key(), bto.key()),
                 (None, None) => continue,
-                _ => panic!("Last entry Some-None mismatch!"),
+                _ => panic!("First entry Some-None mismatch!"),
             },
             MapMethod::FirstKey => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
@@ -363,7 +366,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             }
             MapMethod::Insert { key, val } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
-                if len_old < CAPACITY {
+                if len_old < sg_map.capacity() {
                     assert_eq!(sg_map.insert(key, val), bt_map.insert(key, val));
 
                     assert!(checked_get_len(&sg_map, &bt_map) >= len_old);
@@ -428,15 +431,15 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
 
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             }
-            MapMethod::Range { data } => {
-                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &data) {
+            MapMethod::Range { bitstream } => {
+                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &bitstream) {
                     let sg_range = sg_map.range((Included(range.start), Included(range.end)));
                     let bt_range = bt_map.range((Included(range.start), Included(range.end)));
                     assert!(sg_range.eq(bt_range));
                 }
             }
-            MapMethod::RangeMut { data } => {
-                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &data) {
+            MapMethod::RangeMut { bitstream } => {
+                if let Some(range) = gen_valid_range(&sg_map, &bt_map, &bitstream) {
                     let sg_range = sg_map.range_mut((Included(range.start), Included(range.end)));
                     let bt_range = bt_map.range_mut((Included(range.start), Included(range.end)));
                     assert!(sg_range.eq(bt_range));
@@ -476,6 +479,16 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 assert!(sg_map.iter().eq(bt_map.iter()));
                 assert!(checked_get_len(&sg_map, &bt_map) <= len_old);
             }
+            MapMethod::TryInsertStd { key, val } => {
+                assert_eq!(
+                    sg_map
+                        .try_insert_std(key, val)
+                        .map_err(|oe| (*oe.entry.key(), oe.value)),
+                    bt_map
+                        .try_insert(key, val)
+                        .map_err(|oe| (*oe.entry.key(), oe.value))
+                );
+            }
             // Trait Equivalence ---------------------------------------------------------------------------------------
             MapMethod::Clone => {
                 assert!(sg_map.clone().iter().eq(bt_map.clone().iter()));
@@ -485,7 +498,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             }
             MapMethod::Extend { other } => {
                 let len_old = checked_get_len(&sg_map, &bt_map);
-                if (len_old + other.len()) <= CAPACITY {
+                if (len_old + other.len()) <= sg_map.capacity() {
                     sg_map.extend(other.clone().into_iter());
                     bt_map.extend(other.into_iter());
 
@@ -494,7 +507,7 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
                 }
             }
             MapMethod::Ord { other } => {
-                if other.len() > CAPACITY {
+                if other.len() > sg_map.capacity() {
                     continue;
                 }
 
