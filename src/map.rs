@@ -1057,7 +1057,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         }
     }
 
-    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
+    /// Constructs a mutable single-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
     /// yield elements from min (inclusive) to max (exclusive).
     /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
@@ -1086,6 +1086,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// for (name, balance) in &map {
     ///     println!("{} => {}", name, balance);
     /// }
+    ///
+    /// assert_eq!(map["Alice"], 0);
+    /// assert_eq!(map["Bob"], 100);
     /// ```
     pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, T, R, K, V, N>
     where

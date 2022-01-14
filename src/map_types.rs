@@ -5,6 +5,8 @@ use core::iter::Peekable;
 use core::marker::PhantomData;
 use core::ops::RangeBounds;
 
+use tinyvec::ArrayVec;
+
 use crate::map::SgMap;
 use crate::tree::{
     Idx, IntoIter as TreeIntoIter, Iter as TreeIter, IterMut as TreeIterMut, SmallNode,
@@ -238,8 +240,6 @@ pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
     Occupied(OccupiedEntry<'a, K, V, N>),
 }
 
-use tinyvec::ArrayVec;
-use Entry::*;
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns a mutable
@@ -257,8 +257,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default),
         }
     }
 
@@ -278,8 +278,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default()),
         }
     }
 
@@ -303,8 +303,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
                 let value = default(entry.key());
                 entry.insert(value)
             }
@@ -323,8 +323,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn key(&self) -> &K {
         match self {
-            Occupied(entry) => entry.key(),
-            Vacant(entry) => entry.key(),
+            Entry::Occupied(entry) => entry.key(),
+            Entry::Vacant(entry) => entry.key(),
         }
     }
 
@@ -350,11 +350,11 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn and_modify<F: FnOnce(&mut V)>(self, f: F) -> Entry<'a, K, V, N> {
         match self {
-            Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 f(entry.get_mut());
-                Occupied(entry)
+                Entry::Occupied(entry)
             }
-            Vacant(entry) => Vacant(entry),
+            Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
 
@@ -373,8 +373,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// ```
     pub fn or_default(self) -> &'a mut V {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Default::default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(Default::default()),
         }
     }
 }

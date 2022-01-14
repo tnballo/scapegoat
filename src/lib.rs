@@ -213,7 +213,7 @@ pub use crate::tree::SgError;
 mod map;
 pub use crate::map::SgMap;
 
-/// [`SgMap`][crate::map::SgMap]'s iterator return types and [`Entry`](crate::map_types::Entry) enum.
+/// [`SgMap`][crate::map::SgMap]'s return types and [`Entry`](crate::map_types::Entry) enum.
 pub mod map_types;
 
 mod set;
