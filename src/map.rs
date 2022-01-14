@@ -1090,13 +1090,13 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// assert_eq!(map["Alice"], 0);
     /// assert_eq!(map["Bob"], 100);
     /// ```
-    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, T, R, K, V, N>
+    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<'_, K, V, N>
     where
         T: Ord + ?Sized,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
-        RangeMut::new(self, range)
+        RangeMut::new(self, &range)
     }
 }
 

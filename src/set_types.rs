@@ -1,5 +1,4 @@
 use core::cmp::Ordering;
-use core::iter::FusedIterator;
 
 use crate::set::SgSet;
 use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter, SmallNode};
@@ -400,7 +399,7 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N>
     }
 }
 
-/// An iterator over a sub-range of items in a `SgSet`.
+/// An iterator over a sub-range of items in a [`SgSet`].
 ///
 /// This `struct` is created by the [`range`] method on [`SgSet`].
 /// See its documentation for more.
@@ -429,4 +428,5 @@ impl<'a, T: Ord + Default, const N: usize> DoubleEndedIterator for Range<'a, T, 
     }
 }
 
-impl<'a, T: Ord + Default, const N: usize> FusedIterator for Range<'a, T, N> {}
+// TODO: is this correct?
+//impl<'a, T: Ord + Default, const N: usize> FusedIterator for Range<'a, T, N> {}

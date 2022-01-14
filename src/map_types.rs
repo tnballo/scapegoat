@@ -1,8 +1,6 @@
 use core::borrow::Borrow;
 use core::fmt;
-use core::iter::FusedIterator;
 use core::iter::Peekable;
-use core::marker::PhantomData;
 use core::ops::RangeBounds;
 
 use tinyvec::ArrayVec;
@@ -239,7 +237,6 @@ pub enum Entry<'a, K: Ord + Default, V: Default, const N: usize> {
     /// An occupied entry.
     Occupied(OccupiedEntry<'a, K, V, N>),
 }
-
 
 impl<'a, K: Ord + Default, V: Default, const N: usize> Entry<'a, K, V, N> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns a mutable
@@ -647,7 +644,7 @@ impl<'a, K: fmt::Debug + Ord + Default, V: fmt::Debug + Default, const N: usize>
 
 // Range APIs ----------------------------------------------------------------------------------------------------------
 
-/// An iterator over a sub-range of entries in a `SgMap`.
+/// An iterator over a sub-range of entries in a [`SgMap`].
 ///
 /// This `struct` is created by the [`range`][`crate::map::SgMap::range`] method on [`SgMap`][crate::map::SgMap]. See its
 /// documentation for more.
@@ -679,36 +676,53 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for R
     }
 }
 
-impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
+// TODO: Is this correct?
+//impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
 
-/// A mutable iterator over a sub-range of entries in a `SgMap`.
+/// A mutable iterator over a sub-range of entries in a [`SgMap`].
 ///
 /// This `struct` is created by the [`range_mut`] method on [`SgMap`]. See its
 /// documentation for more.
 ///
 /// [`range_mut`]: SgMap::range_mut
-pub struct RangeMut<'a, T, R, K, V, const N: usize>
-where
-    T: Ord + ?Sized,
-    K: Borrow<T> + Ord + Default,
-    V: Default,
-    R: RangeBounds<T>,
-{
+pub struct RangeMut<'a, K: Ord + Default, V: Default, const N: usize> {
     inner: Peekable<TreeIterMut<'a, K, V, N>>,
-    range: R,
-    _marker: PhantomData<T>,
+    total_cnt: usize,
+    spent_cnt: usize,
 }
 
-impl<'a, T, R, K, V, const N: usize> RangeMut<'a, T, R, K, V, N>
+impl<'a, K, V, const N: usize> RangeMut<'a, K, V, N>
 where
-    T: Ord + ?Sized,
-    K: Borrow<T> + Ord + Default,
+    K: Ord + Default,
     V: Default,
-    R: RangeBounds<T>,
 {
-    pub(crate) fn new(map: &'a mut SgMap<K, V, N>, range: R) -> Self {
-        let mut peekable = map.bst.iter_mut().peekable();
+    // Constructor
+    pub(crate) fn new<T, R>(map: &'a mut SgMap<K, V, N>, range: &R) -> Self
+    where
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord + Default,
+        R: RangeBounds<T>,
+    {
+        let len = RangeMut::compute_len(map, range);
 
+        Self {
+            inner: RangeMut::init_iter_mut(map, range),
+            total_cnt: len,
+            spent_cnt: 0,
+        }
+    }
+
+    // Compute amount of items to return
+    fn compute_len<T, R>(map: &SgMap<K, V, N>, range: &R) -> usize
+    where
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord + Default,
+        R: RangeBounds<T>,
+    {
+        let mut peekable = map.bst.iter().peekable();
+        let mut len = 0;
+
+        // Advance immutable iter to start
         while let Some(node) = peekable.peek() {
             if range.contains(node.0.borrow()) {
                 break;
@@ -717,30 +731,69 @@ where
             peekable.next();
         }
 
-        Self {
-            inner: peekable,
-            range,
-            _marker: PhantomData,
+        // Count remaining
+        for node in peekable {
+            if range.contains(node.0.borrow()) {
+                len += 1;
+            } else {
+                break;
+            }
         }
+
+        len
+    }
+
+    // Prepare mutable iterator to return first item in range
+    fn init_iter_mut<T, R>(
+        map: &'a mut SgMap<K, V, N>,
+        range: &R,
+    ) -> Peekable<TreeIterMut<'a, K, V, N>>
+    where
+        T: Ord + ?Sized,
+        K: Borrow<T> + Ord + Default,
+        R: RangeBounds<T>,
+    {
+        let mut peekable = map.bst.iter_mut().peekable();
+
+        // Advance mutable iter to start
+        while let Some(node) = peekable.peek() {
+            if range.contains(node.0.borrow()) {
+                break;
+            }
+
+            peekable.next();
+        }
+
+        peekable
     }
 }
 
-impl<'a, T, R, K, V, const N: usize> Iterator for RangeMut<'a, T, R, K, V, N>
+impl<'a, K, V, const N: usize> Iterator for RangeMut<'a, K, V, N>
 where
-    T: Ord + ?Sized,
-    K: Borrow<T> + Ord + Default,
+    K: Ord + Default,
     V: Default,
-    R: RangeBounds<T>,
 {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.inner.next()?;
 
-        if !self.range.contains(node.0.borrow()) {
-            None
-        } else {
+        if self.spent_cnt < self.total_cnt {
+            self.spent_cnt += 1;
             Some(node)
+        } else {
+            None
         }
+    }
+}
+
+impl<'a, K, V, const N: usize> ExactSizeIterator for RangeMut<'a, K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
+    fn len(&self) -> usize {
+        debug_assert!(self.spent_cnt <= self.total_cnt);
+        self.total_cnt - self.spent_cnt
     }
 }
