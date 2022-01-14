@@ -191,7 +191,7 @@ Space complexity is always `O(n)`. Time complexity:
 
 **Memory Footprint Demos**
 
-* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize, 1024>` with `insert`, `get`, and `remove` called: **16.0KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
+* [Code size demo](https://github.com/tnballo/scapegoat/blob/master/misc/min_size/README.md) - `SgMap<usize, usize, 1024>` with `insert`, `get`, and `remove` called: **14.2KB** for an x86-64 binary. Caveat: you'll likely want to use more than 3 functions, resulting in more executable code getting included.
 
 * [Stack space demo](https://github.com/tnballo/scapegoat/blob/master/examples/tiny_map.rs) - `SgMap<u8, u8, 128>`: **1.3KB** storage cost. Caveat: more stack space is required for runtime book keeping (e.g. rebalancing).
 

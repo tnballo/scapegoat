@@ -59,16 +59,17 @@ And we're concerned with code size, not overall executable size (e.g. not counti
 
 ### Setup
 
-Install [`cargo-binutils`](https://github.com/rust-embedded/cargo-binutils), [`cargo-bloat`](https://github.com/RazrFalcon/cargo-bloat), [`musl` libc](https://musl.libc.org/) static binary target, and the [standard library](https://doc.rust-lang.org/cargo/reference/unstable.html#build-std) source. Switch to the `nightly` toolchain:
+Install [`cargo-binutils`](https://github.com/rust-embedded/cargo-binutils) and [`cargo-bloat`](https://github.com/RazrFalcon/cargo-bloat):
 
 ```
 cargo install cargo-binutils
 cargo install cargo-bloat
-rustup component add llvm-tools-preview
-rustup target add x86_64-unknown-linux-musl
-rustup component add rust-src --toolchain nightly
-rustup default nightly
 ```
+
+This writeup uses `cargo-size` version `0.3.4` and `cargo-bloat` version `0.11.0` (version numbers gathered with `cargo size --version` and `cargo bloat --version`).
+These versions are the latest available at the time of this writing (1/14/22 update).
+
+The [`rust-toolchain.toml`](./min_size_no_std/rust-toolchain.toml) files will take care of the rest (e.g. grabbing the [`musl` libc](https://musl.libc.org/) static binary target, the [standard library](https://doc.rust-lang.org/cargo/reference/unstable.html#build-std) source, and using `nightly-2021-12-04` to replicate numbers).
 
 To use the `build-std` feature (e.g. build the standard library from source) and `x86_64-unknown-linux-musl` (e.g. build static binary) simultaneously, we have to do a little extra work, per [this incredibly helpful comment](https://github.com/japaric/xargo/issues/133#issuecomment-681194097).
 
@@ -108,23 +109,28 @@ Now we're ready to build some static binaries, fully from source!
 
 ### Results for `scapegoat::SgMap`
 
-Determine executable byte count:
+Determine executable byte count.
+Note `-A` flag for GNU `binutils` `size` to see the actual size of the `.text` section.
+Without this flag the Berkley format (default) counts [read-only data](https://sourceware.org/binutils/docs/binutils/size.html) in the `text` column.
 
 ```
 cd min_size_no_std
-cargo size --release
+cargo size --release -- -A
 ```
 
-Sample output from an x86-64 machine (note your milage may vary, depending on your host architecture and compiler version):
+Sample output from an x86-64 machine (note your milage may vary, depending on your host architecture):
 
 ```
-   text	   data	    bss	    dec	    hex	filename
-  16084	   3528	    728	  20340	   4f74	min_size_no_std
+min_size_no_std  :
+section                 size    addr
+// Prior omitted...
+.text                  14231  0x1040
+// Remainder omitted...
 ```
 
 **This demonstrates a `.text` section under 20KB in size is possible!**
 Realistically, you'll probably use functions of the library beyond `insert`, `get`, and `remove` and thus increase code size.
-But the purpose of this demo is to show that we can have a working, BST-backed map in under 20KB of 64-bit code.
+But the purpose of this demo is to show that we can have a working, BST-backed map in under 14.2KB of 64-bit code.
 
 To check sources of bloat:
 
@@ -132,17 +138,17 @@ To check sources of bloat:
 cargo bloat --release -n 10
 ```
 
-Sample output (oddly the reported `.text` size of 13.9KB is smaller than `cargo size`'s 16.0KB):
+Sample output (oddly the reported `.text` size of 13.9KB is smaller than `cargo size`'s 14.2KB):
 
 ```
- File  .text    Size     Crate Name
+File  .text    Size     Crate Name
  3.1%  17.7%  2.5KiB       std core::slice::sort::recurse
- 2.4%  13.9%  1.9KiB [Unknown] main
+ 2.5%  14.0%  1.9KiB [Unknown] main
  1.6%   9.1%  1.3KiB scapegoat scapegoat::tree::tree::SgTree<K,V,_>::rebuild
  0.8%   4.6%    651B       std core::fmt::Formatter::pad_integral
  0.8%   4.4%    625B       std <core::fmt::builders::PadAdapter as core::fmt::Write>::write_str
  0.7%   4.0%    568B       std core::fmt::write
- 0.5%   2.8%    391B [Unknown] static_init_tls
+ 0.5%   2.7%    391B [Unknown] static_init_tls
  0.5%   2.7%    385B [Unknown] __init_libc
  0.4%   2.4%    346B [Unknown] _start_c
  0.4%   2.4%    335B       std core::fmt::builders::DebugTuple::field
@@ -168,14 +174,17 @@ To determine executable byte count:
 
 ```
 cd ../min_size_std
-cargo size --release
+cargo size --release -- -A
 ```
 
-Sample output from an x86-64 machine (note your milage may vary, depending on your host architecture and compiler version):
+Sample output from an x86-64 machine (note your milage may vary, depending on your host architecture):
 
 ```
-  text	   data	    bss	    dec	    hex	filename
-  17892	    812	   2368	  21072	   5250	min_size_std
+min_size_std  :
+section                 size    addr
+// Prior omitted...
+.text                  16809  0x1040
+// Remainder omitted...
 ```
 
 **The size-optimized `BTreeMap` also fits in under 20KB!**
@@ -188,28 +197,28 @@ To check sources of bloat:
 cargo bloat --release -n 10
 ```
 
-Sample output (oddly the reported `.text` size of 16.4KB is smaller than `cargo size`'s 17.8KB):
+Sample output (oddly the reported `.text` size of 16.4KB is smaller than `cargo size`'s 16.8KB):
 
 ```
- File  .text    Size     Crate Name
- 5.0%  12.0%  2.0KiB [Unknown] main
- 3.5%   8.5%  1.4KiB      libc malloc
- 3.0%   7.3%  1.2KiB      libc __bin_chunk
- 2.3%   5.7%    956B     alloc alloc::collections::btree::remove::<impl alloc::collections::btree::node::Handle<alloc::collections::btree::node::NodeRef<alloc::collections::btree...
- 1.7%   4.1%    694B [Unknown] alloc_fwd
- 1.7%   4.0%    678B [Unknown] alloc_rev
- 1.3%   3.2%    536B      libc __init_libc
- 1.3%   3.2%    532B      core core::fmt::Formatter::pad_integral
- 1.3%   3.1%    523B     alloc alloc::collections::btree::node::BalancingContext<K,V>::merge_tracking_child_edge
- 1.2%   2.8%    474B [Unknown] static_init_tls
-17.8%  43.2%  7.1KiB           And 75 smaller methods. Use -n N to show more.
-41.2% 100.0% 16.4KiB           .text section size, the file size is 39.8KiB
+File  .text    Size     Crate Name
+ 4.7%  12.0%  2.0KiB [Unknown] main
+ 3.3%   8.5%  1.4KiB [Unknown] malloc
+ 2.8%   7.3%  1.2KiB [Unknown] __bin_chunk
+ 2.2%   5.7%    956B     alloc alloc::collections::btree::remove::<impl alloc::collections::btree::node::Handle<alloc::collections::btree::node::NodeRef<alloc::collections::btree...
+ 1.6%   4.1%    694B [Unknown] alloc_fwd
+ 1.6%   4.0%    678B [Unknown] alloc_rev
+ 1.2%   3.2%    536B [Unknown] __init_libc
+ 1.2%   3.2%    532B      core core::fmt::Formatter::pad_integral
+ 1.2%   3.1%    523B     alloc alloc::collections::btree::node::BalancingContext<K,V>::merge_tracking_child_edge
+ 1.1%   2.8%    474B [Unknown] static_init_tls
+16.8%  43.2%  7.1KiB           And 75 smaller methods. Use -n N to show more.
+38.9% 100.0% 16.4KiB           .text section size, the file size is 42.2KiB
 ```
 
 ### Conclusion
 
 Both `scapegoat::SgMap` and `std::collections::BTreeMap` can produce working dynamic collections in binaries under 20KB.
-Perhaps surprisingly, both produce 16-17KB binaries despite the latter including `musl` libc's memory allocator.
+Perhaps surprisingly, both produce 14-17KB binaries despite the latter including `musl` libc's memory allocator.
 
 * Thanks to everyone that made suggestions on [this reddit thread](https://www.reddit.com/r/rust/comments/qu3k38/1012x_smaller_executable_footprint_than/).
 

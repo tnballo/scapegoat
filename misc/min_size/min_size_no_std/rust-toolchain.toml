@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly-2021-12-04"
+components = [ "rust-src", "llvm-tools-preview" ]
+targets = [ "x86_64-unknown-linux-musl" ]
