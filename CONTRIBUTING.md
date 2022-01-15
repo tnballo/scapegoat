@@ -7,8 +7,8 @@ Please read through this document before submitting pull requests to ensure an e
 
 ## Background Resources
 
-* The APIs this project strives to be compatible with: [`BTreeMap`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html), [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/btree_set/index.html).
-    * List of map structs [here](https://doc.rust-lang.org/std/collections/btree_map/index.html), set structs [here](https://doc.rust-lang.org/stable/std/collections/btree_set/index.html).
+* The APIs this project strives to be compatible with: [`BTreeMap`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html), [`BTreeSet`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html).
+    * List of map structs [here](https://doc.rust-lang.org/stable/std/collections/btree_map/index.html), set structs [here](https://doc.rust-lang.org/stable/std/collections/btree_set/index.html).
 
 * ["Safe && Portable Data Structure Design"](https://tiemoko.com/slides/SafeAndPortableDataStructureDesign_CodeAndSupply_Dec2021.pdf) ([video](https://youtu.be/1UtklNrB8XA?t=1615)).
     * 10 minute (lightning talk) overview of this library's design.
@@ -51,5 +51,5 @@ However, you're free to suggest your own features and ideas - we'd love to discu
 
 ## Licensing
 
-See the [LICENSE](hhttps://github.com/tnballo/scapegoat/blob/master/LICENSE) file for this project's licensing.
+See the [LICENSE](https://github.com/tnballo/scapegoat/blob/master/LICENSE) file for this project's licensing.
 All contributions to this project will, by default, use this license.
