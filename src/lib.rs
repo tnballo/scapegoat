@@ -189,7 +189,7 @@ Space complexity is always `O(n)`. Time complexity:
 ### License and Contributing
 
 Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/master/LICENSE).
-Contributions are welcome!
+[Contributions](https://github.com/tnballo/scapegoat/blob/master/CONTRIBUTING.md) are welcome!
 */
 
 // Test temp
