@@ -1,6 +1,6 @@
 use core::borrow::Borrow;
 use core::fmt;
-use core::iter::Peekable;
+use core::iter::{FusedIterator, Peekable};
 use core::ops::RangeBounds;
 
 use tinyvec::ArrayVec;
@@ -44,6 +44,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Ite
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Iter<'a, K, V, N> {}
+
 /// An owning iterator over the entries of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_iter`][crate::map::SgMap::into_iter] method on [`SgMap`][crate::map::SgMap].
@@ -74,6 +76,8 @@ impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoIte
         self.cons_iter.len()
     }
 }
+
+impl<K: Ord + Default, V: Default, const N: usize> FusedIterator for IntoIter<K, V, N> {}
 
 /// An mutable iterator over the entries of a [`SgMap`][crate::map::SgMap].
 ///
@@ -106,6 +110,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Ite
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for IterMut<'a, K, V, N> {}
+
 // Key Iterators -------------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -132,6 +138,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Key
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Keys<'a, K, V, N> {}
+
 /// An owning iterator over the keys of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_keys`][crate::map::SgMap::into_keys] method on [`SgMap`][crate::map::SgMap].
@@ -153,6 +161,8 @@ impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoKey
         self.inner.len()
     }
 }
+
+impl<K: Ord + Default, V: Default, const N: usize> FusedIterator for IntoKeys<K, V, N> {}
 
 // Value Iterators -----------------------------------------------------------------------------------------------------
 
@@ -180,6 +190,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Val
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Values<'a, K, V, N> {}
+
 /// An owning iterator over the values of a [`SgMap`][crate::map::SgMap].
 ///
 /// This `struct` is created by the [`into_values`][crate::map::SgMap::into_values] method on [`SgMap`][crate::map::SgMap].
@@ -201,6 +213,8 @@ impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoVal
         self.inner.len()
     }
 }
+
+impl<K: Ord + Default, V: Default, const N: usize> FusedIterator for IntoValues<K, V, N> {}
 
 /// A mutable iterator over the values of a [`SgMap`][crate::map::SgMap].
 ///
@@ -225,6 +239,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator
         self.inner.len()
     }
 }
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for ValuesMut<'a, K, V, N> {}
 
 // Entry APIs ----------------------------------------------------------------------------------------------------------
 
@@ -676,8 +692,7 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator for R
     }
 }
 
-// TODO: Is this correct?
-//impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'a, K, V, N> {}
 
 /// A mutable iterator over a sub-range of entries in a [`SgMap`].
 ///
@@ -776,9 +791,8 @@ where
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let node = self.inner.next()?;
-
         if self.spent_cnt < self.total_cnt {
+            let node = self.inner.next()?;
             self.spent_cnt += 1;
             Some(node)
         } else {
@@ -787,6 +801,10 @@ where
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for RangeMut<'a, K, V, N> {}
+
+/*
+// TODO: does commit to this interface limit potential optimizations?
 impl<'a, K, V, const N: usize> ExactSizeIterator for RangeMut<'a, K, V, N>
 where
     K: Ord + Default,
@@ -797,3 +815,4 @@ where
         self.total_cnt - self.spent_cnt
     }
 }
+*/

@@ -1,3 +1,5 @@
+use core::iter::FusedIterator;
+
 use tinyvec::ArrayVec;
 
 use super::node::Node;
@@ -85,6 +87,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Ite
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Iter<'a, K, V, N> {}
+
 // Mutable Reference Iterator ------------------------------------------------------------------------------------------
 
 pub struct IterMut<'a, K, V, const N: usize> {
@@ -116,6 +120,8 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for Ite
         self.arena_iter_mut.len()
     }
 }
+
+impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for IterMut<'a, K, V, N> {}
 
 // Consuming Iterator --------------------------------------------------------------------------------------------------
 
@@ -164,3 +170,5 @@ impl<K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IntoIte
         self.sorted_idxs.len()
     }
 }
+
+impl<K: Ord + Default, V: Default, const N: usize> FusedIterator for IntoIter<K, V, N> {}

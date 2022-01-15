@@ -1,4 +1,5 @@
 use core::cmp::Ordering;
+use core::iter::FusedIterator;
 
 use crate::set::SgSet;
 use crate::tree::{Idx, IntoIter as TreeIntoIter, Iter as TreeIter, SmallNode};
@@ -39,6 +40,8 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Iter<'a, T, N> 
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Iter<'a, T, N> {}
+
 /// An owning iterator over the items of a [`SgSet`][crate::set::SgSet].
 ///
 /// This `struct` is created by the [`into_iter`][crate::set::SgSet::into_iter] method on [`SgSet`][crate::set::SgSet]
@@ -69,6 +72,8 @@ impl<T: Ord + Default, const N: usize> ExactSizeIterator for IntoIter<T, N> {
         self.cons_iter.len()
     }
 }
+
+impl<T: Ord + Default, const N: usize> FusedIterator for IntoIter<T, N> {}
 
 /*
 Workaround Note:
@@ -164,6 +169,8 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Intersection<'a
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Intersection<'a, T, N> {}
+
 // Difference Iterator -------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -226,6 +233,8 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Difference<'a, 
         self.total_cnt - self.spent_cnt
     }
 }
+
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Difference<'a, T, N> {}
 
 // Symmetric Difference Iterator ---------------------------------------------------------------------------------------
 
@@ -314,6 +323,8 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for SymmetricDiffer
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for SymmetricDifference<'a, T, N> {}
+
 // Union Iterator ------------------------------------------------------------------------------------------------------
 
 // TODO: these need more trait implementations for full compatibility
@@ -399,6 +410,10 @@ impl<'a, T: Ord + Default, const N: usize> ExactSizeIterator for Union<'a, T, N>
     }
 }
 
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Union<'a, T, N> {}
+
+// Range APIs ----------------------------------------------------------------------------------------------------------
+
 /// An iterator over a sub-range of items in a [`SgSet`].
 ///
 /// This `struct` is created by the [`range`] method on [`SgSet`].
@@ -428,5 +443,4 @@ impl<'a, T: Ord + Default, const N: usize> DoubleEndedIterator for Range<'a, T, 
     }
 }
 
-// TODO: is this correct?
-//impl<'a, T: Ord + Default, const N: usize> FusedIterator for Range<'a, T, N> {}
+impl<'a, T: Ord + Default, const N: usize> FusedIterator for Range<'a, T, N> {}
