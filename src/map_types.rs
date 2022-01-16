@@ -701,10 +701,16 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> FusedIterator for Range<'
 ///
 /// [`range_mut`]: SgMap::range_mut
 pub struct RangeMut<'a, K: Ord + Default, V: Default, const N: usize> {
-    inner: Peekable<TreeIterMut<'a, K, V, N>>,
+    inner: RangeMutPeekable<'a, K, V, N>,
+    last: Option<RangeMutLast<'a, K, V, N>>,
     total_cnt: usize,
     spent_cnt: usize,
 }
+
+type RangeMutLast<'a, K, V, const N: usize> =
+    <Peekable<TreeIterMut<'a, K, V, N>> as Iterator>::Item;
+
+type RangeMutPeekable<'a, K, V, const N: usize> = Peekable<TreeIterMut<'a, K, V, N>>;
 
 impl<'a, K, V, const N: usize> RangeMut<'a, K, V, N>
 where
@@ -720,8 +726,10 @@ where
     {
         let len = RangeMut::compute_len(map, range);
 
+        let (iter, last) = RangeMut::init_iter_mut(map, range);
         Self {
-            inner: RangeMut::init_iter_mut(map, range),
+            inner: iter,
+            last,
             total_cnt: len,
             spent_cnt: 0,
         }
@@ -762,13 +770,17 @@ where
     fn init_iter_mut<T, R>(
         map: &'a mut SgMap<K, V, N>,
         range: &R,
-    ) -> Peekable<TreeIterMut<'a, K, V, N>>
+    ) -> (
+        RangeMutPeekable<'a, K, V, N>,
+        Option<RangeMutLast<'a, K, V, N>>,
+    )
     where
         T: Ord + ?Sized,
         K: Borrow<T> + Ord + Default,
         R: RangeBounds<T>,
     {
         let mut peekable = map.bst.iter_mut().peekable();
+        let mut last = None;
 
         // Advance mutable iter to start
         while let Some(node) = peekable.peek() {
@@ -779,7 +791,14 @@ where
             peekable.next();
         }
 
-        peekable
+        while let Some(node) = peekable.next_back() {
+            if range.contains(node.0.borrow()) {
+                last = Some(node);
+                break;
+            }
+        }
+
+        (peekable, last)
     }
 }
 
@@ -792,9 +811,29 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.spent_cnt < self.total_cnt {
-            let node = self.inner.next()?;
             self.spent_cnt += 1;
-            Some(node)
+            match self.inner.next() {
+                Some(node) => Some(node),
+                None => self.last.take(),
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, K, V, const N: usize> DoubleEndedIterator for RangeMut<'a, K, V, N>
+where
+    K: Ord + Default,
+    V: Default,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.spent_cnt < self.total_cnt {
+            self.spent_cnt += 1;
+            match self.last.take() {
+                Some(node) => Some(node),
+                None => self.inner.next_back(),
+            }
         } else {
             None
         }
