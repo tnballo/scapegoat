@@ -329,7 +329,12 @@ fn test_map_range_mut() {
         *val += 10;
     }
 
-    assert_eq!(map["a"], 0);
+    let mut iter_mut = map.range_mut("a"..="c").rev().map(|(k, v)| (*k, *v));
+
+    assert_eq!(iter_mut.next(), Some(("c", 0)));
+    assert_eq!(iter_mut.next(), Some(("b", 0)));
+    assert_eq!(iter_mut.next(), Some(("a", 0)));
+
     assert_eq!(map["c"], 0);
     assert_eq!(map["d"], 10);
     assert_eq!(map["e"], 10);
