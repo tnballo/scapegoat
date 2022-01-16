@@ -115,6 +115,17 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> Iterator for IterMut<'a, 
     }
 }
 
+impl<'a, K: Ord + Default, V: Default, const N: usize> DoubleEndedIterator
+    for IterMut<'a, K, V, N>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.arena_iter_mut.next_back() {
+            Some(Some(node)) => Some(node.get_mut()),
+            _ => None,
+        }
+    }
+}
+
 impl<'a, K: Ord + Default, V: Default, const N: usize> ExactSizeIterator for IterMut<'a, K, V, N> {
     fn len(&self) -> usize {
         self.arena_iter_mut.len()
