@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
+use std::ops::Bound::{Excluded, Included};
 
 use scapegoat::{SgError, SgMap};
 
@@ -307,6 +308,8 @@ fn test_map_insert_panic() {
     a.insert(4, "4"); // panic
 }
 
+// Range APIs ----------------------------------------------------------------------------------------------------------
+
 #[test]
 fn test_map_range() {
     let array = [(1, "a"), (5, "e"), (3, "c"), (7, "g"), (9, "i")];
@@ -338,4 +341,84 @@ fn test_map_range_mut() {
     assert_eq!(map["c"], 0);
     assert_eq!(map["d"], 10);
     assert_eq!(map["e"], 10);
+}
+
+#[should_panic(expected = "range start is greater than range end in BTreeMap")]
+#[test]
+fn test_btree_map_range_panic_1() {
+    let mut map: BTreeMap<usize, usize> = BTreeMap::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start is greater than range end")]
+#[test]
+fn test_sg_map_range_panic_1() {
+    let mut map = SgMap::<usize, usize, DEFAULT_CAPACITY>::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeMap")]
+#[test]
+fn test_btree_map_range_panic_2() {
+    let mut map: BTreeMap<usize, usize> = BTreeMap::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range((Excluded(&5), Excluded(&5)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded")]
+#[test]
+fn test_sg_map_range_panic_2() {
+    let mut map = SgMap::<usize, usize, DEFAULT_CAPACITY>::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range((Excluded(&5), Excluded(&5)));
+}
+
+#[should_panic(expected = "range start is greater than range end in BTreeMap")]
+#[test]
+fn test_btree_map_range_mut_panic_1() {
+    let mut map: BTreeMap<usize, usize> = BTreeMap::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range_mut((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start is greater than range end")]
+#[test]
+fn test_sg_map_range_mut_panic_1() {
+    let mut map = SgMap::<usize, usize, DEFAULT_CAPACITY>::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range_mut((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeMap")]
+#[test]
+fn test_btree_map_range_mut_panic_2() {
+    let mut map: BTreeMap<usize, usize> = BTreeMap::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range_mut((Excluded(&5), Excluded(&5)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded")]
+#[test]
+fn test_sg_map_range_mut_panic_2() {
+    let mut map = SgMap::<usize, usize, DEFAULT_CAPACITY>::new();
+    map.insert(3, 3);
+    map.insert(5, 5);
+    map.insert(8, 8);
+    let _bad_range = map.range_mut((Excluded(&5), Excluded(&5)));
 }

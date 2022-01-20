@@ -4,8 +4,10 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::RangeBounds;
-use core::ops::{Index, Sub};
+use core::ops::{
+    Bound::{Excluded, Included},
+    Index, RangeBounds, Sub,
+};
 
 use super::arena::Arena;
 use super::error::SgError;
@@ -530,7 +532,8 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         Idx::MAX as usize
     }
 
-    pub(crate) fn range_search<T, R>(&self, range: R) -> ArrayVec<[usize; N]>
+    /// Find arena indexes for a given range
+    pub(crate) fn range_search<T, R>(&self, range: &R) -> ArrayVec<[usize; N]>
     where
         T: Ord + ?Sized,
         R: RangeBounds<T>,
@@ -552,6 +555,30 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         node_idxs.sort_unstable_by_key(|idx| self.arena[*idx].key());
 
         node_idxs
+    }
+
+    /// Validate range
+    pub(crate) fn assert_valid_range<T, R>(range: &R)
+    where
+        T: Ord + ?Sized,
+        R: RangeBounds<T>,
+        K: Borrow<T> + Ord,
+    {
+        match (range.start_bound(), range.end_bound()) {
+            (Included(start), Included(end))
+            | (Included(start), Excluded(end))
+            | (Excluded(start), Included(end)) => {
+                if start > end {
+                    panic!("range start is greater than range end");
+                }
+            }
+            (Excluded(start), Excluded(end)) => {
+                if start == end {
+                    panic!("range start and end are equal and excluded");
+                }
+            }
+            _ => {}
+        }
     }
 
     // Private API -----------------------------------------------------------------------------------------------------

@@ -1051,9 +1051,10 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
+        SgTree::<K, V, N>::assert_valid_range(&range);
         Range {
             table: self,
-            node_idx_iter: self.bst.range_search(range).into_iter(),
+            node_idx_iter: self.bst.range_search(&range).into_iter(),
         }
     }
 
@@ -1096,6 +1097,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
+        SgTree::<K, V, N>::assert_valid_range(&range);
         RangeMut::new(self, &range)
     }
 }
