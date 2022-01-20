@@ -683,6 +683,11 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
     /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
     /// range from 4 to 10.
     ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -704,9 +709,10 @@ impl<T: Ord + Default, const N: usize> SgSet<T, N> {
         T: Borrow<K> + Ord,
         R: RangeBounds<K>,
     {
+        SgTree::<T, (), N>::assert_valid_range(&range);
         Range {
             table: self,
-            node_idx_iter: self.bst.range_search(range).into_iter(),
+            node_idx_iter: self.bst.range_search(&range).into_iter(),
         }
     }
 

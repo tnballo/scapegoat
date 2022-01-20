@@ -758,3 +758,19 @@ fn test_capacity_exceed() {
     const OVER_CAP: usize = (Idx::MAX as usize) + 1;
     let _ = SgTree::<u8, u8, OVER_CAP>::new();
 }
+
+#[test]
+fn test_double_ended_iter_mut() {
+    // See: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html
+    let mut sgt = SgTree::from([(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]);
+    let mut iter = sgt.iter_mut();
+
+    assert_eq!(Some((&1, &mut 1)), iter.next());
+    assert_eq!(Some((&6, &mut 6)), iter.next_back());
+    assert_eq!(Some((&5, &mut 5)), iter.next_back());
+    assert_eq!(Some((&2, &mut 2)), iter.next());
+    assert_eq!(Some((&3, &mut 3)), iter.next());
+    assert_eq!(Some((&4, &mut 4)), iter.next());
+    assert_eq!(None, iter.next());
+    assert_eq!(None, iter.next_back());
+}

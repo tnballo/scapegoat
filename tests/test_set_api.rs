@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
+use std::ops::Bound::{Excluded, Included};
 
 use scapegoat::{SgError, SgSet};
 
@@ -226,23 +227,10 @@ fn test_set_is_disjoint() {
     assert!(!a.is_disjoint(&c));
 }
 
-#[test]
-fn test_set_range() {
-    let array = [1, 5, 3, 7, 9];
-    let map = SgSet::from(array);
-
-    let range = 3..8;
-
-    let keys: Vec<_> = map.range(range.clone()).collect();
-
-    assert!(keys.windows(2).all(|w| w[0] < w[1]));
-    assert!(keys.iter().all(|x| range.contains(*x)));
-}
-
 // Fallible APIs -------------------------------------------------------------------------------------------------------
 
 #[test]
-fn test_map_insert_fallible() {
+fn test_set_insert_fallible() {
     let mut a = SgSet::<_, 3>::new();
 
     assert!(a.try_insert(1).is_ok());
@@ -254,7 +242,7 @@ fn test_map_insert_fallible() {
 }
 
 #[test]
-fn test_map_append_fallible() {
+fn test_set_append_fallible() {
     let mut a = SgSet::<_, 6>::new();
 
     assert!(a.try_insert(1).is_ok());
@@ -300,7 +288,7 @@ fn test_map_append_fallible() {
 
 #[should_panic]
 #[test]
-fn test_map_insert_panic() {
+fn test_set_insert_panic() {
     let mut a = SgSet::<_, 3>::new();
 
     assert!(a.try_insert(1).is_ok());
@@ -309,4 +297,59 @@ fn test_map_insert_panic() {
     assert_eq!(a.try_insert(4), Err(SgError::StackCapacityExceeded));
 
     a.insert(4); // panic
+}
+
+// Range APIs ----------------------------------------------------------------------------------------------------------
+
+#[test]
+fn test_set_range() {
+    let array = [1, 5, 3, 7, 9];
+    let set = SgSet::from(array);
+
+    let range = 3..8;
+
+    let keys: Vec<_> = set.range(range.clone()).collect();
+
+    assert!(keys.windows(2).all(|w| w[0] < w[1]));
+    assert!(keys.iter().all(|x| range.contains(*x)));
+}
+
+#[should_panic]
+#[test]
+fn test_btree_set_range_panic_1() {
+    let mut set: BTreeSet<usize> = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+    let _bad_range = set.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start is greater than range end")]
+#[test]
+fn test_sg_set_range_panic_1() {
+    let mut set = SgSet::<usize, DEFAULT_CAPACITY>::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+    let _bad_range = set.range((Included(&8), Included(&3)));
+}
+
+#[should_panic]
+#[test]
+fn test_btree_set_range_panic_2() {
+    let mut set: BTreeSet<usize> = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+    let _bad_range = set.range((Excluded(&5), Excluded(&5)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded")]
+#[test]
+fn test_sg_set_range_panic_2() {
+    let mut set = SgSet::<usize, DEFAULT_CAPACITY>::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+    let _bad_range = set.range((Excluded(&5), Excluded(&5)));
 }

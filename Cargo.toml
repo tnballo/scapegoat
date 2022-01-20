@@ -1,6 +1,6 @@
 [package]
 name = "scapegoat"
-version = "2.2.0"
+version = "2.2.1"
 rust = "1.55"
 authors = ["Tiemoko Ballo"]
 edition = "2018"

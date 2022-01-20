@@ -431,4 +431,23 @@ mod tests {
         assert!(small_node_size < large_node_size);
         */
     }
+
+    #[test]
+    fn test_arena_next_back() {
+        let mut arena: Arena<usize, usize, small_unsigned!(CAPACITY), CAPACITY> = Arena::new();
+
+        assert_eq!(0, arena.add(0, 0));
+        assert_eq!(1, arena.add(1, 1));
+        assert_eq!(2, arena.add(2, 2));
+
+        assert_eq!(1, *arena.remove(1).unwrap().key());
+        assert_eq!(1, arena.add(3, 3));
+
+        let mut iter_mut = arena.iter_mut();
+        assert_eq!(iter_mut.len(), 3);
+        assert_eq!(&2, iter_mut.next_back().unwrap().as_ref().unwrap().key());
+        assert_eq!(&3, iter_mut.next_back().unwrap().as_ref().unwrap().key());
+        assert_eq!(&0, iter_mut.next_back().unwrap().as_ref().unwrap().key());
+        assert!(iter_mut.next_back().is_none());
+    }
 }
