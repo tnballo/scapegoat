@@ -21,7 +21,7 @@ jobs:
         toolchain: stable
         override: true
 
-    # Build check --------------------------------------------------------------
+    # Build check (includes examples) ------------------------------------------
 
     - name: build --all-targets
       uses: actions-rs/cargo@v1
@@ -41,3 +41,21 @@ jobs:
       with:
         command: test
         args: --all-features
+
+    - name: test --features=low_mem_insert
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --features=low_mem_insert
+
+    - name: test --features=fast_rebalance
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --features=fast_rebalance
+
+    - name: test --features=alt_impl
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --features=alt_impl

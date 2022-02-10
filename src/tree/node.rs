@@ -139,7 +139,7 @@ impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
         self.parent_idx.map(|i| i.usize())
     }
 
-    // Tell if right or left child
+    /// Tell if right or left child
     pub fn is_right_child(&self) -> bool {
         self.is_right_child
     }
@@ -152,8 +152,11 @@ impl<U: SmallUnsigned + Copy> NodeGetHelper<U> {
 /// All APIs take/return `usize` and normalize to `U` internally.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct NodeRebuildHelper<U> {
+    /// Provided low index
     pub low_idx: U,
+    /// Provided low index
     pub high_idx: U,
+    /// Computed mid index
     pub mid_idx: U,
 }
 
