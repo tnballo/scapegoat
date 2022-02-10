@@ -7,3 +7,6 @@ echo -e "<br><p align=\"center\"><img src=\"https://raw.githubusercontent.com/tn
 
 # Make sure we're still truly no_std
 cargo build --target="thumbv7m-none-eabi"
+
+# Print modules
+cargo modules generate tree --lib --with-types

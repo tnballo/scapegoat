@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::iter::FromIterator;
 use std::ops::Bound::{Excluded, Included};
 
-use scapegoat::{SgError, SgSet};
+use scapegoat::{sgset, SgError, SgSet};
 
 const DEFAULT_CAPACITY: usize = 10;
 
@@ -352,4 +352,44 @@ fn test_sg_set_range_panic_2() {
     set.insert(5);
     set.insert(8);
     let _bad_range = set.range((Excluded(&5), Excluded(&5)));
+}
+
+#[test]
+fn test_set_macro() {
+    // Mutable
+    let mut set = sgset! {
+        4, // Const capacity
+        "a",
+        "b",
+        "c", // No trailing comma
+    };
+
+    // Immutable
+    let set_2 = sgset! {
+        4, // Const capacity
+        "a",
+        "b",
+        "c", // Trailing comma!
+    };
+
+    assert_eq!(set, set_2);
+
+    assert_eq!(set.get("d"), None);
+    assert_eq!(set.capacity(), 4);
+    assert_eq!(set.len(), 3);
+
+    set.insert("d");
+    assert_eq!(set.get("d"), Some(&"d"));
+}
+
+#[should_panic]
+#[test]
+fn test_set_macro_panic() {
+    let _ = sgset! {
+        3, // Const capacity
+        "a",
+        "b",
+        "c",
+        "d", // Capacity exceeded!
+    };
 }

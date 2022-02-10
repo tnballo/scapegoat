@@ -49,7 +49,7 @@ use tinyvec::{array_vec, ArrayVec};
 const CAPACITY: usize = 5;
 
 let mut example = SgMap::<_, _, CAPACITY>::new(); // BTreeMap::new()
-let mut stack_str = "your friend the";
+let mut static_str = "your friend the";
 
 // Insert "dynamically" (as if heap)
 example.insert(3, "the");
@@ -86,7 +86,7 @@ example.extend(iterable.into_iter());
 
 // Value mutation
 if let Some(three_val) = example.get_mut(&3) {
-    *three_val = &mut stack_str;
+    *three_val = &mut static_str;
 }
 
 // New message :)
@@ -202,6 +202,7 @@ Licensed under the [MIT license](https://github.com/tnballo/scapegoat/blob/maste
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/tnballo/scapegoat/master/img/scapegoat.svg"
 )]
+#![deny(missing_docs)]
 
 // Only expose arena internals for fuzzing harness
 #[cfg(fuzzing)]
@@ -221,3 +222,7 @@ pub use crate::set::SgSet;
 
 /// [`SgSet`][crate::set::SgSet]'s iterator return types.
 pub mod set_types;
+
+// Initialization convenience macros.
+mod macros;
+pub use macros::*;
