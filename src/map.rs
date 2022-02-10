@@ -7,7 +7,7 @@ use crate::map_types::{
     Entry, IntoIter, IntoKeys, IntoValues, Iter, IterMut, Keys, OccupiedEntry, OccupiedError,
     Range, RangeMut, VacantEntry, Values, ValuesMut,
 };
-use crate::tree::{SgError, SgTree};
+use crate::tree::{node::NodeGetHelper, Idx, SgError, SgTree};
 
 /// Safe, fallible, embedded-friendly ordered map.
 ///
@@ -941,10 +941,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgMap<K, V, N> {
     /// assert_eq!(count["a"], 3);
     /// ```
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, N> {
-        use crate::tree::node::NodeGetHelper;
-        use crate::tree::Idx;
-
-        let ngh: NodeGetHelper<Idx> = self.bst.priv_get(None, &key);
+        let ngh: NodeGetHelper<Idx> = self.bst.internal_get(None, &key);
         match ngh.node_idx() {
             Some(node_idx) => Entry::Occupied(OccupiedEntry {
                 node_idx,

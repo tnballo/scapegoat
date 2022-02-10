@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::ops::Bound::{Excluded, Included};
 
-use scapegoat::{SgError, SgMap};
+use scapegoat::{sgmap, SgError, SgMap};
 
 use rand::Rng;
 
@@ -421,4 +421,48 @@ fn test_sg_map_range_mut_panic_2() {
     map.insert(5, 5);
     map.insert(8, 8);
     let _bad_range = map.range_mut((Excluded(&5), Excluded(&5)));
+}
+
+#[test]
+fn test_map_macro() {
+    // Mutable
+    let mut map = sgmap! {
+        4, // Const capacity
+        "a" => 0x61,
+        "b" => 0x62,
+        "c" => 0x63 // No trailing comma
+    };
+
+    // Immutable
+    let map_2 = sgmap! {
+        4, // Const capacity
+        "a" => 0x61,
+        "b" => 0x62,
+        "c" => 0x63, // Trailing comma!
+    };
+
+    assert_eq!(map, map_2);
+
+    assert_eq!(map["a"], 0x61);
+    assert_eq!(map["b"], 0x62);
+    assert_eq!(map["c"], 0x63);
+
+    assert_eq!(map.get("d"), None);
+    assert_eq!(map.capacity(), 4);
+    assert_eq!(map.len(), 3);
+
+    map.insert("d", 0x64);
+    assert_eq!(map["d"], 0x64);
+}
+
+#[should_panic]
+#[test]
+fn test_map_macro_panic() {
+    let _ = sgmap! {
+        3, // Const capacity
+        "a" => 0x61,
+        "b" => 0x62,
+        "c" => 0x63,
+        "d" => 0x64, // Capacity exceeded!
+    };
 }

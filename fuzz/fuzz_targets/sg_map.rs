@@ -440,8 +440,10 @@ fuzz_target!(|methods: Vec<MapMethod<usize, usize>>| {
             }
             MapMethod::RangeMut { bitstream } => {
                 if let Some(range) = gen_valid_range(&sg_map, &bt_map, &bitstream) {
-                    let sg_range_iter = sg_map.range_mut((Included(range.start), Included(range.end)));
-                    let bt_range_iter = bt_map.range_mut((Included(range.start), Included(range.end)));
+                    let sg_range_iter =
+                        sg_map.range_mut((Included(range.start), Included(range.end)));
+                    let bt_range_iter =
+                        bt_map.range_mut((Included(range.start), Included(range.end)));
                     assert!(sg_range_iter.eq(bt_range_iter));
                 }
             }
