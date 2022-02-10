@@ -1,0 +1,25 @@
+name: no_std build (thumbv7m-none-eabi)
+
+on:
+  push:
+  schedule:
+    # At 06:00am every Saturday (for new versions of rustc)
+    - cron:  '0 6 * * 6'
+
+jobs:
+  no_std:
+    name: Cross-compile ARMv7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: thumbv7m-none-eabi
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target thumbv7m-none-eabi
