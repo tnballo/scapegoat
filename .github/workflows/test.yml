@@ -21,6 +21,16 @@ jobs:
         toolchain: stable
         override: true
 
+    # Build check --------------------------------------------------------------
+
+    - name: build --all-targets
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --all-targets
+
+    # Test runners -------------------------------------------------------------
+
     - name: test
       uses: actions-rs/cargo@v1
       with:
@@ -31,6 +41,8 @@ jobs:
       with:
         command: test
         args: --all-features
+
+    # Example runners ----------------------------------------------------------
 
     - name: run --example static_strs
       uses: actions-rs/cargo@v1
