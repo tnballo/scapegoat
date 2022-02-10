@@ -361,7 +361,7 @@ fn test_set_macro() {
         4, // Const capacity
         "a",
         "b",
-        "c", // No trailing comma
+        "c" // No trailing comma
     };
 
     // Immutable
