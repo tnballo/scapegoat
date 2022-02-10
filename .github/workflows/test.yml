@@ -41,17 +41,3 @@ jobs:
       with:
         command: test
         args: --all-features
-
-    # Example runners ----------------------------------------------------------
-
-    - name: run --example static_strs
-      uses: actions-rs/cargo@v1
-      with:
-        command: run
-        args: --example static_strs
-
-    - name: run --example try_insert
-      uses: actions-rs/cargo@v1
-      with:
-        command: run
-        args: --example try_insert

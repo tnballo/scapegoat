@@ -450,7 +450,10 @@ impl<'a, K: Ord + Default, V: Default, const N: usize> VacantEntry<'a, K, V, N> 
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     pub fn insert(self, value: V) -> &'a mut V {
-        let (_, new_node_idx) = self.table.bst.priv_balancing_insert::<Idx>(self.key, value);
+        let (_, new_node_idx) = self
+            .table
+            .bst
+            .internal_balancing_insert::<Idx>(self.key, value);
 
         self.table.bst.arena[new_node_idx].get_mut().1
     }

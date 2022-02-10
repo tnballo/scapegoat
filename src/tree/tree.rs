@@ -170,7 +170,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     where
         K: Ord,
     {
-        self.priv_balancing_insert::<Idx>(key, val).0
+        self.internal_balancing_insert::<Idx>(key, val).0
     }
 
     /// Insert a key-value pair into the tree.
@@ -184,7 +184,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     {
         // Replace current slot or safely fill a new one
         match self.contains_key(&key) || (self.capacity() > self.len()) {
-            true => Ok(self.priv_balancing_insert::<Idx>(key, val).0),
+            true => Ok(self.internal_balancing_insert::<Idx>(key, val).0),
             false => Err(SgError::StackCapacityExceeded),
         }
     }
@@ -287,7 +287,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let ngh: NodeGetHelper<Idx> = self.priv_get(None, key);
+        let ngh: NodeGetHelper<Idx> = self.internal_get(None, key);
         match ngh.node_idx() {
             Some(idx) => {
                 let node = &self.arena[idx];
@@ -318,7 +318,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let ngh: NodeGetHelper<Idx> = self.priv_get(None, key);
+        let ngh: NodeGetHelper<Idx> = self.internal_get(None, key);
         match ngh.node_idx() {
             Some(idx) => {
                 let (_, val) = self.arena[idx].get_mut();
@@ -441,7 +441,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     pub(crate) fn priv_remove_by_idx(&mut self, idx: usize) -> Option<(K, V)> {
         if self.arena.is_occupied(idx) {
             let node = &self.arena[idx];
-            let ngh: NodeGetHelper<Idx> = self.priv_get(None, node.key());
+            let ngh: NodeGetHelper<Idx> = self.internal_get(None, node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
                 "By-key retrieval index doesn't match arena storage index!"
@@ -459,7 +459,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         if self.arena.is_occupied(idx) {
             let node = &self.arena[idx];
             let mut path = Arena::<K, V, Idx, N>::new_idx_vec();
-            let ngh = self.priv_get(Some(&mut path), node.key());
+            let ngh = self.internal_get(Some(&mut path), node.key());
             debug_assert!(
                 ngh.node_idx().unwrap() == idx,
                 "By-key retrieval index doesn't match arena storage index!"
@@ -510,7 +510,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 .iter()
                 .filter(|n| n.is_some())
                 .map(|n| n.as_ref().unwrap())
-                .map(|n| self.priv_get(None, n.key()))
+                .map(|n| self.internal_get(None, n.key()))
                 .collect::<ArrayVec<[NodeGetHelper<usize>; N]>>();
 
             sort_metadata.sort_unstable_by_key(|ngh| self.arena[ngh.node_idx().unwrap()].key());
@@ -581,11 +581,9 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         }
     }
 
-    // Private API -----------------------------------------------------------------------------------------------------
-
     // Iterative search. If key found, returns node idx, parent idx, and a bool indicating if node is right child
     // `opt_path` is only populated if `Some` and key is found.
-    pub(crate) fn priv_get<Q, U: SmallUnsigned + Default + Copy>(
+    pub(crate) fn internal_get<Q, U: SmallUnsigned + Default + Copy>(
         &self,
         mut opt_path: Option<&mut ArrayVec<[U; N]>>,
         key: &Q,
@@ -657,7 +655,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
     // Re-balances the tree if necessary.
     //
     // Returns the old value, if any, and the index of the new node in the arena.
-    pub(crate) fn priv_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
+    pub(crate) fn internal_balancing_insert<U: Default + Copy + Ord + Sub + SmallUnsigned>(
         &mut self,
         key: K,
         val: V,
@@ -686,11 +684,14 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         (opt_val, new_node_idx)
     }
 
+    // Private API -----------------------------------------------------------------------------------------------------
+
     // Sorted insert of node into the tree (inner).
     // Maintains a traversal path to avoid nodes needing to maintain a parent index.
     // Returns a tuple of the old value, if any, and the `NodeGetHelper` of the new node.
     //
-    // If a node with the same key existed, overwrites both that nodes key and value with the new one's and returns the old value.
+    // If a node with the same key existed, overwrites both that nodes key and value with the new one's and
+    // returns the old value.
     fn priv_insert<U: SmallUnsigned + Default + Copy>(
         &mut self,
         path: &mut ArrayVec<[U; N]>,
@@ -821,7 +822,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         K: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        let ngh: NodeGetHelper<Idx> = self.priv_get(None, key);
+        let ngh: NodeGetHelper<Idx> = self.internal_get(None, key);
         self.priv_remove(None, ngh)
     }
 
@@ -833,7 +834,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
         Q: Ord + ?Sized,
     {
         let mut path = Arena::<K, V, Idx, N>::new_idx_vec();
-        let ngh = self.priv_get(Some(&mut path), key);
+        let ngh = self.internal_get(Some(&mut path), key);
         self.priv_remove(Some(&path), ngh)
     }
 
@@ -1003,7 +1004,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
 
         // Safely treat mutable ref as immutable, init list of node's arena indexes
         for (k, _) in &(*self) {
-            let ngh: NodeGetHelper<Idx> = self.priv_get(None, k.borrow());
+            let ngh: NodeGetHelper<Idx> = self.internal_get(None, k.borrow());
             debug_assert!(ngh.node_idx().is_some());
             key_idxs.push(Idx::checked_from(ngh.node_idx().unwrap()));
         }
@@ -1250,7 +1251,7 @@ impl<K: Ord + Default, V: Default, const N: usize> SgTree<K, V, N> {
                 self.opt_root_idx = Some(subtree_root_arena_idx);
             } else {
                 let old_subtree_root = &self.arena[old_subtree_root_idx];
-                let ngh: NodeGetHelper<U> = self.priv_get(None, old_subtree_root.key());
+                let ngh: NodeGetHelper<U> = self.internal_get(None, old_subtree_root.key());
                 debug_assert!(
                     ngh.parent_idx().is_some(),
                     "Internal invariant failed: rebalance of non-root parent-less node!"
